@@ -7,22 +7,365 @@ struct CameraState: Codable, Equatable {
   var zoom: CGFloat = 1
 }
 
+struct PersistedWindowPosition: Codable, Equatable {
+  var windowID: CGWindowID
+  var bundleIdentifier: String
+  var title: String
+  var center: CGPoint
+}
+
+struct WindowPlacementSnapshot: Equatable {
+  var windowID: CGWindowID
+  var bundleIdentifier: String
+  var title: String
+  var center: CGPoint
+  var size: CGSize
+}
+
+struct WindowSlot: Codable, Equatable, Identifiable {
+  let id: UUID
+  var offset: CGPoint
+  var size: CGSize
+  var lastWindowID: CGWindowID?
+  var lastSessionID: UUID?
+  var titleHint: String
+
+  init(
+    id: UUID = UUID(),
+    offset: CGPoint,
+    size: CGSize,
+    lastWindowID: CGWindowID?,
+    lastSessionID: UUID? = nil,
+    titleHint: String
+  ) {
+    self.id = id
+    self.offset = offset
+    self.size = size
+    self.lastWindowID = lastWindowID
+    self.lastSessionID = lastSessionID
+    self.titleHint = WindowIdentity.normalizedTitle(titleHint)
+  }
+}
+
+struct AppPlacement: Codable, Equatable, Identifiable {
+  var bundleIdentifier: String
+  var applicationName: String
+  var home: CGPoint
+  var lastKnownSize: CGSize
+  var windowSlots: [WindowSlot]
+
+  var id: String { bundleIdentifier }
+}
+
+enum AppPlacementPersistence {
+  private static let sessionID = UUID()
+
+  static func migrated(from positions: [PersistedWindowPosition]) -> [AppPlacement] {
+    Dictionary(grouping: positions, by: \.bundleIdentifier).keys.sorted().compactMap {
+      bundleIdentifier in
+      guard let windows = Dictionary(grouping: positions, by: \.bundleIdentifier)[
+        bundleIdentifier
+      ]?.sorted(by: { $0.windowID < $1.windowID }), let first = windows.first
+      else { return nil }
+      return AppPlacement(
+        bundleIdentifier: bundleIdentifier,
+        applicationName: bundleIdentifier.split(separator: ".").last.map(String.init)
+          ?? bundleIdentifier,
+        home: first.center,
+        lastKnownSize: CGSize(width: 960, height: 600),
+        windowSlots: windows.map {
+          WindowSlot(
+            offset: CGPoint(x: $0.center.x - first.center.x, y: $0.center.y - first.center.y),
+            size: .zero,
+            lastWindowID: $0.windowID,
+            lastSessionID: nil,
+            titleHint: $0.title
+          )
+        }
+      )
+    }
+  }
+
+  static func restoredCenters(
+    for current: [WindowPlacementSnapshot],
+    from placements: [AppPlacement]
+  ) -> [CGWindowID: CGPoint] {
+    var centers: [CGWindowID: CGPoint] = [:]
+    let placementsByBundle = Dictionary(
+      uniqueKeysWithValues: placements.map { ($0.bundleIdentifier, $0) }
+    )
+    for (bundleIdentifier, windows) in Dictionary(grouping: current, by: \.bundleIdentifier) {
+      guard let placement = placementsByBundle[bundleIdentifier] else { continue }
+      let matches = matches(current: windows, stored: placement.windowSlots)
+      for (currentIndex, storedIndex) in matches {
+        let offset = placement.windowSlots[storedIndex].offset
+        centers[windows[currentIndex].windowID] = CGPoint(
+          x: placement.home.x + offset.x,
+          y: placement.home.y + offset.y
+        )
+      }
+      if matches.isEmpty, let first = windows.min(by: { $0.windowID < $1.windowID }) {
+        centers[first.windowID] = placement.home
+      }
+    }
+    return centers
+  }
+
+  static func updating(
+    _ placement: AppPlacement,
+    applicationName: String,
+    home: CGPoint,
+    windows: [WindowPlacementSnapshot]
+  ) -> AppPlacement {
+    var result = placement
+    result.applicationName = applicationName
+    result.home = home
+    if let primary = windows.min(by: { $0.windowID < $1.windowID }) {
+      result.lastKnownSize = primary.size
+    }
+
+    var matches = matches(current: windows, stored: result.windowSlots)
+    var availableStoredIndexes = Set(result.windowSlots.indices).subtracting(matches.values)
+    let proximityCandidates = windows.indices
+      .filter { matches[$0] == nil }
+      .flatMap { currentIndex in
+        availableStoredIndexes.map { storedIndex in
+          let storedCenter = CGPoint(
+            x: home.x + result.windowSlots[storedIndex].offset.x,
+            y: home.y + result.windowSlots[storedIndex].offset.y
+          )
+          let dx = windows[currentIndex].center.x - storedCenter.x
+          let dy = windows[currentIndex].center.y - storedCenter.y
+          return (currentIndex: currentIndex, storedIndex: storedIndex, distance: dx * dx + dy * dy)
+        }
+      }
+      .sorted {
+        if $0.distance != $1.distance { return $0.distance < $1.distance }
+        if $0.currentIndex != $1.currentIndex { return $0.currentIndex < $1.currentIndex }
+        return $0.storedIndex < $1.storedIndex
+      }
+    for candidate in proximityCandidates
+    where matches[candidate.currentIndex] == nil
+      && availableStoredIndexes.contains(candidate.storedIndex)
+    {
+      matches[candidate.currentIndex] = candidate.storedIndex
+      availableStoredIndexes.remove(candidate.storedIndex)
+    }
+    for (currentIndex, storedIndex) in matches {
+      let window = windows[currentIndex]
+      result.windowSlots[storedIndex].offset = CGPoint(
+        x: window.center.x - home.x,
+        y: window.center.y - home.y
+      )
+      result.windowSlots[storedIndex].size = window.size
+      result.windowSlots[storedIndex].lastWindowID = window.windowID
+      result.windowSlots[storedIndex].lastSessionID = sessionID
+      result.windowSlots[storedIndex].titleHint = WindowIdentity.normalizedTitle(window.title)
+    }
+    for currentIndex in windows.indices where matches[currentIndex] == nil {
+      let window = windows[currentIndex]
+      result.windowSlots.append(
+        WindowSlot(
+          offset: CGPoint(x: window.center.x - home.x, y: window.center.y - home.y),
+          size: window.size,
+          lastWindowID: window.windowID,
+          lastSessionID: sessionID,
+          titleHint: window.title
+        )
+      )
+    }
+    return result
+  }
+
+  private static func matches(
+    current: [WindowPlacementSnapshot],
+    stored: [WindowSlot]
+  ) -> [Int: Int] {
+    var result: [Int: Int] = [:]
+    var availableStoredIndexes = Set(stored.indices)
+
+    func assign(_ currentIndex: Int, _ storedIndex: Int) {
+      result[currentIndex] = storedIndex
+      availableStoredIndexes.remove(storedIndex)
+    }
+
+    for currentIndex in current.indices {
+      if let storedIndex = availableStoredIndexes.sorted().first(where: {
+        stored[$0].lastSessionID == sessionID
+          && stored[$0].lastWindowID == current[currentIndex].windowID
+      }) {
+        assign(currentIndex, storedIndex)
+      }
+    }
+
+    for currentIndex in current.indices where result[currentIndex] == nil {
+      let candidates = availableStoredIndexes.compactMap { storedIndex -> (Int, Int)? in
+        WindowIdentity.titleMatchScore(
+          source: stored[storedIndex].titleHint,
+          candidate: current[currentIndex].title
+        ).map { (storedIndex, $0) }
+      }.sorted { lhs, rhs in
+        lhs.1 == rhs.1 ? lhs.0 < rhs.0 : lhs.1 < rhs.1
+      }
+      if let candidate = candidates.first,
+        candidates.count == 1 || candidate.1 < candidates[1].1
+      {
+        assign(currentIndex, candidate.0)
+      }
+    }
+
+    let unmatchedCurrent = current.indices.filter { result[$0] == nil }
+    if unmatchedCurrent.count == 1, availableStoredIndexes.count == 1,
+      let currentIndex = unmatchedCurrent.first,
+      let storedIndex = availableStoredIndexes.first
+    {
+      assign(currentIndex, storedIndex)
+    }
+    return result
+  }
+}
+
+enum WindowPositionPersistence {
+  static func restoredCenters(
+    for current: [PersistedWindowPosition],
+    from stored: [PersistedWindowPosition]
+  ) -> [CGWindowID: CGPoint] {
+    Dictionary(
+      uniqueKeysWithValues: matches(current: current, stored: stored).map { currentIndex, storedIndex in
+        (current[currentIndex].windowID, stored[storedIndex].center)
+      }
+    )
+  }
+
+  static func merging(
+    _ current: [PersistedWindowPosition],
+    into stored: [PersistedWindowPosition]
+  ) -> [PersistedWindowPosition] {
+    let matches = matches(current: current, stored: stored)
+    var result = stored
+    for (currentIndex, storedIndex) in matches {
+      result[storedIndex] = current[currentIndex]
+    }
+    for currentIndex in current.indices where matches[currentIndex] == nil {
+      result.append(current[currentIndex])
+    }
+    return result
+  }
+
+  private static func matches(
+    current: [PersistedWindowPosition],
+    stored: [PersistedWindowPosition]
+  ) -> [Int: Int] {
+    var result: [Int: Int] = [:]
+    var availableStoredIndexes = Set(stored.indices)
+
+    func assign(_ currentIndex: Int, _ storedIndex: Int) {
+      result[currentIndex] = storedIndex
+      availableStoredIndexes.remove(storedIndex)
+    }
+
+    for currentIndex in current.indices {
+      let item = current[currentIndex]
+      if let storedIndex = availableStoredIndexes.sorted().first(where: {
+        stored[$0].windowID == item.windowID
+          && stored[$0].bundleIdentifier == item.bundleIdentifier
+      }) {
+        assign(currentIndex, storedIndex)
+      }
+    }
+
+    for currentIndex in current.indices where result[currentIndex] == nil {
+      let item = current[currentIndex]
+      let candidate = availableStoredIndexes.compactMap { storedIndex -> (Int, Int)? in
+        guard stored[storedIndex].bundleIdentifier == item.bundleIdentifier,
+          let score = WindowIdentity.titleMatchScore(
+            source: stored[storedIndex].title,
+            candidate: item.title
+          )
+        else { return nil }
+        return (storedIndex, score)
+      }.min { lhs, rhs in
+        lhs.1 == rhs.1 ? lhs.0 < rhs.0 : lhs.1 < rhs.1
+      }
+      if let candidate { assign(currentIndex, candidate.0) }
+    }
+
+    let unmatchedBundles = Set(
+      current.indices.lazy
+        .filter { result[$0] == nil }
+        .map { current[$0].bundleIdentifier }
+    )
+    for bundleIdentifier in unmatchedBundles {
+      let currentIndexes = current.indices.filter {
+        result[$0] == nil && current[$0].bundleIdentifier == bundleIdentifier
+      }
+      let storedIndexes = availableStoredIndexes.filter {
+        stored[$0].bundleIdentifier == bundleIdentifier
+      }
+      if currentIndexes.count == 1, storedIndexes.count == 1,
+        let currentIndex = currentIndexes.first,
+        let storedIndex = storedIndexes.first
+      {
+        assign(currentIndex, storedIndex)
+      }
+    }
+
+    return result
+  }
+}
+
 struct DesktopPage: Codable, Equatable, Identifiable {
   let id: UUID
   var title: String
   var camera: CameraState?
   var lockedCamera: CameraState?
+  var windowPositions: [PersistedWindowPosition]
+  var appPlacements: [AppPlacement]
 
   init(
     id: UUID = UUID(),
     title: String,
     camera: CameraState? = nil,
-    lockedCamera: CameraState? = nil
+    lockedCamera: CameraState? = nil,
+    windowPositions: [PersistedWindowPosition] = [],
+    appPlacements: [AppPlacement] = []
   ) {
     self.id = id
     self.title = title
     self.camera = camera
     self.lockedCamera = lockedCamera
+    self.windowPositions = windowPositions
+    self.appPlacements = appPlacements
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case id
+    case title
+    case camera
+    case lockedCamera
+    case windowPositions
+    case appPlacements
+  }
+
+  init(from decoder: Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+    id = try values.decode(UUID.self, forKey: .id)
+    title = try values.decode(String.self, forKey: .title)
+    camera = try values.decodeIfPresent(CameraState.self, forKey: .camera)
+    lockedCamera = try values.decodeIfPresent(CameraState.self, forKey: .lockedCamera)
+    windowPositions = try values.decodeIfPresent(
+      [PersistedWindowPosition].self,
+      forKey: .windowPositions
+    ) ?? []
+    if values.contains(.appPlacements) {
+      appPlacements = try values.decodeIfPresent(
+        [AppPlacement].self,
+        forKey: .appPlacements
+      ) ?? []
+    } else {
+      appPlacements = AppPlacementPersistence.migrated(from: windowPositions)
+      windowPositions.removeAll()
+    }
   }
 
   var displayTitle: String {
@@ -44,6 +387,8 @@ struct DesktopPages: Codable, Equatable {
 
   var selectedPage: DesktopPage { pages[selectedIndex] }
   var isSelectedPageLocked: Bool { selectedPage.lockedCamera != nil }
+  var selectedAppPlacements: [AppPlacement] { selectedPage.appPlacements }
+  var hasSelectedAppPlacements: Bool { !selectedPage.appPlacements.isEmpty }
 
   mutating func renameSelectedPage(_ title: String) {
     pages[selectedIndex].title = title
@@ -51,6 +396,101 @@ struct DesktopPages: Codable, Equatable {
 
   mutating func updateSelectedCamera(_ camera: CameraState) {
     pages[selectedIndex].camera = camera
+  }
+
+  mutating func updateSelectedWindowPositions(_ positions: [PersistedWindowPosition]) {
+    pages[selectedIndex].windowPositions = WindowPositionPersistence.merging(
+      positions,
+      into: pages[selectedIndex].windowPositions
+    )
+  }
+
+  func selectedWindowCenters(
+    for positions: [PersistedWindowPosition]
+  ) -> [CGWindowID: CGPoint] {
+    guard selectedPage.appPlacements.isEmpty else {
+      return AppPlacementPersistence.restoredCenters(
+        for: positions.map {
+          WindowPlacementSnapshot(
+            windowID: $0.windowID,
+            bundleIdentifier: $0.bundleIdentifier,
+            title: $0.title,
+            center: $0.center,
+            size: .zero
+          )
+        },
+        from: selectedPage.appPlacements
+      )
+    }
+    return WindowPositionPersistence.restoredCenters(
+      for: positions,
+      from: selectedPage.windowPositions
+    )
+  }
+
+  func selectedWindowCenters(
+    for windows: [WindowPlacementSnapshot]
+  ) -> [CGWindowID: CGPoint] {
+    AppPlacementPersistence.restoredCenters(
+      for: windows,
+      from: selectedPage.appPlacements
+    )
+  }
+
+  func selectedAppPlacement(for bundleIdentifier: String) -> AppPlacement? {
+    selectedPage.appPlacements.first { $0.bundleIdentifier == bundleIdentifier }
+  }
+
+  mutating func updateSelectedAppPlacement(
+    bundleIdentifier: String,
+    applicationName: String,
+    home: CGPoint,
+    windows: [WindowPlacementSnapshot]
+  ) {
+    pages[selectedIndex].windowPositions.removeAll()
+    if let index = pages[selectedIndex].appPlacements.firstIndex(where: {
+      $0.bundleIdentifier == bundleIdentifier
+    }) {
+      pages[selectedIndex].appPlacements[index] = AppPlacementPersistence.updating(
+        pages[selectedIndex].appPlacements[index],
+        applicationName: applicationName,
+        home: home,
+        windows: windows
+      )
+    } else {
+      let initial = AppPlacement(
+        bundleIdentifier: bundleIdentifier,
+        applicationName: applicationName,
+        home: home,
+        lastKnownSize: windows.first?.size ?? CGSize(width: 960, height: 600),
+        windowSlots: []
+      )
+      pages[selectedIndex].appPlacements.append(
+        AppPlacementPersistence.updating(
+          initial,
+          applicationName: applicationName,
+          home: home,
+          windows: windows
+        )
+      )
+    }
+  }
+
+  mutating func moveSelectedAppPlacement(
+    bundleIdentifier: String,
+    to home: CGPoint
+  ) {
+    guard let index = pages[selectedIndex].appPlacements.firstIndex(where: {
+      $0.bundleIdentifier == bundleIdentifier
+    }) else { return }
+    pages[selectedIndex].appPlacements[index].home = home
+  }
+
+  mutating func forgetSelectedAppPlacement(bundleIdentifier: String) {
+    pages[selectedIndex].windowPositions.removeAll()
+    pages[selectedIndex].appPlacements.removeAll {
+      $0.bundleIdentifier == bundleIdentifier
+    }
   }
 
   @discardableResult
@@ -86,6 +526,7 @@ struct DesktopPages: Codable, Equatable {
 
 enum OpenPlanePreferences {
   static let useCommandTabShortcut = "useCommandTabShortcut"
+  static let showPrivateBrowserPreviews = "showPrivateBrowserPreviews"
 }
 
 enum ShortcutMatcher {
@@ -93,6 +534,10 @@ enum ShortcutMatcher {
     guard keyCode == 48 else { return false }
     let modifiers = flags.intersection([.maskCommand, .maskShift, .maskControl, .maskAlternate])
     return modifiers == [.maskCommand] || modifiers == [.maskCommand, .maskShift]
+  }
+
+  static func isPlaneQuit(keyCode: UInt16, isRepeat: Bool) -> Bool {
+    keyCode == 51 && !isRepeat
   }
 }
 
@@ -150,6 +595,33 @@ enum CanvasDirection {
   case right
   case up
   case down
+}
+
+enum SelectionResizeHandle: CaseIterable {
+  case topLeft
+  case top
+  case topRight
+  case right
+  case bottomRight
+  case bottom
+  case bottomLeft
+  case left
+
+  var movesLeftEdge: Bool {
+    self == .topLeft || self == .bottomLeft || self == .left
+  }
+
+  var movesRightEdge: Bool {
+    self == .topRight || self == .bottomRight || self == .right
+  }
+
+  var movesTopEdge: Bool {
+    self == .topLeft || self == .top || self == .topRight
+  }
+
+  var movesBottomEdge: Bool {
+    self == .bottomLeft || self == .bottom || self == .bottomRight
+  }
 }
 
 enum CanvasSearch {
@@ -243,10 +715,38 @@ struct PendingLaunch {
   let deadline: Date
 }
 
+enum WorkspaceActivationPolicy {
+  static func shouldFollow(
+    bundleIdentifier: String?,
+    requestedLaunches: Set<String>
+  ) -> Bool {
+    requestedLaunches.isEmpty || bundleIdentifier.map(requestedLaunches.contains) == true
+  }
+}
+
 struct WindowInventoryChange: Equatable {
   let added: Set<CGWindowID>
   let retained: Set<CGWindowID>
   let removed: Set<CGWindowID>
+}
+
+struct PendingQuitWindowSuppression {
+  let knownWindowIDs: Set<CGWindowID>
+  let deadline: Date
+  private(set) var sawAdditionalWindow = false
+
+  func allows(_ windowID: CGWindowID) -> Bool {
+    knownWindowIDs.contains(windowID)
+  }
+
+  mutating func observe(currentWindowIDs: Set<CGWindowID>, now: Date) -> Bool {
+    let hasAdditionalWindow = !currentWindowIDs.subtracting(knownWindowIDs).isEmpty
+    if hasAdditionalWindow { sawAdditionalWindow = true }
+    if currentWindowIDs.isEmpty || (sawAdditionalWindow && !hasAdditionalWindow) {
+      return false
+    }
+    return sawAdditionalWindow || now < deadline
+  }
 }
 
 struct WindowInventoryTracker {
@@ -304,6 +804,7 @@ enum PreviewState: Equatable {
   case loading
   case current
   case failed
+  case redacted
 
   func toolTip(hasPreview: Bool) -> String {
     switch self {
@@ -315,6 +816,8 @@ enum PreviewState: Equatable {
       "Preview update failed — showing the last saved image."
     case .failed:
       "Preview unavailable."
+    case .redacted:
+      "Preview hidden for a private browsing window."
     }
   }
 }
@@ -352,6 +855,12 @@ actor PreviewCache {
     )
   }
 
+  func remove(windowID: CGWindowID, bundleIdentifier: String) {
+    try? FileManager.default.removeItem(
+      at: fileURL(windowID: windowID, bundleIdentifier: bundleIdentifier)
+    )
+  }
+
   private func fileURL(windowID: CGWindowID, bundleIdentifier: String) -> URL {
     directoryURL.appendingPathComponent("\(bundleIdentifier)-\(windowID).jpg")
   }
@@ -364,6 +873,7 @@ final class WindowNode {
   var bundleIdentifier: String
   var applicationName: String
   var title: String
+  var isPrivateBrowsing: Bool
   var sourceFrame: CGRect
   var worldFrame: CGRect
   var icon: NSImage?
@@ -379,6 +889,7 @@ final class WindowNode {
     bundleIdentifier = discovered.bundleIdentifier
     applicationName = discovered.applicationName
     title = discovered.title
+    isPrivateBrowsing = discovered.isPrivateBrowsing
     sourceFrame = discovered.frame
     self.worldFrame = worldFrame
     icon = discovered.icon
@@ -393,22 +904,87 @@ final class WindowNode {
     bundleIdentifier = discovered.bundleIdentifier
     applicationName = discovered.applicationName
     title = discovered.title
+    isPrivateBrowsing = discovered.isPrivateBrowsing
     sourceFrame = discovered.frame
     icon = discovered.icon
     captureWindow = discovered.captureWindow
     accessibilityElement = discovered.accessibilityElement
+  }
+
+  var displayTitle: String {
+    previewState == .redacted ? "Private Window" : title
   }
 }
 
 enum CanvasMath {
   static let minimumZoom: CGFloat = 0.06
   static let maximumZoom: CGFloat = 1.25
+  static let appIconSize: CGFloat = 36
+  static let groupSelectionPadding: CGFloat = 12
 
-  static func selectionAnimationPhases(progress: CGFloat) -> (title: CGFloat, border: CGFloat) {
+  static func previewHeaderLayout(
+    for rect: CGRect, zoom: CGFloat, titleLift: CGFloat
+  ) -> (icon: CGRect, title: CGRect, titleVisibility: CGFloat) {
+    let badgeSize = appIconSize * appIconScale(at: zoom)
+    let titleX = rect.minX + badgeSize / 2 + 8
+    let title = CGRect(
+      x: titleX, y: rect.maxY + 2 + titleLift,
+      width: max(0, rect.maxX - titleX), height: 16
+    )
+    return (
+      CGRect(
+        x: rect.minX - badgeSize / 2, y: rect.maxY - badgeSize / 2,
+        width: badgeSize, height: badgeSize),
+      title,
+      titleVisibility(at: zoom, availableWidth: title.width)
+    )
+  }
+
+  static func previewVisualBounds(
+    for rect: CGRect, zoom: CGFloat, titleLift: CGFloat, borderOutset: CGFloat,
+    hasIcon: Bool = true, hasTitle: Bool = true
+  ) -> CGRect {
+    let header = previewHeaderLayout(for: rect, zoom: zoom, titleLift: titleLift)
+    // Use solid geometry; soft shadows/glow have no definite outside edge.
+    var result = rect.insetBy(dx: -borderOutset, dy: -borderOutset)
+    if hasIcon { result = result.union(header.icon) }
+    if hasTitle && header.titleVisibility > 0 { result = result.union(header.title) }
+    return result
+  }
+
+  struct DesktopTitleNudgeLayout: Equatable {
+    let titleTopInset: CGFloat
+    let titleBoxHeight: CGFloat
+    let depth: CGFloat
+  }
+
+  static func desktopTitleNudgeLayout(
+    safeAreaTop: CGFloat,
+    titleBoxHeight: CGFloat = 44,
+    padding: CGFloat = 8
+  ) -> DesktopTitleNudgeLayout {
+    let safeAreaTop = max(0, safeAreaTop)
+    let titleBoxHeight = max(0, titleBoxHeight)
+    let padding = max(0, padding)
+    return DesktopTitleNudgeLayout(
+      titleTopInset: safeAreaTop + padding,
+      titleBoxHeight: titleBoxHeight,
+      depth: safeAreaTop + padding + titleBoxHeight + padding
+    )
+  }
+
+  static func desktopTitleNudgeWidth(textWidth: CGFloat, availableWidth: CGFloat) -> CGFloat {
+    min(max(0, availableWidth), max(236, textWidth + 56))
+  }
+
+  static func selectionAnimationPhases(
+    progress: CGFloat,
+    synchronized: Bool = false
+  ) -> (title: CGFloat, border: CGFloat) {
     let progress = min(1, max(0, progress))
     return (
       title: min(1, progress / 0.55),
-      border: max(0, (progress - 0.55) / 0.45)
+      border: synchronized ? progress : max(0, (progress - 0.55) / 0.45)
     )
   }
 
@@ -428,7 +1004,12 @@ enum CanvasMath {
     return progress * progress * (3 - 2 * progress)
   }
 
-  static func selectionHandoffPhase(progress: CGFloat, incoming: Bool) -> CGFloat {
+  static func selectionHandoffPhase(
+    progress: CGFloat,
+    incoming: Bool,
+    synchronized: Bool = false
+  ) -> CGFloat {
+    if synchronized { return easedTransition(progress) }
     let local = incoming ? (progress - 0.5) * 2 : progress * 2
     return easedTransition(local)
   }
@@ -458,16 +1039,83 @@ enum CanvasMath {
     return visibility < 0.5 ? 0 : visibility
   }
 
+  static func placeholderStatusFontSize(at zoom: CGFloat) -> CGFloat {
+    max(12, min(42, 42 * sqrt(clampedZoom(zoom))))
+  }
+
   static func clampedZoom(_ value: CGFloat) -> CGFloat {
     min(maximumZoom, max(minimumZoom, value))
+  }
+
+  static func steppedZoom(_ zoom: CGFloat, inward: Bool) -> CGFloat {
+    let factor = CGFloat(
+      Foundation.pow(Double(maximumZoom / minimumZoom), 1.0 / 5.0)
+    )
+    return clampedZoom(zoom * (inward ? factor : 1 / factor))
+  }
+
+  static func heldZoomSpeed(after elapsed: TimeInterval) -> CGFloat {
+    let ramp = easedTransition(CGFloat(elapsed / 0.8))
+    return 0.18 + 1.45 * ramp
+  }
+
+  static func heldZoom(
+    _ zoom: CGFloat,
+    inward: Bool,
+    elapsed: TimeInterval,
+    deltaTime: TimeInterval
+  ) -> CGFloat {
+    let direction: CGFloat = inward ? 1 : -1
+    // Double held zoom only; the base speed also seeds the separate tap animation.
+    let exponent = direction * 2 * heldZoomSpeed(after: elapsed) * CGFloat(deltaTime)
+    return clampedZoom(zoom * CGFloat(Foundation.exp(Double(exponent))))
+  }
+
+  static func animatedKeyboardZoom(
+    from zoom: CGFloat,
+    to targetZoom: CGFloat,
+    velocity: CGFloat,
+    deltaTime: TimeInterval
+  ) -> (zoom: CGFloat, velocity: CGFloat) {
+    let position = CGFloat(Foundation.log(Double(zoom)))
+    let target = CGFloat(Foundation.log(Double(targetZoom)))
+    let distance = target - position
+    guard abs(distance) > 0.0001 || abs(velocity) > 0.001 else {
+      return (targetZoom, 0)
+    }
+
+    let acceleration: CGFloat = 24
+    let maximumSpeed: CGFloat = 1.8
+    let direction: CGFloat = distance < 0 ? -1 : 1
+    let brakingSpeed = CGFloat(Foundation.sqrt(Double(2 * acceleration * abs(distance))))
+    let desiredVelocity = direction * min(maximumSpeed, brakingSpeed)
+    let velocityChange = acceleration * CGFloat(deltaTime)
+    let nextVelocity: CGFloat = if velocity < desiredVelocity {
+      min(desiredVelocity, velocity + velocityChange)
+    } else {
+      max(desiredVelocity, velocity - velocityChange)
+    }
+    let nextPosition = position + nextVelocity * CGFloat(deltaTime)
+    guard distance * (target - nextPosition) > 0 else { return (targetZoom, 0) }
+    return (clampedZoom(CGFloat(Foundation.exp(Double(nextPosition)))), nextVelocity)
   }
 
   static func focusBackdropOpacity(progress: CGFloat) -> CGFloat {
     1 - easedTransition(progress)
   }
 
-  static func focusOverlayOpacity(progress: CGFloat) -> CGFloat {
-    1 - easedTransition((progress - 0.5) * 2)
+  static func focusCanvasBackgroundOpacity(progress: CGFloat) -> CGFloat {
+    // The whole window performs the final handoff fade. Fading this layer earlier
+    // would reveal the real window while its preview is still moving.
+    1
+  }
+
+  static func focusOverlayOpacity(
+    progress: CGFloat,
+    handoffStart: CGFloat = 0.5
+  ) -> CGFloat {
+    let start = min(0.999, max(0, handoffStart))
+    return 1 - easedTransition((progress - start) / (1 - start))
   }
 
   static func previewPixelLength(
@@ -543,6 +1191,13 @@ enum CanvasMath {
     )
   }
 
+  static func worldRect(for viewRect: CGRect, camera: CameraState, bounds: CGRect) -> CGRect {
+    CGRect(
+      origin: viewToWorld(viewRect.origin, camera: camera, bounds: bounds),
+      size: CGSize(width: viewRect.width / camera.zoom, height: viewRect.height / camera.zoom)
+    )
+  }
+
   static func selectionRect(from start: CGPoint, to end: CGPoint) -> CGRect {
     CGRect(
       x: min(start.x, end.x),
@@ -552,14 +1207,15 @@ enum CanvasMath {
     )
   }
 
-  static func windowIDs(
-    intersecting selectionRect: CGRect,
-    frames: [CGWindowID: CGRect],
+  static func itemIDs<ID: Hashable>(
+    containedIn selectionRect: CGRect,
+    frames: [ID: CGRect],
     camera: CameraState,
     bounds: CGRect
-  ) -> Set<CGWindowID> {
+  ) -> Set<ID> {
     Set(frames.compactMap { id, frame in
-      viewRect(for: frame, camera: camera, bounds: bounds).intersects(selectionRect) ? id : nil
+      let previewRect = viewRect(for: frame, camera: camera, bounds: bounds)
+      return selectionRect.contains(previewRect) ? id : nil
     })
   }
 
@@ -568,13 +1224,78 @@ enum CanvasMath {
   }
 
   static func groupSelectionBounds(for rects: [CGRect]) -> CGRect? {
+    guard let union = groupContentBounds(for: rects) else { return nil }
+    return union.insetBy(dx: -groupSelectionPadding, dy: -groupSelectionPadding)
+  }
+
+  static func groupContentBounds(for rects: [CGRect]) -> CGRect? {
     guard let first = rects.first else { return nil }
-    let union = rects.dropFirst().reduce(first) { $0.union($1) }
+    return rects.dropFirst().reduce(first) { $0.union($1) }
+  }
+
+  static func selectionResizeHandleFrames(
+    for bounds: CGRect,
+    size: CGFloat
+  ) -> [SelectionResizeHandle: CGRect] {
+    let centers: [SelectionResizeHandle: CGPoint] = [
+      .topLeft: CGPoint(x: bounds.minX, y: bounds.maxY),
+      .top: CGPoint(x: bounds.midX, y: bounds.maxY),
+      .topRight: CGPoint(x: bounds.maxX, y: bounds.maxY),
+      .right: CGPoint(x: bounds.maxX, y: bounds.midY),
+      .bottomRight: CGPoint(x: bounds.maxX, y: bounds.minY),
+      .bottom: CGPoint(x: bounds.midX, y: bounds.minY),
+      .bottomLeft: CGPoint(x: bounds.minX, y: bounds.minY),
+      .left: CGPoint(x: bounds.minX, y: bounds.midY),
+    ]
+    return centers.mapValues { center in
+      CGRect(
+        x: center.x - size / 2,
+        y: center.y - size / 2,
+        width: size,
+        height: size
+      )
+    }
+  }
+
+  static func resizedSelectionRect(
+    _ originalBounds: CGRect,
+    dragging handle: SelectionResizeHandle,
+    by translation: CGPoint,
+    minimumSize: CGSize
+  ) -> CGRect {
+    var minimumX = originalBounds.minX
+    var maximumX = originalBounds.maxX
+    var minimumY = originalBounds.minY
+    var maximumY = originalBounds.maxY
+
+    if handle.movesLeftEdge {
+      minimumX = min(
+        originalBounds.maxX - minimumSize.width,
+        originalBounds.minX + translation.x
+      )
+    } else if handle.movesRightEdge {
+      maximumX = max(
+        originalBounds.minX + minimumSize.width,
+        originalBounds.maxX + translation.x
+      )
+    }
+    if handle.movesBottomEdge {
+      minimumY = min(
+        originalBounds.maxY - minimumSize.height,
+        originalBounds.minY + translation.y
+      )
+    } else if handle.movesTopEdge {
+      maximumY = max(
+        originalBounds.minY + minimumSize.height,
+        originalBounds.maxY + translation.y
+      )
+    }
+
     return CGRect(
-      x: union.minX - 22,
-      y: union.minY - 10,
-      width: union.width + 34,
-      height: union.height + 38
+      x: minimumX,
+      y: minimumY,
+      width: maximumX - minimumX,
+      height: maximumY - minimumY
     )
   }
 
@@ -595,34 +1316,56 @@ enum CanvasMath {
     )
   }
 
-  static func directionalNeighbor(
-    from origin: CGPoint,
-    candidates: [(id: CGWindowID, center: CGPoint)],
+  static func directionalNeighbor<ID: Comparable>(
+    from origin: CGRect,
+    candidates: [(id: ID, frame: CGRect)],
     direction: CanvasDirection
-  ) -> CGWindowID? {
-    candidates.compactMap { candidate -> (id: CGWindowID, score: CGFloat)? in
-      let dx = candidate.center.x - origin.x
-      let dy = candidate.center.y - origin.y
+  ) -> ID? {
+    let originCenter = CGPoint(x: origin.midX, y: origin.midY)
+    let scored = candidates.compactMap {
+      candidate -> (id: ID, score: CGFloat, crossAxisAligned: Bool)? in
+      let center = CGPoint(x: candidate.frame.midX, y: candidate.frame.midY)
+      let dx = center.x - originCenter.x
+      let dy = center.y - originCenter.y
       let primary: CGFloat
       let cross: CGFloat
+      let crossAxisAligned: Bool
       switch direction {
       case .left:
         primary = -dx
         cross = abs(dy)
+        crossAxisAligned = candidate.frame.maxY > origin.minY
+          && candidate.frame.minY < origin.maxY
       case .right:
         primary = dx
         cross = abs(dy)
+        crossAxisAligned = candidate.frame.maxY > origin.minY
+          && candidate.frame.minY < origin.maxY
       case .up:
         primary = dy
         cross = abs(dx)
+        crossAxisAligned = candidate.frame.maxX > origin.minX
+          && candidate.frame.minX < origin.maxX
       case .down:
         primary = -dy
         cross = abs(dx)
+        crossAxisAligned = candidate.frame.maxX > origin.minX
+          && candidate.frame.minX < origin.maxX
       }
-      guard primary > 1 else { return nil }
-      return (candidate.id, primary + cross * 2)
+      guard primary > 0 else { return nil }
+
+      // A sideways card needs meaningful progress to qualify as a diagonal.
+      // While both centers remain inside each other's row/column band, a tiny
+      // placement offset must not turn Right into Down (or any rotated equivalent).
+      let minimumDiagonalProgress: CGFloat = switch direction {
+      case .left, .right: min(origin.width, candidate.frame.width) / 2
+      case .up, .down: min(origin.height, candidate.frame.height) / 2
+      }
+      guard crossAxisAligned || primary >= minimumDiagonalProgress else { return nil }
+      return (candidate.id, primary + cross * 2, crossAxisAligned)
     }
-    .min {
+    let aligned = scored.filter(\.crossAxisAligned)
+    return (aligned.isEmpty ? scored : aligned).min {
       $0.score == $1.score ? $0.id < $1.id : $0.score < $1.score
     }?.id
   }
@@ -688,5 +1431,72 @@ enum CanvasMath {
       candidate = candidate.offsetBy(dx: offset, dy: -offset)
     }
     return candidate
+  }
+
+  static func nearestAvailableFrame(
+    size: CGSize,
+    centeredAt anchor: CGPoint,
+    avoiding frames: [CGRect],
+    gap: CGFloat = 240,
+    maximumRing: Int = 24
+  ) -> CGRect {
+    func frame(x: Int, y: Int) -> CGRect {
+      let center = CGPoint(
+        x: anchor.x + CGFloat(x) * (size.width + gap),
+        y: anchor.y + CGFloat(y) * (size.height + gap)
+      )
+      return CGRect(
+        x: center.x - size.width / 2,
+        y: center.y - size.height / 2,
+        width: size.width,
+        height: size.height
+      )
+    }
+
+    func isAvailable(_ candidate: CGRect) -> Bool {
+      let paddedCandidate = candidate.insetBy(dx: -gap / 2, dy: -gap / 2)
+      return !frames.contains {
+        $0.insetBy(dx: -gap / 2, dy: -gap / 2).intersects(paddedCandidate)
+      }
+    }
+
+    let origin = frame(x: 0, y: 0)
+    guard !isAvailable(origin) else { return origin }
+    for ring in 1...max(1, maximumRing) {
+      var coordinates: [(x: Int, y: Int)] = []
+      for x in -ring...ring {
+        coordinates.append((x, ring))
+        coordinates.append((x, -ring))
+      }
+      for y in (-(ring - 1))...(ring - 1) {
+        coordinates.append((ring, y))
+        coordinates.append((-ring, y))
+      }
+      coordinates.sort {
+        let lhsDistance = $0.x * $0.x + $0.y * $0.y
+        let rhsDistance = $1.x * $1.x + $1.y * $1.y
+        if lhsDistance != rhsDistance { return lhsDistance < rhsDistance }
+        if $0.y != $1.y { return $0.y > $1.y }
+        return $0.x < $1.x
+      }
+      if let available = coordinates.lazy.map({ frame(x: $0.x, y: $0.y) }).first(
+        where: isAvailable
+      ) {
+        return available
+      }
+    }
+    var fallbackColumn = max(1, maximumRing) + 1
+    while true {
+      let candidate = frame(x: fallbackColumn, y: 0)
+      if isAvailable(candidate) { return candidate }
+      fallbackColumn += 1
+    }
+  }
+
+  static func cameraCentered(on worldFrame: CGRect, preserving camera: CameraState) -> CameraState {
+    CameraState(
+      center: CGPoint(x: worldFrame.midX, y: worldFrame.midY),
+      zoom: camera.zoom
+    )
   }
 }

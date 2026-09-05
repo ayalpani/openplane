@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A1000000000000000000000B /* CanvasSelectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000010 /* CanvasSelectionTests.swift */; };
 		A10000000000000000000001 /* OpenPlaneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* OpenPlaneApp.swift */; };
 		A10000000000000000000002 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* AppDelegate.swift */; };
 		A10000000000000000000003 /* CanvasModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* CanvasModel.swift */; };
@@ -16,6 +17,7 @@
 		A10000000000000000000007 /* CanvasMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* CanvasMathTests.swift */; };
 		A10000000000000000000008 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* XCTest.framework */; };
 		A10000000000000000000009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000D /* Assets.xcassets */; };
+		A1000000000000000000000A /* DesktopNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000F /* DesktopNavigationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,6 +31,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A20000000000000000000010 /* CanvasSelectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasSelectionTests.swift; sourceTree = "<group>"; };
 		A20000000000000000000001 /* OpenPlaneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenPlaneApp.swift; sourceTree = "<group>"; };
 		A20000000000000000000002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A20000000000000000000003 /* CanvasModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasModel.swift; sourceTree = "<group>"; };
@@ -43,6 +46,7 @@
 		A2000000000000000000000C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		A2000000000000000000000D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A2000000000000000000000E /* AppIcon.svg */ = {isa = PBXFileReference; lastKnownFileType = image.svg; path = AppIcon.svg; sourceTree = "<group>"; };
+		A2000000000000000000000F /* DesktopNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopNavigationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,7 +82,7 @@
 			path = OpenPlane;
 			sourceTree = "<group>";
 		};
-		A50000000000000000000003 /* OpenPlaneTests */ = {isa = PBXGroup; children = (A20000000000000000000007 /* CanvasMathTests.swift */,); path = OpenPlaneTests; sourceTree = "<group>"; };
+		A50000000000000000000003 /* OpenPlaneTests */ = {isa = PBXGroup; children = (A20000000000000000000007 /* CanvasMathTests.swift */, A2000000000000000000000F /* DesktopNavigationTests.swift */, A20000000000000000000010 /* CanvasSelectionTests.swift */,); path = OpenPlaneTests; sourceTree = "<group>"; };
 		A50000000000000000000004 /* Frameworks */ = {isa = PBXGroup; children = (A2000000000000000000000A /* XCTest.framework */,); name = Frameworks; sourceTree = "<group>"; };
 		A50000000000000000000005 /* Products */ = {isa = PBXGroup; children = (A20000000000000000000009 /* OpenPlane.app */, A2000000000000000000000B /* OpenPlaneTests.xctest */,); name = Products; sourceTree = "<group>"; };
 /* End PBXGroup section */
@@ -131,7 +135,7 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		A60000000000000000000001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001, A10000000000000000000002, A10000000000000000000003, A10000000000000000000004, A10000000000000000000005, A10000000000000000000006,); runOnlyForDeploymentPostprocessing = 0; };
-		A60000000000000000000003 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000007,); runOnlyForDeploymentPostprocessing = 0; };
+		A60000000000000000000003 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000007, A1000000000000000000000A, A1000000000000000000000B,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */

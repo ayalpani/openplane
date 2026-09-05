@@ -12,11 +12,36 @@ charge of launching and running software.
 
 ## Proof of concept
 
-- Pan with two fingers and pinch to zoom.
-- Use the arrow keys to move between windows and Return to open one.
-- Start typing to search visible windows.
-- Arrange windows individually or with marquee group selection.
+- Pan with two fingers and pinch to zoom. Press Shift-Down to zoom in and
+  Shift-Up to zoom out.
+- Use the arrow keys to move spatially between windows and closed app places;
+  the highlighted target stays centered, and Return opens it.
+- Press Backspace to quit the highlighted open app. It continues to delete text
+  in search and text fields, and does nothing on an already closed app place.
+- Start typing to search open windows and closed app cards. Closed cards always
+  keep their normal appearance; only nonmatching open windows dim. Up/Down selects a result and
+  Return opens its window or starts its closed app. An empty search dims nothing.
+- Arrange windows and closed cards individually or with marquee group selection.
+- Shift-click or Shift-Return toggles an item in the green group selection;
+  arrow keys move the current highlight without changing the group. Drag a
+  member or the space between members to move the group without opening apps.
+  Resize the dotted selection frame to change its members; releasing the mouse
+  fits the frame tightly around the selected items again.
+- The selection frame encloses each member's visible border, icon, and visible
+  title, with a uniform 12-point gap on all sides at every zoom level. Soft
+  shadows are excluded from these bounds. Edges and corners remain draggable
+  without visible handles.
+- Drag an app window to manifest its place. Positions persist independently for
+  each OpenPlane desktop, and a closed app remains as a launchable card.
+- Click and release a window or closed app card to activate it; dragging moves
+  it without activating it.
 - Use the navigator panel for history, minimap, saved views, and canvas color.
+- Multiple desktops appear as name tabs in the top nudge. Click a name to switch;
+  the active name has a subtle background and remains directly editable. Long tab
+  rows scroll horizontally. A desktop change fades out and in over 0.28 seconds,
+  with no camera travel; each desktop retains its own arrangement and zoom.
+- Tab cycles to the next desktop; Shift-Tab cycles backward, wrapping at either
+  end. These shortcuts only apply in Plane mode, outside search and title editing.
 - Return to OpenPlane through its Dock or app-switcher entry, the configurable
   Command-Tab shortcut, or Control-Option-Space.
 
@@ -36,9 +61,67 @@ normal rebuilds.
 Xcode can also run the Debug build directly. Reinstall the Release build when
 intentionally testing the copy in `/Applications`.
 
+## Navigation regression checks
+
+Arrow navigation prefers targets in the same row or column. Diagonal targets
+remain reachable when no aligned target exists. A sideways target must advance
+by at least half the smaller card's dimension in the requested direction to
+qualify as a diagonal; small placement offsets must not change its direction.
+Touching edges alone do not count as row/column alignment. There is no wrapping.
+Windows and closed cards use the same selection rule.
+
+Run the regression suite with:
+
+```sh
+xcodebuild -project OpenPlane.xcodeproj -scheme OpenPlane -configuration Debug \
+  -destination 'platform=macOS' test
+```
+
+`CanvasMathTests` includes the captured Finder → Down → LibreOffice layout and
+the earlier OpenCode → Left → zsh regression. A matrix checks 14 layouts in all
+four directions, mirrored, at three scales, and in both candidate orders:
+near-sideways offsets, diagonal fallback, aligned/nearest targets, mixed sizes,
+overlaps, touching edges, ties, and empty boundaries. Additional cases cover
+mixed window/placeholder IDs and camera centering without changing zoom.
+
+`DesktopNavigationTests` freezes the full desktop approved on September 5, 2026:
+22 nodes from 21 apps, all 88 directional choices, and a 31-step walk visiting
+every node. It also repeats the full matrix with different camera settings and
+candidate orders. The [reference scenario](docs/navigation-reference.md) lists
+every expected destination. These expectations are fixed, not generated from
+the implementation at test time.
+
+After installing a navigation change, also check the actual key path: highlight
+the closed Finder card, press Down, and verify LibreOffice becomes highlighted
+and centered. Right from Finder should still select Wispr Flow; Down from the
+bottommost card should leave the selection and camera unchanged. Arrow keys
+must not launch either app.
+
+`CanvasSelectionTests` sends mouse and keyboard events through the actual canvas
+handlers: single/multiple/toggled-off selection, Shift-Return (including keypad
+Return and key repeat), closed-card marquee, resize-and-snap, member/background
+drag, persisted closed homes, refresh, and plain-click activation. Geometry tests
+also cover mixed open/closed IDs at multiple zoom levels. After installing a
+selection change, verify a mixed open-window/closed-card group in the real app,
+including Shift-click, Shift-Return, frame resizing, and dragging from either kind
+of member without launching it.
+
+`DesktopTabTests` exercises actual tab clicks, Tab/Shift-Tab cycling and text-entry guards,
+both halves of the fade, independent
+camera restoration, rapid switching, adding a desktop, renaming, scrolling a
+12-desktop row, and drawing the tabs and debug overlay at each transition stage.
+
+## Canvas rendering
+
+Cards are retained Core Animation layers under a shared camera transform.
+Panning reuses their contents; preview updates and selection affect the relevant
+card layers. The background grid and fixed controls are separate. See the
+[GPU navigation measurements](docs/gpu-navigation-performance.md) for live test
+results and remaining limitations.
+
 ## Current scope
 
 The proof of concept targets macOS 26, the main display, and the current Space.
 It is intentionally unsandboxed because controlling other applications' windows
 requires macOS Accessibility access. Multi-display layouts, multiple Spaces,
-persistent window arrangements, and a spatial app launcher are future work.
+cloud synchronization, and automatic layout cleanup are future work.

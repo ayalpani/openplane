@@ -183,38 +183,139 @@ private final class HoverButton: NSButton {
   }
 
   private func updateOpacityOnlyAppearance() {
-    layer?.opacity = !isEnabled ? 0.2 : isHovering ? 1 : 0.5
+    // AppKit already dims disabled controls; keeping the layer opaque avoids dimming twice.
+    layer?.opacity = !isEnabled ? 1 : isHovering ? 1 : 0.78
   }
 }
 
 @MainActor
 protocol CanvasViewDelegate: AnyObject {
   func canvasView(_ canvasView: CanvasView, didRequestFocus node: WindowNode)
+  func canvasView(_ canvasView: CanvasView, didRequestQuit node: WindowNode)
+  func canvasView(
+    _ canvasView: CanvasView,
+    didRequestLaunch bundleIdentifier: String,
+    applicationName: String,
+    at anchor: CGPoint
+  )
   func canvasViewDidRequestBack(_ canvasView: CanvasView)
   func canvasViewDidRequestForward(_ canvasView: CanvasView)
   func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool
+  func canvasView(_ canvasView: CanvasView, setPrivateBrowserPreviews enabled: Bool)
+}
+
+private struct AppPlaceholder {
+  let bundleIdentifier: String
+  let applicationName: String
+  var worldFrame: CGRect
+  let icon: NSImage?
+  let isAvailable: Bool
+  let isLaunching: Bool
+  let errorMessage: String?
+}
+
+// The scene and HUD do not intercept events; CanvasView owns the existing hit testing.
+@MainActor
+private final class CanvasDrawingView: NSView {
+  var render: ((CGRect) -> Void)?
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
+  override func draw(_ dirtyRect: NSRect) { render?(dirtyRect) }
+}
+
+private final class CanvasCardLayer: CALayer {
+  let surface = CALayer()
+  let preview = CALayer()
+  let previousPreview = CALayer()
+  let icon = CALayer()
+  let header = CATextLayer()
+  let activeHeader = CATextLayer()
+  let status = CATextLayer()
+  let border = CAShapeLayer()
+  let indicator = CAShapeLayer()
+  var previewImage: NSImage?
+  var previousImage: NSImage?
+  var iconImage: NSImage?
+  var headerValue: NSAttributedString?
+  var activeHeaderValue: NSAttributedString?
+  var statusValue: NSAttributedString?
+  var privateSize: CGSize?
+  var borderGeometry: CGRect?
+  var borderRadius: CGFloat = 0
+  var borderStrokeWidth: CGFloat = 0
+
+  override init() {
+    super.init()
+    anchorPoint = .zero
+    surface.anchorPoint = .zero
+    surface.masksToBounds = true
+    surface.borderWidth = 2
+    surface.borderColor = NSColor.white.withAlphaComponent(0.16).cgColor
+    addSublayer(surface)
+    surface.addSublayer(previousPreview)
+    surface.addSublayer(preview)
+    surface.addSublayer(status)
+    addSublayer(border)
+    addSublayer(indicator)
+    addSublayer(icon)
+    addSublayer(header)
+    addSublayer(activeHeader)
+    border.fillColor = nil
+    border.shadowOffset = .zero
+    border.shadowRadius = 16
+    header.truncationMode = .end
+    activeHeader.truncationMode = .end
+    status.alignmentMode = .center
+    status.truncationMode = .end
+    // CATextLayer may prepare contents after the surrounding transaction commits.
+    // Only the explicit preview/selection animations should crossfade content.
+    for layer in [surface, preview, previousPreview, icon, header, activeHeader, status, border, indicator] {
+      layer.actions = ["contents": NSNull()]
+    }
+  }
+
+  override init(layer: Any) { super.init(layer: layer) }
+  required init?(coder: NSCoder) { nil }
 }
 
 @MainActor
 final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+  private let sceneView = CanvasDrawingView()
+  private let hudView = CanvasDrawingView()
+  let cameraLayer = CALayer()
+  private let gridLayer = CAShapeLayer()
+  private let centerGuideLayer = CAShapeLayer()
+  private let miniMapViewport = CAShapeLayer()
+  private let miniMapClip = CAShapeLayer()
+  private var renderedMiniMapCamera: CameraState?
+  private var cardLayers: [String: CanvasCardLayer] = [:]
+  private var gridZoom: CGFloat?
+  private var gridSize = CGSize.zero
+  // Counts actual image preparation, not camera/selection layer property updates.
+  private(set) var sceneContentUpdates = 0
+
   private static let backgroundPreferenceKey = "canvasBackground"
   private static let navigatorPanelXPreferenceKey = "navigatorPanelX"
   private static let navigatorPanelYPreferenceKey = "navigatorPanelY"
   private static let expandLandscapePreviewsPreferenceKey = "expandLandscapePreviews"
   private static let debugInformationPreferenceKey = "showDebugInformation"
+  private static let centerGuidePreferenceKey = "showCenterGuide"
+  private static let synchronizedSelectionPreferenceKey = "synchronizeSelectionAnimation"
+  private static let lightClosedCardsPreferenceKey = "useLightClosedCards"
   private static let desktopPagesPreferenceKey = "desktopPages"
   private static let navigatorPanelSize = CGSize(width: 268, height: 244)
   private static let navigatorTextFont = NSFont.systemFont(ofSize: 14, weight: .medium)
   private static let desktopTitleFont = NSFont.systemFont(ofSize: 36, weight: .heavy)
-  private static let appIconSize: CGFloat = 36
+  private static let desktopTabFont = NSFont.systemFont(ofSize: 20, weight: .semibold)
+  static let desktopTransitionDuration: TimeInterval = 0.28
+  private static let selectionHandleHitSize: CGFloat = 20
+  private static let minimumGroupSize: CGFloat = 80
   private static let previewFadeDuration: TimeInterval = 0.25
-  static let selectionTransitionDuration: TimeInterval = 0.36
+  static let selectionTransitionDuration: TimeInterval = 0.18
 
   weak var delegate: CanvasViewDelegate?
   var nodes: [WindowNode] = [] {
     didSet {
       let nodeIDs = Set(nodes.map(\.id))
-      groupSelectionIDs.formIntersection(nodeIDs)
       previousPreviews = previousPreviews.filter { nodeIDs.contains($0.key) }
       previewFadeStartedAt = previewFadeStartedAt.filter { nodeIDs.contains($0.key) }
       if previewFadeStartedAt.isEmpty {
@@ -229,6 +330,27 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       }
       needsDisplay = true
       schedulePreviewToolTipUpdate()
+      synchronizeManifestedPlacements()
+      for oldNode in oldValue where groupSelectionIDs.contains(NavigationTarget.window(oldNode).key) {
+        if !nodes.contains(where: { $0.bundleIdentifier == oldNode.bundleIdentifier }),
+          desktopPages.selectedAppPlacement(for: oldNode.bundleIdentifier) != nil
+        {
+          groupSelectionIDs.insert("app:\(oldNode.bundleIdentifier)")
+        }
+      }
+      refreshPlaceholders()
+      if let bundleIdentifier = selectedPlaceholderBundleIdentifier,
+        let node = nodes.first(where: { $0.bundleIdentifier == bundleIdentifier })
+      {
+        launchingPlaceholderBundles.remove(bundleIdentifier)
+        placeholderErrors[bundleIdentifier] = nil
+        selectedPlaceholderBundleIdentifier = nil
+        selectedWindowID = node.id
+      } else if let bundleIdentifier = selectedPlaceholderBundleIdentifier,
+        !appPlaceholders.contains(where: { $0.bundleIdentifier == bundleIdentifier })
+      {
+        selectedPlaceholderBundleIdentifier = nil
+      }
       updateNavigatorPanel()
       if isSearching { updateSearchResults(centerSelection: false) }
     }
@@ -236,6 +358,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   var selectedWindowID: CGWindowID? {
     didSet {
       guard selectedWindowID != oldValue else { return }
+      if selectedWindowID != nil { selectedPlaceholderBundleIdentifier = nil }
       animateSelection(from: oldValue, to: selectedWindowID)
       needsDisplay = true
       updateNavigatorPanel()
@@ -245,7 +368,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     didSet {
       desktopPages.updateSelectedCamera(camera)
       scheduleDesktopPagesPersistence()
-      needsDisplay = true
+      updateSceneCamera()
+      if oldValue.zoom != camera.zoom { synchronizeScene() }
       schedulePreviewToolTipUpdate()
     }
   }
@@ -272,11 +396,16 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     case miniMap
     case navigatorPanel(start: CGPoint, origin: CGPoint, button: NSButton?, dragged: Bool)
     case marquee(start: CGPoint, current: CGPoint, dragged: Bool)
-    case group(start: CGPoint, frames: [CGWindowID: CGRect], dragged: Bool)
-    case window(
-      node: WindowNode,
+    case groupResize(
+      handle: SelectionResizeHandle,
       start: CGPoint,
-      frames: [CGWindowID: CGRect],
+      selectionRect: CGRect
+    )
+    case items(
+      target: NavigationTarget?,
+      start: CGPoint,
+      frames: [String: CGRect],
+      togglesSelection: Bool,
       dragged: Bool
     )
   }
@@ -288,9 +417,70 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     let viewportWorldFrame: CGRect
   }
 
+  @MainActor private enum NavigationTarget {
+    case window(WindowNode)
+    case placeholder(AppPlaceholder)
+
+    var key: String {
+      switch self {
+      case .window(let node): "window:\(node.id)"
+      case .placeholder(let placeholder): "app:\(placeholder.bundleIdentifier)"
+      }
+    }
+
+    var worldFrame: CGRect {
+      switch self {
+      case .window(let node): node.worldFrame
+      case .placeholder(let placeholder): placeholder.worldFrame
+      }
+    }
+
+    var center: CGPoint {
+      CGPoint(x: worldFrame.midX, y: worldFrame.midY)
+    }
+  }
+
   private var interaction: Interaction?
+  private var appPlaceholders: [AppPlaceholder] = []
+  private var appIconsByBundle: [String: NSImage] = [:]
+  private var placeholderErrors: [String: String] = [:]
+  private var launchingPlaceholderBundles: Set<String> = []
+  private var selectedPlaceholderBundleIdentifier: String? {
+    didSet {
+      guard selectedPlaceholderBundleIdentifier != oldValue else { return }
+      needsDisplay = true
+      updateNavigatorPanel()
+    }
+  }
+  private var hoveredPlaceholderBundleIdentifier: String? {
+    didSet {
+      if hoveredPlaceholderBundleIdentifier != oldValue { needsDisplay = true }
+    }
+  }
   private var backgroundWorkDeferredUntil: TimeInterval = 0
-  private var groupSelectionIDs: Set<CGWindowID> = []
+  private(set) var groupSelectionIDs: Set<String> = []
+  private var resizingGroupSelectionWorldRect: CGRect?
+  var groupSelectionWorldRect: CGRect? {
+    groupSelectionBounds().map { CanvasMath.worldRect(for: $0, camera: camera, bounds: bounds) }
+  }
+  private struct KeyboardZoomGesture {
+    let inward: Bool
+    let tapBaseZoom: CGFloat
+    let viewAnchor: CGPoint
+    let startedAt: TimeInterval
+    var lastFrameAt: TimeInterval
+    var controlsCamera: Bool
+  }
+  private struct KeyboardTapZoomAnimation {
+    var targetZoom: CGFloat
+    let viewAnchor: CGPoint
+    var velocity: CGFloat
+    var lastFrameAt: TimeInterval
+  }
+  private var keyboardZoomGesture: KeyboardZoomGesture?
+  private var keyboardZoomDisplayLink: CADisplayLink?
+  private var keyboardTapZoomAnimation: KeyboardTapZoomAnimation?
+  private var keyboardTapZoomDisplayLink: CADisplayLink?
   private var animationDisplayLink: CADisplayLink?
   private var cameraAnimation: CameraAnimation?
   private var isPresentingFinalAnimationFrame = false
@@ -318,6 +508,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   private var previewToolTipUpdateTask: Task<Void, Never>?
   private var hoveredWindowID: CGWindowID?
   private var isHoveringGroupSelection = false
+  private var hoveredSelectionResizeHandle: SelectionResizeHandle?
   private var windowHoverProgress: [CGWindowID: CGFloat] = [:]
   private var windowHoverStartProgress: [CGWindowID: CGFloat] = [:]
   private var windowHoverAnimationStartedAt: TimeInterval?
@@ -330,11 +521,9 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   private var previousPreviews: [CGWindowID: NSImage] = [:]
   private var previewFadeStartedAt: [CGWindowID: TimeInterval] = [:]
   private var previewFadeDisplayLink: CADisplayLink?
-  private var gridPatternZoom: CGFloat?
-  private var gridPatternColor: NSColor?
   private var launchSplashView: LaunchSplashView?
   private var launchSplashTask: Task<Void, Never>?
-  private var displayedNavigatorNodeID: CGWindowID?
+  private var displayedNavigatorContentID: String?
   private var hasDisplayedNavigatorContent = false
   private let focusButton = NSButton()
   private let backButton = HoverButton()
@@ -349,6 +538,14 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   private let previousSearchResultButton = HoverButton()
   private let searchField = NSTextField()
   private let desktopTitleField = NSTextField()
+  private let desktopTabsScrollView = NSScrollView()
+  private let desktopTabsContent = NSView()
+  private var desktopTabButtons: [NSButton] = []
+  private let desktopFadeView = NSView()
+  private var desktopTransitionStartedAt: TimeInterval?
+  private var desktopTransitionChange: (() -> Void)?
+  private var pendingDesktopChange: (() -> Void)?
+  private var desktopTransitionDisplayLink: CADisplayLink?
   private let settingsPopover = NSPopover()
   private let navigatorMenu = NSMenu()
   private let desktopPagesMenu = NSMenu()
@@ -356,13 +553,26 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   private let newDesktopMenuItem = NSMenuItem()
   private let expandLandscapePreviewsMenuItem = NSMenuItem()
   private let debugInformationMenuItem = NSMenuItem()
+  private let centerGuideMenuItem = NSMenuItem()
+  private let synchronizedSelectionMenuItem = NSMenuItem()
+  private let lightClosedCardsMenuItem = NSMenuItem()
   private let commandTabShortcutMenuItem = NSMenuItem()
+  private let privateBrowserPreviewsMenuItem = NSMenuItem()
   private var isSearching = false
   private var expandsLandscapePreviews = true
   private var showsDebugInformation = UserDefaults.standard.bool(
     forKey: CanvasView.debugInformationPreferenceKey)
+  private var showsCenterGuide = UserDefaults.standard.bool(
+    forKey: CanvasView.centerGuidePreferenceKey)
+  private var synchronizesSelectionAnimation =
+    UserDefaults.standard.object(forKey: CanvasView.synchronizedSelectionPreferenceKey) == nil
+    || UserDefaults.standard.bool(forKey: CanvasView.synchronizedSelectionPreferenceKey)
+  private var usesLightClosedCards = UserDefaults.standard.bool(
+    forKey: CanvasView.lightClosedCardsPreferenceKey)
   private var usesCommandTabShortcut = UserDefaults.standard.bool(
     forKey: OpenPlanePreferences.useCommandTabShortcut)
+  private var showsPrivateBrowserPreviews = UserDefaults.standard.bool(
+    forKey: OpenPlanePreferences.showPrivateBrowserPreviews)
   private var desktopPages = DesktopPages()
   private let selectionColor = NSColor(srgbRed: 1, green: 1, blue: 0, alpha: 1)
   private let groupSelectionColor = NSColor(
@@ -406,6 +616,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
         forKey: Self.expandLandscapePreviewsPreferenceKey)
     }
     wantsLayer = true
+    configureScene()
     allowedTouchTypes = [.indirect]
     let trackingArea = NSTrackingArea(
       rect: .zero,
@@ -422,6 +633,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     configureLockViewButton()
     configureSearch()
     configureSettingsButton()
+    refreshPlaceholders()
     updateNavigatorPanel()
   }
 
@@ -439,27 +651,34 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
 
   override func layout() {
     super.layout()
+    sceneView.frame = bounds
+    hudView.frame = bounds
+    updateSceneCamera()
     schedulePreviewToolTipUpdate()
     let panel = navigatorPanelFrame
+    var navigationX = panel.minX + 10
     backButton.frame = CGRect(
-      x: panel.minX + 10,
+      x: navigationX,
       y: panel.maxY - 44,
       width: 28,
       height: 40
     )
+    if !backButton.isHidden { navigationX += 28 }
     forwardButton.frame = CGRect(
-      x: panel.minX + 38,
+      x: navigationX,
       y: panel.maxY - 44,
       width: 28,
       height: 40
     )
+    if !forwardButton.isHidden { navigationX += 28 }
     menuButton.frame = CGRect(
       x: panel.maxX - 48,
       y: panel.maxY - 44,
       width: 40,
       height: 40
     )
-    let focusMinX = panel.minX + 74
+    let hasNavigation = !backButton.isHidden || !forwardButton.isHidden
+    let focusMinX = hasNavigation ? navigationX + 8 : panel.minX + 12
     focusButton.frame = CGRect(
       x: focusMinX,
       y: panel.maxY - 44,
@@ -498,7 +717,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       height: 40
     )
     nextSearchResultButton.frame = CGRect(
-      x: panel.minX + 38,
+      x: previousSearchResultButton.isHidden ? panel.minX + 10 : previousSearchResultButton.frame.maxX,
       y: panel.minY + 4,
       width: 28,
       height: 40
@@ -515,13 +734,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       width: panel.width - 52,
       height: 32
     )
-    let desktopTitleWidth = min(720, max(240, bounds.width - 160))
-    desktopTitleField.frame = CGRect(
-      x: bounds.midX - desktopTitleWidth / 2,
-      y: bounds.maxY - 112,
-      width: desktopTitleWidth,
-      height: 52
-    )
+    layoutDesktopTabs()
   }
 
   override func mouseEntered(with event: NSEvent) {
@@ -540,7 +753,10 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     } else if let forwardTrackingArea, event.trackingArea === forwardTrackingArea {
       isHoveringForwardButton = false
     } else if let canvasTrackingArea, event.trackingArea === canvasTrackingArea {
+      hoveredSelectionResizeHandle = nil
+      hoveredPlaceholderBundleIdentifier = nil
       setHoveredWindow(nil)
+      NSCursor.arrow.set()
     } else {
       super.mouseExited(with: event)
     }
@@ -553,51 +769,325 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   }
 
   override func draw(_ dirtyRect: NSRect) {
-    let backdropOpacity = CanvasMath.focusBackdropOpacity(
-      progress: focusTransitionProgress
-    )
-    let context = NSGraphicsContext.current?.cgContext
-    context?.clear(dirtyRect)
-    context?.saveGState()
-    context?.setAlpha(backdropOpacity)
-    background.color.setFill()
-    dirtyRect.fill()
-    drawGrid(in: dirtyRect)
-    context?.restoreGState()
+    synchronizeScene()
+    hudView.needsDisplay = true
+  }
 
-    let selectedProcessID = nodes.first(where: { $0.id == selectedWindowID })?.processID
-    let raisedIDs = hoverTargetWindowIDs
-    let drawingNodes = nodes.filter { !raisedIDs.contains($0.id) }
-      + nodes.filter { raisedIDs.contains($0.id) }
-    for node in drawingNodes {
-      let baseRect = CanvasMath.viewRect(for: node.worldFrame, camera: camera, bounds: bounds)
-      let expansion = 3 * (windowHoverProgress[node.id] ?? 0)
-      let rect = baseRect.insetBy(dx: -expansion, dy: -expansion)
-      guard rect.intersects(bounds.insetBy(dx: -80, dy: -80)),
-        rect.intersects(dirtyRect.insetBy(dx: -48, dy: -48))
-      else { continue }
-      NSGraphicsContext.saveGraphicsState()
-      var nodeOpacity: CGFloat = node.id == focusTransitionWindowID ? 1 : backdropOpacity
-      if isSearching, !matchesSearch(node) {
-        nodeOpacity *= 0.14
-      }
-      NSGraphicsContext.current?.cgContext.setAlpha(nodeOpacity)
-      draw(node: node, in: rect, selectedProcessID: selectedProcessID)
-      NSGraphicsContext.restoreGraphicsState()
-    }
-
-    context?.saveGState()
-    context?.setAlpha(backdropOpacity)
-    if nodes.isEmpty {
-      drawEmptyState()
-    }
-    if let statusMessage {
-      drawStatus(statusMessage)
-    }
+  private func drawHUD(_ dirtyRect: CGRect) {
+    NSGraphicsContext.current?.cgContext.clear(dirtyRect)
+    if nodes.isEmpty && appPlaceholders.isEmpty { drawEmptyState() }
+    if let statusMessage { drawStatus(statusMessage) }
     drawGroupSelection()
     if showsDebugInformation { drawDebugInformation() }
+    drawDesktopTitleNudge()
     drawNavigatorPanel()
-    context?.restoreGState()
+  }
+
+  private func configureScene() {
+    for view in [sceneView, hudView] {
+      view.frame = bounds
+      view.autoresizingMask = [.width, .height]
+      view.wantsLayer = true
+      addSubview(view)
+    }
+    sceneView.layer?.masksToBounds = true
+    cameraLayer.anchorPoint = .zero
+    gridLayer.anchorPoint = .zero
+    sceneView.layer?.addSublayer(gridLayer)
+    sceneView.layer?.addSublayer(centerGuideLayer)
+    sceneView.layer?.addSublayer(cameraLayer)
+    hudView.layer?.addSublayer(miniMapViewport)
+    miniMapViewport.fillColor = NSColor.controlAccentColor.withAlphaComponent(0.12).cgColor
+    miniMapViewport.strokeColor = NSColor.controlAccentColor.withAlphaComponent(0.9).cgColor
+    miniMapViewport.lineWidth = 2
+    miniMapViewport.mask = miniMapClip
+    hudView.render = { [weak self] rect in self?.drawHUD(rect) }
+  }
+
+  private func updateSceneCamera() {
+    guard sceneView.layer != nil else { return }
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    if cameraAnimation == nil { cameraLayer.removeAnimation(forKey: "cameraTravel") }
+    cameraLayer.setAffineTransform(CGAffineTransform(
+      a: camera.zoom, b: 0, c: 0, d: camera.zoom,
+      tx: bounds.midX - camera.center.x * camera.zoom,
+      ty: bounds.midY - camera.center.y * camera.zoom
+    ))
+    let spacing = CanvasMath.gridSpacing(at: camera.zoom)
+    if gridZoom != camera.zoom || gridSize != bounds.size {
+      gridZoom = camera.zoom
+      gridSize = bounds.size
+      let path = CGMutablePath()
+      let size = CanvasMath.gridDotSize(at: camera.zoom)
+      for x in stride(from: -spacing, through: bounds.width + spacing * 2, by: spacing) {
+        for y in stride(from: -spacing, through: bounds.height + spacing * 2, by: spacing) {
+          path.addEllipse(in: CGRect(x: x - size / 2, y: y - size / 2, width: size, height: size))
+        }
+      }
+      gridLayer.path = path
+      gridLayer.fillColor = NSColor.white.withAlphaComponent(
+        CanvasMath.gridOpacity(at: camera.zoom)).cgColor
+      hudView.setNeedsDisplay(CGRect(x: 0, y: bounds.maxY - 60, width: 150, height: 60))
+    }
+    gridLayer.position = CGPoint(
+      x: (bounds.midX - camera.center.x * camera.zoom).truncatingRemainder(dividingBy: spacing),
+      y: (bounds.midY - camera.center.y * camera.zoom).truncatingRemainder(dividingBy: spacing)
+    )
+    if let projection = miniMapProjection() {
+      if renderedMiniMapCamera != projection.camera { hudView.setNeedsDisplay(projection.frame) }
+      miniMapViewport.isHidden = false
+      let rect = CanvasMath.viewRect(for: projection.viewportWorldFrame,
+        camera: projection.camera, bounds: projection.contentBounds)
+      miniMapViewport.path = CGPath(roundedRect: rect, cornerWidth: 4, cornerHeight: 4, transform: nil)
+      miniMapClip.path = CGPath(roundedRect: projection.frame, cornerWidth: 8, cornerHeight: 8, transform: nil)
+    } else { miniMapViewport.isHidden = true }
+    CATransaction.commit()
+    if !groupSelectionIDs.isEmpty { hudView.needsDisplay = true }
+  }
+
+  func synchronizeScene(windowIDs: Set<CGWindowID>? = nil) {
+    guard sceneView.layer != nil else { return }
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    defer { CATransaction.commit() }
+    let backdrop = CanvasMath.focusBackdropOpacity(progress: focusTransitionProgress)
+    sceneView.layer?.backgroundColor = background.color.withAlphaComponent(
+      CanvasMath.focusCanvasBackgroundOpacity(progress: focusTransitionProgress)).cgColor
+    gridLayer.opacity = Float(backdrop)
+    centerGuideLayer.isHidden = !showsCenterGuide
+    centerGuideLayer.opacity = Float(backdrop)
+    let guide = CGMutablePath()
+    guide.move(to: CGPoint(x: bounds.midX, y: bounds.minY))
+    guide.addLine(to: CGPoint(x: bounds.midX, y: bounds.maxY))
+    guide.move(to: CGPoint(x: bounds.minX, y: bounds.midY))
+    guide.addLine(to: CGPoint(x: bounds.maxX, y: bounds.midY))
+    centerGuideLayer.path = guide
+    centerGuideLayer.strokeColor = NSColor.white.withAlphaComponent(0.5).cgColor
+    centerGuideLayer.lineWidth = 1
+    let targets = appPlaceholders.map(NavigationTarget.placeholder) + nodes.map(NavigationTarget.window)
+    let keys = Set(targets.map(\.key))
+    for key in Array(cardLayers.keys) where !keys.contains(key) {
+      cardLayers.removeValue(forKey: key)?.removeFromSuperlayer()
+    }
+    let selectedPID = nodes.first(where: { $0.id == selectedWindowID })?.processID
+    for (index, target) in targets.enumerated() {
+      if let windowIDs {
+        guard case .window(let node) = target, windowIDs.contains(node.id) else { continue }
+      }
+      let card: CanvasCardLayer
+      if let existing = cardLayers[target.key] { card = existing }
+      else {
+        card = CanvasCardLayer()
+        cardLayers[target.key] = card
+        cameraLayer.addSublayer(card)
+      }
+      updateCard(card, target: target, selectedPID: selectedPID, backdrop: backdrop)
+      card.zPosition = CGFloat(index) + (card.zPosition > 0 ? CGFloat(targets.count) : 0)
+    }
+    updateSceneCamera()
+  }
+
+  private func updateCard(
+    _ card: CanvasCardLayer, target: NavigationTarget, selectedPID: pid_t?, backdrop: CGFloat
+  ) {
+    let zoom = camera.zoom
+    let scale = window?.backingScaleFactor ?? 2
+    var rect = CGRect(origin: .zero, size: CGSize(
+      width: target.worldFrame.width * zoom, height: target.worldFrame.height * zoom))
+    var icon: NSImage?
+    let title: String
+    let selected: Bool
+    let grouped = groupSelectionIDs.contains(target.key)
+    let color = grouped ? groupSelectionColor : selectionColor
+    var preview: NSImage?
+    var previous: NSImage?
+    var previewOpacity: Float = 1
+    var statusText: String?
+    var statusColor = NSColor.white.withAlphaComponent(0.62)
+    var redacted = false
+    card.opacity = Float(backdrop * searchOpacity(for: target))
+    card.zPosition = 0
+    card.surface.backgroundColor = NSColor(calibratedWhite: 0.11, alpha: 1).cgColor
+    card.indicator.isHidden = true
+    switch target {
+    case .window(let node):
+      selected = node.id == selectedWindowID
+      icon = node.icon
+      title = node.displayTitle
+      let expansion = 3 * (windowHoverProgress[node.id] ?? 0)
+      rect = rect.insetBy(dx: -expansion, dy: -expansion)
+      if hoverTargetWindowIDs.contains(node.id) { card.zPosition = 1 }
+      if node.id == focusTransitionWindowID { card.opacity = Float(searchOpacity(for: target)) }
+      preview = node.preview
+      previous = previousPreviews[node.id]
+      if let startedAt = previewFadeStartedAt[node.id] {
+        previewOpacity = Float(CanvasMath.easedTransition(min(1,
+          (CACurrentMediaTime() - startedAt) / Self.previewFadeDuration)))
+      }
+      redacted = node.previewState == .redacted
+      if node.previewState == .loading || node.previewState == .failed {
+        card.indicator.isHidden = false
+        card.indicator.path = CGPath(ellipseIn: previewStatusFrame(in: rect), transform: nil)
+        card.indicator.fillColor = (node.previewState == .loading
+          ? NSColor(srgbRed: 1, green: 0.62, blue: 0.15, alpha: 1)
+          : NSColor(srgbRed: 1, green: 0.27, blue: 0.23, alpha: 1)).cgColor
+        card.indicator.strokeColor = NSColor.white.cgColor
+        card.indicator.lineWidth = 2
+      }
+    case .placeholder(let placeholder):
+      selected = selectedPlaceholderBundleIdentifier == placeholder.bundleIdentifier
+      icon = placeholder.icon
+      title = placeholder.applicationName
+      let hovered = hoveredPlaceholderBundleIdentifier == placeholder.bundleIdentifier
+        || (isHoveringGroupSelection && grouped)
+      card.surface.backgroundColor = (usesLightClosedCards ? NSColor.white : NSColor.black)
+        .withAlphaComponent(hovered ? 0.14 : 0.1).cgColor
+      statusText = placeholder.errorMessage
+        ?? (placeholder.isLaunching ? "Opening…" : placeholder.isAvailable ? "Closed" : "App unavailable")
+      if placeholder.errorMessage != nil || !placeholder.isAvailable {
+        statusColor = NSColor.systemRed.withAlphaComponent(0.86)
+      }
+    }
+    if redacted { preview = nil; previous = nil }
+    card.position = target.worldFrame.origin
+    card.setAffineTransform(CGAffineTransform(scaleX: 1 / zoom, y: 1 / zoom))
+    card.surface.frame = rect
+    let radius = max(5, min(14, 12 * zoom))
+    card.surface.cornerRadius = radius
+    for layer in [card.preview, card.previousPreview] { layer.frame = CGRect(origin: .zero, size: rect.size) }
+    if card.previewImage !== preview {
+      card.previewImage = preview
+      card.preview.contents = preview?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+      sceneContentUpdates += 1
+    }
+    if card.previousImage !== previous {
+      card.previousImage = previous
+      card.previousPreview.contents = previous?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+      sceneContentUpdates += 1
+    }
+    card.preview.opacity = previewOpacity
+    card.status.isHidden = statusText == nil
+    if let statusText {
+      let fontSize = CanvasMath.placeholderStatusFontSize(at: zoom)
+      let value = NSAttributedString(string: statusText, attributes: [
+        .font: NSFont.systemFont(ofSize: fontSize, weight: .semibold), .foregroundColor: statusColor])
+      if card.statusValue != value { card.status.string = value; card.statusValue = value; sceneContentUpdates += 1 }
+      card.status.contentsScale = scale
+      card.status.frame = CGRect(x: 8, y: rect.height / 2 - fontSize * 0.7,
+        width: max(0, rect.width - 16), height: fontSize * 1.4)
+    }
+    if redacted {
+      if card.privateSize != rect.size {
+        card.preview.contents = sceneImage(size: rect.size) { self.drawPrivatePreview(in: $0) }
+        card.privateSize = rect.size
+      }
+    } else if card.privateSize != nil {
+      card.privateSize = nil
+      card.preview.contents = preview?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+    }
+    let (_, titleLift) = previewTitlePresentation(for: target)
+    let layout = CanvasMath.previewHeaderLayout(for: rect, zoom: zoom, titleLift: titleLift)
+    card.icon.frame = layout.icon.insetBy(dx: -21 * layout.icon.width / 36, dy: -21 * layout.icon.width / 36)
+    if card.iconImage !== icon || (icon != nil && card.icon.contents == nil) {
+      card.iconImage = icon
+      // A fixed-resolution badge includes the original crop, rounded corners and shadow.
+      card.icon.contents = sceneImage(size: CGSize(width: 78, height: 78)) { _ in
+        self.drawAppIcon(icon, in: CGRect(x: 21, y: 21, width: 36, height: 36))
+      }
+    }
+    let font = NSFont.systemFont(ofSize: 12, weight: selected ? .bold : .medium)
+    let value = NSAttributedString(string: title, attributes: [
+      .font: font, .foregroundColor: NSColor.white.withAlphaComponent(0.76)])
+    if card.headerValue != value {
+      card.header.string = value; card.headerValue = value; sceneContentUpdates += 1
+    }
+    let active = NSAttributedString(string: title, attributes: [.font: font, .foregroundColor: color])
+    if card.activeHeaderValue != active {
+      card.activeHeader.string = active; card.activeHeaderValue = active; sceneContentUpdates += 1
+    }
+    card.header.contentsScale = scale
+    card.activeHeader.contentsScale = scale
+    updateSelectionAppearance(card, target: target, selectedPID: selectedPID)
+  }
+
+  private func updateSelectionAppearance(
+    _ card: CanvasCardLayer, target: NavigationTarget, selectedPID: pid_t?
+  ) {
+    let rect = card.surface.frame
+    let radius = card.surface.cornerRadius
+    let grouped = groupSelectionIDs.contains(target.key)
+    let color = grouped ? groupSelectionColor : selectionColor
+    let selected: Bool
+    var borderProgress: CGFloat = 0
+    var borderWidth: CGFloat = 4
+    var secondary = false
+    switch target {
+    case .window(let node):
+      selected = node.id == selectedWindowID
+      let sameApp = selectedPID == node.processID
+      let phases = CanvasMath.selectionAnimationPhases(
+        progress: selectionProgress[node.id] ?? (selected ? 1 : 0),
+        synchronized: synchronizesSelectionAnimation)
+      if selectionStaysWithinApplication && sameApp {
+        borderProgress = selectionProgress[node.id] ?? (selected ? 1 : 0)
+        borderWidth = CanvasMath.sameApplicationSelectionMetrics(primaryProgress: borderProgress).borderWidth
+        secondary = borderProgress == 0
+      } else {
+        borderProgress = phases.border
+        if !selected && (grouped || sameApp) && borderProgress == 0 {
+          let appPhase = CanvasMath.selectionAnimationPhases(
+            progress: selectedWindowID.flatMap { selectionProgress[$0] } ?? 1,
+            synchronized: synchronizesSelectionAnimation).border
+          secondary = grouped || appPhase > 0
+        }
+      }
+    case .placeholder(let placeholder):
+      selected = selectedPlaceholderBundleIdentifier == placeholder.bundleIdentifier
+      borderProgress = selected ? 1 : 0
+      secondary = grouped && !selected
+    }
+    let inset: CGFloat = secondary ? 4 : 2 + borderWidth / 2
+    let borderRect = rect.insetBy(dx: -inset, dy: -inset)
+    if card.borderGeometry != borderRect || card.borderRadius != radius + inset
+      || card.borderStrokeWidth != borderWidth {
+      card.borderGeometry = borderRect
+      card.borderRadius = radius + inset
+      card.borderStrokeWidth = borderWidth
+      card.border.path = CGPath(roundedRect: borderRect, cornerWidth: radius + inset,
+        cornerHeight: radius + inset, transform: nil)
+      card.border.shadowPath = card.border.path?.copy(strokingWithWidth: borderWidth,
+        lineCap: .round, lineJoin: .round, miterLimit: 0)
+    }
+    card.border.strokeColor = color.cgColor
+    card.border.lineWidth = secondary ? 2 : borderWidth
+    card.border.opacity = Float(secondary ? 1 : borderProgress)
+    card.border.shadowColor = color.cgColor
+    card.border.shadowOpacity = secondary ? 0 : 0.9
+    let (titleProgress, titleLift) = previewTitlePresentation(for: target)
+    let layout = CanvasMath.previewHeaderLayout(for: rect, zoom: camera.zoom, titleLift: titleLift)
+    card.header.frame = layout.title
+    card.activeHeader.frame = layout.title
+    card.header.opacity = Float(layout.titleVisibility * (1 - titleProgress))
+    card.activeHeader.opacity = Float(layout.titleVisibility * titleProgress)
+  }
+
+  private func sceneImage(size: CGSize, draw: (CGRect) -> Void) -> CGImage? {
+    let scale = window?.backingScaleFactor ?? 2
+    guard size.width > 0, size.height > 0,
+      let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil,
+        pixelsWide: Int(ceil(size.width * scale)), pixelsHigh: Int(ceil(size.height * scale)),
+        bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+        colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+      let context = NSGraphicsContext(bitmapImageRep: bitmap) else { return nil }
+    bitmap.size = size
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = context
+    context.cgContext.scaleBy(x: scale, y: scale)
+    draw(CGRect(origin: .zero, size: size))
+    NSGraphicsContext.restoreGraphicsState()
+    sceneContentUpdates += 1
+    return bitmap.cgImage
   }
 
   func visibleWindowIDs() -> [CGWindowID] {
@@ -681,17 +1171,14 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     guard changed else { return }
     needsDisplay = true
     schedulePreviewToolTipUpdate()
-    if fitAll, !nodes.isEmpty {
-      animateCamera(to: CanvasMath.fitCamera(frames: nodes.map(\.worldFrame), in: bounds)) {}
+    synchronizeManifestedPlacements()
+    if fitAll, !canvasItemFrames.isEmpty {
+      animateCamera(to: CanvasMath.fitCamera(frames: canvasItemFrames, in: bounds)) {}
     }
   }
 
   func setNeedsDisplay(for windowIDs: [CGWindowID]) {
-    let ids = Set(windowIDs)
-    for node in nodes where ids.contains(node.id) {
-      let rect = CanvasMath.viewRect(for: node.worldFrame, camera: camera, bounds: bounds)
-      setNeedsDisplay(rect.insetBy(dx: -48, dy: -48))
-    }
+    synchronizeScene(windowIDs: Set(windowIDs))
   }
 
   func replacePreview(_ image: NSImage, for node: WindowNode) {
@@ -731,6 +1218,18 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     displayLink.add(to: .main, forMode: .common)
   }
 
+  func clearPreview(for node: WindowNode) {
+    node.preview = nil
+    previousPreviews[node.id] = nil
+    previewFadeStartedAt[node.id] = nil
+    if previewFadeStartedAt.isEmpty {
+      previewFadeDisplayLink?.invalidate()
+      previewFadeDisplayLink = nil
+    }
+    setNeedsDisplay(for: [node.id])
+    schedulePreviewToolTipUpdate()
+  }
+
   @objc private func stepPreviewFadeAnimation(_ displayLink: CADisplayLink) {
     let now = CACurrentMediaTime()
     let transitions = previewFadeStartedAt
@@ -753,7 +1252,10 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
 
   var defersBackgroundWork: Bool {
     interaction != nil
+      || desktopTransitionStartedAt != nil
       || cameraAnimation != nil
+      || keyboardZoomGesture != nil
+      || keyboardTapZoomAnimation != nil
       || CACurrentMediaTime() < backgroundWorkDeferredUntil
   }
 
@@ -761,15 +1263,48 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     setNeedsDisplay(for: windowIDs)
     updateNavigatorPanel()
     if isSearching { updateSearchResults(centerSelection: false) }
+    synchronizeManifestedPlacements()
+  }
+
+  func persistState() {
+    synchronizeManifestedPlacements()
+    persistDesktopPages()
   }
 
   func handleNavigationKey(_ event: NSEvent) -> Bool {
+    if desktopTransitionStartedAt != nil { return true }
     guard !settingsPopover.isShown else { return false }
     guard desktopTitleField.currentEditor() == nil else { return false }
-    let modifiers = event.modifierFlags.intersection([.command, .control, .option])
-    guard modifiers.isEmpty else { return false }
+    let modifiers = event.modifierFlags.intersection([.shift, .command, .control, .option])
+    guard modifiers.isEmpty || modifiers == [.shift] else { return false }
 
     if isSearching { return false }
+
+    if event.keyCode == 48 {
+      guard !event.isARepeat, desktopPages.pages.count > 1,
+        let index = desktopPages.pages.firstIndex(where: { $0.id == desktopPages.selectedID })
+      else { return true }
+      let offset = modifiers == [.shift] ? -1 : 1
+      let nextIndex = (index + offset + desktopPages.pages.count) % desktopPages.pages.count
+      selectDesktop(id: desktopPages.pages[nextIndex].id)
+      return true
+    }
+
+    if modifiers == [.shift] {
+      switch event.keyCode {
+      case 36, 76:
+        if !event.isARepeat, let target = selectedNavigationTarget {
+          toggleGroupSelection(target)
+        }
+      case 125:
+        beginKeyboardZoom(inward: true)
+      case 126:
+        beginKeyboardZoom(inward: false)
+      default:
+        return false
+      }
+      return true
+    }
 
     switch event.keyCode {
     case 123:
@@ -782,6 +1317,10 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       moveSelection(.up)
     case 36, 76:
       focusSelectedWindow()
+    case 51:
+      if ShortcutMatcher.isPlaneQuit(keyCode: event.keyCode, isRepeat: event.isARepeat) {
+        quitSelectedApplication()
+      }
     default:
       guard let text = event.characters,
         text.rangeOfCharacter(from: .alphanumerics) != nil
@@ -789,6 +1328,149 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       beginSearch(with: text)
     }
     return true
+  }
+
+  func handleNavigationKeyUp(_ event: NSEvent) -> Bool {
+    guard keyboardZoomGesture != nil, event.keyCode == 125 || event.keyCode == 126 else {
+      return false
+    }
+    stopKeyboardZoom(completingTap: true)
+    return true
+  }
+
+  private func beginKeyboardZoom(inward: Bool) {
+    if keyboardZoomGesture?.inward == inward { return }
+    stopKeyboardZoom(completingTap: false)
+    deferBackgroundWork()
+    let viewAnchor = CGPoint(x: bounds.midX, y: bounds.midY)
+    let now = CACurrentMediaTime()
+    keyboardZoomGesture = KeyboardZoomGesture(
+      inward: inward,
+      tapBaseZoom: keyboardTapZoomAnimation?.targetZoom
+        ?? cameraAnimation?.target.zoom
+        ?? camera.zoom,
+      viewAnchor: viewAnchor,
+      startedAt: now,
+      lastFrameAt: now,
+      controlsCamera: cameraAnimation == nil && keyboardTapZoomAnimation == nil
+    )
+    let displayLink = displayLink(target: self, selector: #selector(stepKeyboardZoom(_:)))
+    keyboardZoomDisplayLink = displayLink
+    displayLink.add(to: .main, forMode: .common)
+  }
+
+  private func stopKeyboardZoom(completingTap: Bool) {
+    guard let gesture = keyboardZoomGesture else { return }
+    let elapsed = CACurrentMediaTime() - gesture.startedAt
+    keyboardZoomGesture = nil
+    keyboardZoomDisplayLink?.invalidate()
+    keyboardZoomDisplayLink = nil
+    scheduleDesktopPagesPersistence()
+
+    guard completingTap, elapsed < 0.22 else { return }
+    let baseZoom = keyboardTapZoomAnimation?.targetZoom ?? gesture.tapBaseZoom
+    let targetZoom = CanvasMath.steppedZoom(baseZoom, inward: gesture.inward)
+    guard targetZoom != baseZoom else { return }
+    if var animation = keyboardTapZoomAnimation {
+      animation.targetZoom = targetZoom
+      keyboardTapZoomAnimation = animation
+      return
+    }
+    let now = CACurrentMediaTime()
+    keyboardTapZoomAnimation = KeyboardTapZoomAnimation(
+      targetZoom: targetZoom,
+      viewAnchor: gesture.viewAnchor,
+      velocity: (gesture.inward ? 1 : -1) * CanvasMath.heldZoomSpeed(after: elapsed),
+      lastFrameAt: now
+    )
+    let displayLink = displayLink(target: self, selector: #selector(stepKeyboardTapZoom(_:)))
+    keyboardTapZoomDisplayLink = displayLink
+    displayLink.add(to: .main, forMode: .common)
+  }
+
+  @objc private func stepKeyboardZoom(_ displayLink: CADisplayLink) {
+    guard var gesture = keyboardZoomGesture else {
+      displayLink.invalidate()
+      return
+    }
+    let now = CACurrentMediaTime()
+    let elapsed = now - gesture.startedAt
+    let deltaTime = min(1.0 / 15.0, max(0, now - gesture.lastFrameAt))
+    gesture.lastFrameAt = now
+
+    if !gesture.controlsCamera {
+      guard elapsed >= 0.22 else {
+        keyboardZoomGesture = gesture
+        return
+      }
+      stopKeyboardTapZoom()
+      animationDisplayLink?.invalidate()
+      animationDisplayLink = nil
+      cameraAnimation = nil
+      isPresentingFinalAnimationFrame = false
+      gesture.controlsCamera = true
+      gesture.lastFrameAt = now
+      keyboardZoomGesture = gesture
+      return
+    }
+    keyboardZoomGesture = gesture
+
+    let zoom = CanvasMath.heldZoom(
+      camera.zoom,
+      inward: gesture.inward,
+      elapsed: elapsed,
+      deltaTime: deltaTime
+    )
+    camera = CanvasMath.zoomedCamera(
+      camera,
+      to: zoom,
+      around: gesture.viewAnchor,
+      in: bounds
+    )
+    if zoom == CanvasMath.minimumZoom || zoom == CanvasMath.maximumZoom {
+      stopKeyboardZoom(completingTap: false)
+    }
+  }
+
+  @objc private func stepKeyboardTapZoom(_ displayLink: CADisplayLink) {
+    guard var animation = keyboardTapZoomAnimation else {
+      displayLink.invalidate()
+      return
+    }
+    let now = CACurrentMediaTime()
+    guard cameraAnimation == nil else {
+      animation.lastFrameAt = now
+      keyboardTapZoomAnimation = animation
+      return
+    }
+    let deltaTime = min(1.0 / 15.0, max(0, now - animation.lastFrameAt))
+    animation.lastFrameAt = now
+    let frame = CanvasMath.animatedKeyboardZoom(
+      from: camera.zoom,
+      to: animation.targetZoom,
+      velocity: animation.velocity,
+      deltaTime: deltaTime
+    )
+    animation.velocity = frame.velocity
+    camera = CanvasMath.zoomedCamera(
+      camera,
+      to: frame.zoom,
+      around: animation.viewAnchor,
+      in: bounds
+    )
+    guard frame.zoom == animation.targetZoom, frame.velocity == 0 else {
+      keyboardTapZoomAnimation = animation
+      return
+    }
+    keyboardTapZoomAnimation = nil
+    keyboardTapZoomDisplayLink = nil
+    displayLink.invalidate()
+  }
+
+  private func stopKeyboardTapZoom() {
+    keyboardTapZoomAnimation = nil
+    keyboardTapZoomDisplayLink?.invalidate()
+    keyboardTapZoomDisplayLink = nil
   }
 
   @discardableResult
@@ -821,6 +1503,17 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     progressHandler: (@MainActor @Sendable (CGFloat) -> Void)? = nil,
     completion: @escaping @MainActor @Sendable () -> Void
   ) {
+    finishDesktopTransition()
+    stopKeyboardTapZoom()
+    if cameraAnimation != nil, let presentation = cameraLayer.presentation() {
+      let transform = presentation.affineTransform()
+      if transform.a > 0 {
+        camera = CameraState(center: CGPoint(
+          x: (bounds.midX - transform.tx) / transform.a,
+          y: (bounds.midY - transform.ty) / transform.a), zoom: transform.a)
+      }
+    }
+    cameraLayer.removeAnimation(forKey: "cameraTravel")
     setHoveredWindow(nil)
     animationDisplayLink?.invalidate()
     isPresentingFinalAnimationFrame = false
@@ -841,6 +1534,20 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       duration: duration,
       completion: completion
     )
+    if target.zoom == camera.zoom, focusWindowID == nil {
+      let travel = CAKeyframeAnimation(keyPath: "transform")
+      let start = camera
+      travel.values = (0...60).map { index in
+        let state = CanvasMath.interpolatedCamera(from: start, to: target, tracking: nil,
+          progress: CanvasMath.easedTransition(CGFloat(index) / 60), in: bounds)
+        return NSValue(caTransform3D: CATransform3DMakeAffineTransform(CGAffineTransform(
+          a: state.zoom, b: 0, c: 0, d: state.zoom,
+          tx: bounds.midX - state.center.x * state.zoom,
+          ty: bounds.midY - state.center.y * state.zoom)))
+      }
+      travel.duration = duration
+      cameraLayer.add(travel, forKey: "cameraTravel")
+    }
     let displayLink = displayLink(
       target: self, selector: #selector(stepCameraAnimation(_:)))
     animationDisplayLink = displayLink
@@ -888,12 +1595,14 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   private func setFocusTransitionProgress(_ progress: CGFloat) {
     focusTransitionProgress = min(1, max(0, progress))
     let opacity = CanvasMath.focusBackdropOpacity(progress: focusTransitionProgress)
-    for subview in subviews { subview.alphaValue = opacity }
-    needsDisplay = true
+    for subview in subviews where subview !== sceneView { subview.alphaValue = opacity }
+    synchronizeScene()
   }
 
   private var hoverTargetWindowIDs: Set<CGWindowID> {
-    if isHoveringGroupSelection { return groupSelectionIDs }
+    if isHoveringGroupSelection {
+      return Set(nodes.filter { groupSelectionIDs.contains(NavigationTarget.window($0).key) }.map(\.id))
+    }
     return hoveredWindowID.map { [$0] } ?? []
   }
 
@@ -987,7 +1696,11 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       let incoming = windowID == selectedWindowID
       let phase = selectionStaysWithinApplication
         ? CanvasMath.easedTransition(progress)
-        : CanvasMath.selectionHandoffPhase(progress: progress, incoming: incoming)
+        : CanvasMath.selectionHandoffPhase(
+          progress: progress,
+          incoming: incoming,
+          synchronized: synchronizesSelectionAnimation
+        )
       let target: CGFloat = incoming ? 1 : 0
       selectionProgress[windowID] = start + (target - start) * phase
     }
@@ -996,9 +1709,16 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
         .filter { self.selectionStartProgress[$0.id] != nil }
         .map(\.processID)
     )
-    setNeedsDisplay(
-      for: nodes.compactMap { animatedProcessIDs.contains($0.processID) ? $0.id : nil }
-    )
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    let selectedPID = nodes.first(where: { $0.id == selectedWindowID })?.processID
+    for node in nodes where animatedProcessIDs.contains(node.processID) {
+      let target = NavigationTarget.window(node)
+      if let card = cardLayers[target.key] {
+        updateSelectionAppearance(card, target: target, selectedPID: selectedPID)
+      }
+    }
+    CATransaction.commit()
 
     guard progress >= 1 else { return }
     selectionProgress = selectionProgress.filter { $0.value > 0.001 }
@@ -1010,7 +1730,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   }
 
   override func mouseDown(with event: NSEvent) {
-    guard cameraAnimation == nil else { return }
+    guard cameraAnimation == nil, desktopTransitionStartedAt == nil else { return }
     deferBackgroundWork()
     let point = convert(event.locationInWindow, from: nil)
     if navigatorHeaderFrame.contains(point) {
@@ -1028,28 +1748,46 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       return
     }
     if navigatorPanelFrame.contains(point) { return }
-    if let node = hitNode(at: point) {
-      selectedWindowID = node.id
-      if !groupSelectionIDs.contains(node.id) { groupSelectionIDs.removeAll() }
-      let movingIDs: Set<CGWindowID> =
-        groupSelectionIDs.contains(node.id) ? groupSelectionIDs : [node.id]
-      let frames = Dictionary(
-        uniqueKeysWithValues: nodes.compactMap { candidate in
-          movingIDs.contains(candidate.id) ? (candidate.id, candidate.worldFrame) : nil
-        }
+    let target = hitNavigationTarget(at: point)
+    let togglesSelection = event.modifierFlags.contains(.shift)
+    // Shift-click always addresses the item, even where the group's handles overlap it.
+    if togglesSelection, let target {
+      selectNavigationTarget(target)
+      interaction = .items(
+        target: target, start: point,
+        frames: groupSelectionIDs.contains(target.key) ? selectedItemFrames : [target.key: target.worldFrame],
+        togglesSelection: true, dragged: false
       )
-      interaction = .window(node: node, start: point, frames: frames, dragged: false)
-      if movingIDs.count > 1 { NSCursor.closedHand.set() }
+      return
+    }
+    if let handle = selectionResizeHandle(at: point), let selectionRect = groupSelectionWorldRect {
+      interaction = .groupResize(handle: handle, start: point, selectionRect: selectionRect)
+      resizeCursor(for: handle).set()
+      return
+    }
+    if let target {
+      selectNavigationTarget(target)
+      if !groupSelectionIDs.contains(target.key) { clearGroupSelection() }
+      let isMember = groupSelectionIDs.contains(target.key)
+      interaction = .items(
+        target: target,
+        start: point,
+        frames: isMember ? selectedItemFrames : [target.key: target.worldFrame],
+        togglesSelection: false,
+        dragged: false
+      )
+      if isMember { NSCursor.closedHand.set() }
     } else if groupSelectionBounds()?.contains(point) == true {
-      let frames = Dictionary(
-        uniqueKeysWithValues: nodes.compactMap { candidate in
-          groupSelectionIDs.contains(candidate.id) ? (candidate.id, candidate.worldFrame) : nil
-        }
+      interaction = .items(
+        target: nil,
+        start: point,
+        frames: selectedItemFrames,
+        togglesSelection: false,
+        dragged: false
       )
-      interaction = .group(start: point, frames: frames, dragged: false)
       NSCursor.closedHand.set()
     } else {
-      groupSelectionIDs.removeAll()
+      clearGroupSelection()
       setHoveredWindow(nil)
       interaction = .marquee(start: point, current: point, dragged: false)
       needsDisplay = true
@@ -1088,9 +1826,9 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       let distance = hypot(point.x - start.x, point.y - start.y)
       let dragged = wasDragged || distance >= 4
       if dragged {
-        groupSelectionIDs = CanvasMath.windowIDs(
-          intersecting: CanvasMath.selectionRect(from: start, to: point),
-          frames: Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0.worldFrame) }),
+        groupSelectionIDs = CanvasMath.itemIDs(
+          containedIn: CanvasMath.selectionRect(from: start, to: point),
+          frames: itemFrames,
           camera: camera,
           bounds: bounds
         )
@@ -1098,23 +1836,15 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       self.interaction = .marquee(start: start, current: point, dragged: dragged)
       needsDisplay = true
 
-    case .group(let start, let originalFrames, let wasDragged):
-      let distance = hypot(point.x - start.x, point.y - start.y)
-      let dragged = wasDragged || distance >= 4
-      if dragged {
-        let translation = CanvasMath.worldTranslation(
-          forViewTranslation: CGPoint(x: point.x - start.x, y: point.y - start.y),
-          zoom: camera.zoom
-        )
-        for candidate in nodes {
-          guard let frame = originalFrames[candidate.id] else { continue }
-          candidate.worldFrame = frame.offsetBy(dx: translation.x, dy: translation.y)
-        }
-        needsDisplay = true
-      }
-      self.interaction = .group(start: start, frames: originalFrames, dragged: dragged)
+    case .groupResize(let handle, let start, let originalSelectionRect):
+      resizeGroupSelection(
+        handle: handle,
+        from: start,
+        originalRect: originalSelectionRect,
+        to: point
+      )
 
-    case .window(let node, let start, let originalFrames, let wasDragged):
+    case .items(let target, let start, let originalFrames, let togglesSelection, let wasDragged):
       let distance = hypot(point.x - start.x, point.y - start.y)
       let dragged = wasDragged || distance >= 4
       if dragged {
@@ -1123,15 +1853,20 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
           zoom: camera.zoom
         )
         for candidate in nodes {
-          guard let frame = originalFrames[candidate.id] else { continue }
+          guard let frame = originalFrames[NavigationTarget.window(candidate).key] else { continue }
           candidate.worldFrame = frame.offsetBy(dx: translation.x, dy: translation.y)
+        }
+        for index in appPlaceholders.indices {
+          guard let frame = originalFrames[NavigationTarget.placeholder(appPlaceholders[index]).key] else { continue }
+          appPlaceholders[index].worldFrame = frame.offsetBy(dx: translation.x, dy: translation.y)
         }
         needsDisplay = true
       }
-      self.interaction = .window(
-        node: node,
+      self.interaction = .items(
+        target: target,
         start: start,
         frames: originalFrames,
+        togglesSelection: togglesSelection,
         dragged: dragged
       )
     }
@@ -1152,15 +1887,35 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       } else {
         button?.performClick(nil)
       }
-    case .window(let node, _, _, let dragged) where !dragged:
-      delegate?.canvasView(self, didRequestFocus: node)
+    case .marquee(_, _, let dragged) where dragged:
+      fitGroupSelectionToItems()
+    case .groupResize(let handle, let start, let originalSelectionRect):
+      resizeGroupSelection(
+        handle: handle,
+        from: start,
+        originalRect: originalSelectionRect,
+        to: point
+      )
+      fitGroupSelectionToItems()
+    case .items(let target, _, let frames, _, true):
+      manifestMovedItems(originalFrames: frames, primaryTarget: target)
+      fitGroupSelectionToItems()
+    case .items(let target?, _, _, let togglesSelection, false):
+      if togglesSelection {
+        toggleGroupSelection(target)
+      } else {
+        switch target {
+        case .window(let node): delegate?.canvasView(self, didRequestFocus: node)
+        case .placeholder(let placeholder): activatePlaceholder(placeholder.bundleIdentifier)
+        }
+      }
     default:
       break
     }
   }
 
   override func scrollWheel(with event: NSEvent) {
-    guard cameraAnimation == nil else { return }
+    guard cameraAnimation == nil, desktopTransitionStartedAt == nil else { return }
     deferBackgroundWork()
     camera.center = CGPoint(
       x: camera.center.x - event.scrollingDeltaX / camera.zoom,
@@ -1169,7 +1924,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   }
 
   override func magnify(with event: NSEvent) {
-    guard cameraAnimation == nil else { return }
+    guard cameraAnimation == nil, desktopTransitionStartedAt == nil else { return }
     deferBackgroundWork()
     let point = convert(event.locationInWindow, from: nil)
     camera = CanvasMath.zoomedCamera(
@@ -1187,60 +1942,277 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     }
   }
 
+  private func hitNavigationTarget(at point: CGPoint) -> NavigationTarget? {
+    if let node = hitNode(at: point) { return .window(node) }
+    return hitPlaceholder(at: point).map(NavigationTarget.placeholder)
+  }
+
+  private func hitPlaceholder(at point: CGPoint) -> AppPlaceholder? {
+    appPlaceholders.reversed().first { placeholder in
+      CanvasMath.viewRect(
+        for: placeholder.worldFrame,
+        camera: camera,
+        bounds: bounds
+      ).insetBy(dx: -16, dy: -16).contains(point)
+    }
+  }
+
+  override func menu(for event: NSEvent) -> NSMenu? {
+    let point = convert(event.locationInWindow, from: nil)
+    let bundleIdentifier = hitNode(at: point)?.bundleIdentifier
+      ?? hitPlaceholder(at: point)?.bundleIdentifier
+    guard let bundleIdentifier,
+      desktopPages.selectedAppPlacement(for: bundleIdentifier) != nil
+    else { return nil }
+
+    let menu = NSMenu()
+    let item = NSMenuItem(
+      title: "Forget Position",
+      action: #selector(forgetAppPosition(_:)),
+      keyEquivalent: ""
+    )
+    item.target = self
+    item.representedObject = bundleIdentifier
+    menu.addItem(item)
+    return menu
+  }
+
+  @objc private func forgetAppPosition(_ sender: NSMenuItem) {
+    guard let bundleIdentifier = sender.representedObject as? String else { return }
+    desktopPages.forgetSelectedAppPlacement(bundleIdentifier: bundleIdentifier)
+    placeholderErrors[bundleIdentifier] = nil
+    launchingPlaceholderBundles.remove(bundleIdentifier)
+    if selectedPlaceholderBundleIdentifier == bundleIdentifier {
+      selectedPlaceholderBundleIdentifier = nil
+    }
+    persistDesktopPages()
+    refreshPlaceholders()
+  }
+
   private func updateHover(at point: CGPoint) {
     guard cameraAnimation == nil, !navigatorPanelFrame.contains(point) else {
+      hoveredSelectionResizeHandle = nil
+      hoveredPlaceholderBundleIdentifier = nil
       setHoveredWindow(nil)
       return
     }
+    let selectionBounds = groupSelectionBounds()
+    if let handle = selectionResizeHandle(at: point) {
+      let changed = hoveredSelectionResizeHandle != handle
+      hoveredSelectionResizeHandle = handle
+      hoveredPlaceholderBundleIdentifier = nil
+      setHoveredWindow(nil)
+      resizeCursor(for: handle).set()
+      if changed { needsDisplay = true }
+      return
+    }
+    let wasOverResizeHandle = hoveredSelectionResizeHandle != nil
+    hoveredSelectionResizeHandle = nil
     let node = hitNode(at: point)
-    let isOverGroup = groupSelectionBounds()?.contains(point) == true
-      && (node.map { groupSelectionIDs.contains($0.id) } ?? true)
+    let placeholder = node == nil ? hitPlaceholder(at: point) : nil
+    let target = node.map(NavigationTarget.window) ?? placeholder.map(NavigationTarget.placeholder)
+    let isOverGroup = selectionBounds?.contains(point) == true
+      && (target.map { groupSelectionIDs.contains($0.key) } ?? true)
     let wasOverGroup = isHoveringGroupSelection
     setHoveredWindow(isOverGroup ? nil : node?.id, asGroup: isOverGroup)
+    hoveredPlaceholderBundleIdentifier = isOverGroup
+      ? nil : placeholder?.bundleIdentifier
     if isOverGroup {
       NSCursor.openHand.set()
-    } else if wasOverGroup {
+    } else if wasOverGroup || wasOverResizeHandle {
       NSCursor.arrow.set()
     }
   }
 
-  private func moveSelection(_ direction: CanvasDirection) {
-    guard !nodes.isEmpty else { return }
+  private func clearGroupSelection() {
+    groupSelectionIDs.removeAll()
+    resizingGroupSelectionWorldRect = nil
+    hoveredSelectionResizeHandle = nil
+    if isHoveringGroupSelection { setHoveredWindow(nil) }
+    needsDisplay = true
+  }
 
-    guard let selected = nodes.first(where: { $0.id == selectedWindowID }) else {
-      let closest = nodes.min {
-        hypot($0.worldFrame.midX - camera.center.x, $0.worldFrame.midY - camera.center.y)
-          < hypot($1.worldFrame.midX - camera.center.x, $1.worldFrame.midY - camera.center.y)
+  private var itemFrames: [String: CGRect] {
+    Dictionary(uniqueKeysWithValues: navigationTargets.map { ($0.key, $0.worldFrame) })
+  }
+
+  private var selectedItemFrames: [String: CGRect] {
+    itemFrames.filter { groupSelectionIDs.contains($0.key) }
+  }
+
+  private func toggleGroupSelection(_ target: NavigationTarget) {
+    if !groupSelectionIDs.insert(target.key).inserted {
+      groupSelectionIDs.remove(target.key)
+    }
+    fitGroupSelectionToItems()
+  }
+
+  private func fitGroupSelectionToItems() {
+    // Once released, the frame follows current rendered geometry at every zoom.
+    resizingGroupSelectionWorldRect = nil
+    if groupSelectionIDs.isEmpty { clearGroupSelection() }
+    needsDisplay = true
+  }
+
+  private func selectionResizeHandle(at point: CGPoint) -> SelectionResizeHandle? {
+    guard groupSelectionWorldRect != nil, let selectionBounds = groupSelectionBounds() else {
+      return nil
+    }
+    let hitFrames = CanvasMath.selectionResizeHandleFrames(
+      for: selectionBounds,
+      size: Self.selectionHandleHitSize
+    )
+    if let handle = SelectionResizeHandle.allCases.first(where: { handle in
+      hitFrames[handle]?.contains(point) == true
+    }) {
+      return handle
+    }
+
+    let tolerance = Self.selectionHandleHitSize / 2
+    if abs(point.y - selectionBounds.maxY) <= tolerance,
+      point.x >= selectionBounds.minX,
+      point.x <= selectionBounds.maxX
+    {
+      return .top
+    }
+    if abs(point.y - selectionBounds.minY) <= tolerance,
+      point.x >= selectionBounds.minX,
+      point.x <= selectionBounds.maxX
+    {
+      return .bottom
+    }
+    if abs(point.x - selectionBounds.minX) <= tolerance,
+      point.y >= selectionBounds.minY,
+      point.y <= selectionBounds.maxY
+    {
+      return .left
+    }
+    if abs(point.x - selectionBounds.maxX) <= tolerance,
+      point.y >= selectionBounds.minY,
+      point.y <= selectionBounds.maxY
+    {
+      return .right
+    }
+    return nil
+  }
+
+  private func resizeGroupSelection(
+    handle: SelectionResizeHandle,
+    from start: CGPoint,
+    originalRect: CGRect,
+    to point: CGPoint
+  ) {
+    let translation = CanvasMath.worldTranslation(
+      forViewTranslation: CGPoint(x: point.x - start.x, y: point.y - start.y),
+      zoom: camera.zoom
+    )
+    let resizedRect = CanvasMath.resizedSelectionRect(
+      originalRect,
+      dragging: handle,
+      by: translation,
+      minimumSize: CGSize(
+        width: Self.minimumGroupSize / camera.zoom,
+        height: Self.minimumGroupSize / camera.zoom
+      )
+    )
+    resizingGroupSelectionWorldRect = resizedRect
+    groupSelectionIDs = CanvasMath.itemIDs(
+      containedIn: CanvasMath.viewRect(for: resizedRect, camera: camera, bounds: bounds),
+      frames: itemFrames,
+      camera: camera,
+      bounds: bounds
+    )
+    needsDisplay = true
+  }
+
+  private func resizeCursor(for handle: SelectionResizeHandle) -> NSCursor {
+    let position: NSCursor.FrameResizePosition = switch handle {
+    case .topLeft: .topLeft
+    case .top: .top
+    case .topRight: .topRight
+    case .right: .right
+    case .bottomRight: .bottomRight
+    case .bottom: .bottom
+    case .bottomLeft: .bottomLeft
+    case .left: .left
+    }
+    return NSCursor.frameResize(position: position, directions: .all)
+  }
+
+  private func moveSelection(_ direction: CanvasDirection) {
+    let targets = navigationTargets
+    guard !targets.isEmpty else { return }
+
+    guard let selected = selectedNavigationTarget else {
+      if let closest = targets.min(by: {
+        hypot($0.center.x - camera.center.x, $0.center.y - camera.center.y)
+          < hypot($1.center.x - camera.center.x, $1.center.y - camera.center.y)
+      }) {
+        selectNavigationTarget(closest)
+        centerCamera(on: closest)
       }
-      selectedWindowID = closest?.id
       return
     }
 
-    let candidates = nodes.filter { $0.id != selected.id }.map {
-      (id: $0.id, center: CGPoint(x: $0.worldFrame.midX, y: $0.worldFrame.midY))
+    let candidates = targets.filter { $0.key != selected.key }.map {
+      (id: $0.key, frame: $0.worldFrame)
     }
     guard
-      let nextID = CanvasMath.directionalNeighbor(
-        from: CGPoint(x: selected.worldFrame.midX, y: selected.worldFrame.midY),
+      let nextKey = CanvasMath.directionalNeighbor(
+        from: selected.worldFrame,
         candidates: candidates,
         direction: direction
       ),
-      let next = nodes.first(where: { $0.id == nextID })
+      let next = targets.first(where: { $0.key == nextKey })
     else { return }
 
-    selectedWindowID = next.id
-    animateCamera(
-      to: CameraState(
-        center: CGPoint(x: next.worldFrame.midX, y: next.worldFrame.midY),
-        zoom: camera.zoom
-      ),
-      duration: Self.selectionTransitionDuration,
-      completion: {}
+    selectNavigationTarget(next)
+    centerCamera(on: next)
+  }
+
+  private func centerCamera(on target: NavigationTarget) {
+    let targetCamera = CanvasMath.cameraCentered(
+      on: target.worldFrame,
+      preserving: camera
     )
+    if targetCamera != camera {
+      animateCamera(
+        to: targetCamera,
+        duration: Self.selectionTransitionDuration,
+        completion: {}
+      )
+    }
+  }
+
+  private var navigationTargets: [NavigationTarget] {
+    nodes.map(NavigationTarget.window) + appPlaceholders.map(NavigationTarget.placeholder)
+  }
+
+  private var selectedNavigationTarget: NavigationTarget? {
+    if let selectedWindowID,
+      let node = nodes.first(where: { $0.id == selectedWindowID })
+    {
+      return .window(node)
+    }
+    if let selectedPlaceholderBundleIdentifier,
+      let placeholder = appPlaceholders.first(where: {
+        $0.bundleIdentifier == selectedPlaceholderBundleIdentifier
+      })
+    {
+      return .placeholder(placeholder)
+    }
+    return nil
+  }
+
+  private func selectNavigationTarget(_ target: NavigationTarget) {
+    switch target {
+    case .window(let node): selectedWindowID = node.id
+    case .placeholder(let placeholder): selectPlaceholder(placeholder.bundleIdentifier)
+    }
   }
 
   private func miniMapProjection() -> MiniMapProjection? {
-    guard !nodes.isEmpty, bounds.width >= 480, bounds.height >= 320 else { return nil }
+    guard !canvasItemFrames.isEmpty, bounds.width >= 480, bounds.height >= 320 else { return nil }
 
     let panel = navigatorPanelFrame
     let frame = CGRect(
@@ -1260,7 +2232,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       width: upperRight.x - lowerLeft.x,
       height: upperRight.y - lowerLeft.y
     )
-    let frames = nodes.map(\.worldFrame) + [viewportWorldFrame]
+    let frames = canvasItemFrames + [viewportWorldFrame]
     let worldBounds = frames.dropFirst().reduce(frames[0]) { $0.union($1) }
     let zoom = min(
       contentBounds.width / worldBounds.width,
@@ -1290,47 +2262,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     )
   }
 
-  private func drawGrid(in dirtyRect: CGRect) {
-    let spacing = CanvasMath.gridSpacing(at: camera.zoom)
-    let dotSize = CanvasMath.gridDotSize(at: camera.zoom)
-    let opacity = CanvasMath.gridOpacity(at: camera.zoom)
-    guard opacity > 0 else { return }
-    let origin = CanvasMath.worldToView(.zero, camera: camera, bounds: bounds)
-    let patternColor: NSColor
-    if gridPatternZoom == camera.zoom, let gridPatternColor {
-      patternColor = gridPatternColor
-    } else {
-      let tile = NSImage(
-        size: CGSize(width: spacing, height: spacing),
-        flipped: false
-      ) { rect in
-        NSColor.white.withAlphaComponent(opacity).setFill()
-        NSBezierPath(
-          ovalIn: CGRect(
-            x: rect.midX - dotSize / 2,
-            y: rect.midY - dotSize / 2,
-            width: dotSize,
-            height: dotSize
-          )
-        ).fill()
-        return true
-      }
-      patternColor = NSColor(patternImage: tile)
-      gridPatternZoom = camera.zoom
-      gridPatternColor = patternColor
-    }
-
-    guard let context = NSGraphicsContext.current else { return }
-    let previousPhase = context.patternPhase
-    context.patternPhase = CGPoint(
-      x: origin.x - spacing / 2,
-      y: origin.y - spacing / 2
-    )
-    patternColor.setFill()
-    dirtyRect.fill()
-    context.patternPhase = previousPhase
-  }
-
   private func deferBackgroundWork() {
     backgroundWorkDeferredUntil = CACurrentMediaTime() + 0.25
   }
@@ -1346,19 +2277,50 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     }
 
     guard let bounds = groupSelectionBounds() else { return }
-    let hover = groupSelectionIDs.map { windowHoverProgress[$0] ?? 0 }.max() ?? 0
+    let hover: CGFloat = isHoveringGroupSelection ? 1 : 0
     drawSelectionBox(
-      bounds.insetBy(dx: -3 * hover, dy: -3 * hover),
+      bounds,
       fillAlpha: 0.14 + 0.05 * hover,
       strokeAlpha: 0.72 + 0.2 * hover
     )
   }
 
   private func groupSelectionBounds() -> CGRect? {
-    CanvasMath.groupSelectionBounds(
-      for: nodes.compactMap { node in
-        guard groupSelectionIDs.contains(node.id) else { return nil }
-        return CanvasMath.viewRect(for: node.worldFrame, camera: camera, bounds: bounds)
+    if let resizingGroupSelectionWorldRect {
+      return CanvasMath.viewRect(
+        for: resizingGroupSelectionWorldRect, camera: camera, bounds: bounds)
+    }
+    return CanvasMath.groupSelectionBounds(
+      for: navigationTargets.filter { groupSelectionIDs.contains($0.key) }.map { target in
+        let rect: CGRect
+        let hasIcon: Bool
+        let hasTitle: Bool
+        var borderOutset: CGFloat
+        switch target {
+        case .window(let node):
+          rect = previewViewRect(for: node)
+          hasIcon = node.icon != nil
+          hasTitle = !node.displayTitle.isEmpty
+          let progress = selectionProgress[node.id] ?? (node.id == selectedWindowID ? 1 : 0)
+          if selectionStaysWithinApplication,
+            nodes.first(where: { $0.id == selectedWindowID })?.processID == node.processID
+          {
+            borderOutset =
+              2 + CanvasMath.sameApplicationSelectionMetrics(primaryProgress: progress).borderWidth
+          } else {
+            borderOutset = node.id == selectedWindowID || progress > 0 ? 6 : 4
+          }
+        case .placeholder(let placeholder):
+          rect = CanvasMath.viewRect(for: placeholder.worldFrame, camera: camera, bounds: bounds)
+          hasIcon = placeholder.icon != nil
+          hasTitle = !placeholder.applicationName.isEmpty
+          borderOutset = placeholder.bundleIdentifier == selectedPlaceholderBundleIdentifier ? 6 : 4
+        }
+        return CanvasMath.previewVisualBounds(
+          for: rect, zoom: camera.zoom,
+          titleLift: previewTitlePresentation(for: target).lift, borderOutset: borderOutset,
+          hasIcon: hasIcon, hasTitle: hasTitle
+        )
       }
     )
   }
@@ -1373,192 +2335,89 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     path.fill()
     groupSelectionColor.withAlphaComponent(strokeAlpha).setStroke()
     path.lineWidth = 2
+    path.lineCapStyle = .round
+    path.setLineDash([0, 6], count: 2, phase: 0)
     path.stroke()
   }
 
-  private func draw(node: WindowNode, in rect: CGRect, selectedProcessID: pid_t?) {
-    let cornerRadius = max(5, min(14, 12 * camera.zoom))
-    NSGraphicsContext.saveGraphicsState()
-
-    let shadow = NSShadow()
-    shadow.shadowColor = NSColor.black.withAlphaComponent(0.5)
-    shadow.shadowBlurRadius = 26 * min(1, camera.zoom)
-    shadow.shadowOffset = CGSize(width: 0, height: -8)
-    shadow.set()
-
-    let path = NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius)
-    path.addClip()
-    NSColor(calibratedWhite: 0.11, alpha: 1).setFill()
-    rect.fill()
-    if let previousPreview = previousPreviews[node.id],
-      let fadeStartedAt = previewFadeStartedAt[node.id]
-    {
-      previousPreview.draw(
-        in: rect,
-        from: .zero,
-        operation: .sourceOver,
-        fraction: 1
-      )
-      let elapsed = CACurrentMediaTime() - fadeStartedAt
-      let progress = min(1, elapsed / Self.previewFadeDuration)
-      node.preview?.draw(
-        in: rect,
-        from: .zero,
-        operation: .sourceOver,
-        fraction: CanvasMath.easedTransition(progress)
-      )
-    } else {
-      node.preview?.draw(
-        in: rect,
-        from: .zero,
-        operation: .sourceOver,
-        fraction: 1
-      )
-    }
-    NSGraphicsContext.restoreGraphicsState()
-
-    let isSelected = node.id == selectedWindowID
-    let isSelectedApplication = selectedProcessID.map { $0 == node.processID } ?? false
-    let isGroupSelection =
-      groupSelectionIDs.count > 1 && groupSelectionIDs.contains(node.id)
-    let primarySelectionColor = isGroupSelection ? groupSelectionColor : selectionColor
-    let selectionPhases = CanvasMath.selectionAnimationPhases(
-      progress: selectionProgress[node.id] ?? (isSelected ? 1 : 0)
+  private func drawPrivatePreview(in rect: CGRect) {
+    let title = "PRIVATE WINDOW" as NSString
+    let subtitle = "Preview hidden" as NSString
+    let titleFont = NSFont.systemFont(
+      ofSize: max(8, min(15, rect.height * 0.08)),
+      weight: .semibold
     )
-    let applicationSelectionPhases = CanvasMath.selectionAnimationPhases(
-      progress: selectedWindowID.flatMap { selectionProgress[$0] } ?? 1
+    let subtitleFont = NSFont.systemFont(
+      ofSize: max(7, min(12, rect.height * 0.06)),
+      weight: .regular
     )
-
-    NSColor.white.withAlphaComponent(0.16).setStroke()
-    path.lineWidth = 1
-    path.stroke()
-
-    let sameApplicationPrimaryProgress: CGFloat? =
-      selectionStaysWithinApplication && isSelectedApplication
-      ? selectionProgress[node.id] ?? (isSelected ? 1 : 0)
-      : nil
-    if let sameApplicationPrimaryProgress {
-      let metrics = CanvasMath.sameApplicationSelectionMetrics(
-        primaryProgress: sameApplicationPrimaryProgress
-      )
-      let borderInset = 2 + metrics.borderWidth / 2
-      let borderPath = NSBezierPath(
-        roundedRect: rect.insetBy(dx: -borderInset, dy: -borderInset),
-        xRadius: cornerRadius + borderInset,
-        yRadius: cornerRadius + borderInset
-      )
-      NSGraphicsContext.saveGraphicsState()
-      if sameApplicationPrimaryProgress > 0 {
-        let glow = NSShadow()
-        glow.shadowColor = primarySelectionColor.withAlphaComponent(
-          0.9 * sameApplicationPrimaryProgress
-        )
-        glow.shadowBlurRadius = 16 * sameApplicationPrimaryProgress
-        glow.shadowOffset = .zero
-        glow.set()
-      }
-      primarySelectionColor.setStroke()
-      borderPath.lineWidth = metrics.borderWidth
-      borderPath.stroke()
-      NSGraphicsContext.restoreGraphicsState()
-    } else if !isSelected {
-      let secondaryBorderColor: NSColor? = if isGroupSelection {
-        groupSelectionColor
-      } else if isSelectedApplication && applicationSelectionPhases.border > 0 {
-        selectionColor.withAlphaComponent(applicationSelectionPhases.border)
-      } else {
-        nil
-      }
-      if let secondaryBorderColor {
-        let borderWidth: CGFloat = 2
-        let borderInset = 2 + borderWidth / 2
-        let borderPath = NSBezierPath(
-          roundedRect: rect.insetBy(dx: -borderInset, dy: -borderInset),
-          xRadius: cornerRadius + borderInset,
-          yRadius: cornerRadius + borderInset
-        )
-        secondaryBorderColor.setStroke()
-        borderPath.lineWidth = borderWidth
-        borderPath.stroke()
-      }
-    }
-
-    if sameApplicationPrimaryProgress == nil && selectionPhases.border > 0 {
-      let borderWidth: CGFloat = 4
-      let borderInset = 2 + borderWidth / 2
-      let borderPath = NSBezierPath(
-        roundedRect: rect.insetBy(dx: -borderInset, dy: -borderInset),
-        xRadius: cornerRadius + borderInset,
-        yRadius: cornerRadius + borderInset
-      )
-      NSGraphicsContext.saveGraphicsState()
-      let glow = NSShadow()
-      glow.shadowColor = primarySelectionColor.withAlphaComponent(
-        0.9 * selectionPhases.border)
-      glow.shadowBlurRadius = 16
-      glow.shadowOffset = .zero
-      glow.set()
-      primarySelectionColor.withAlphaComponent(selectionPhases.border).setStroke()
-      borderPath.lineWidth = borderWidth
-      borderPath.stroke()
-      NSGraphicsContext.restoreGraphicsState()
-    }
-
-    let badgeSize = Self.appIconSize * CanvasMath.appIconScale(at: camera.zoom)
-    drawAppIcon(for: node, in: rect, size: badgeSize)
-    drawPreviewStatus(for: node, in: rect)
-
-    let titleX = rect.minX + badgeSize / 2 + 8
-    let titleSelectionProgress = sameApplicationPrimaryProgress == nil
-      ? isGroupSelection
-        ? 1
-        : isSelectedApplication && !isSelected
-          ? applicationSelectionPhases.title
-          : selectionPhases.title
-      : 1
-    let titleLift = sameApplicationPrimaryProgress.map {
-      CanvasMath.sameApplicationSelectionMetrics(primaryProgress: $0).titleLift
-    } ?? CanvasMath.selectionTitleLift(
-      progress: titleSelectionProgress,
-      isPrimary: isSelected || selectionStartProgress[node.id] != nil
-    )
-    let titleRect = CGRect(
-      x: titleX,
-      y: rect.maxY + 2 + titleLift,
-      width: max(0, rect.maxX - titleX),
-      height: 16
-    )
-    let paragraph = NSMutableParagraphStyle()
-    paragraph.lineBreakMode = .byTruncatingTail
-    let titleColor = NSColor.white.withAlphaComponent(0.76).blended(
-      withFraction: titleSelectionProgress,
-      of: isGroupSelection ? groupSelectionColor : selectionColor
-    ) ?? (isGroupSelection ? groupSelectionColor : selectionColor)
-    let titleVisibility = CanvasMath.titleVisibility(
-      at: camera.zoom,
-      availableWidth: titleRect.width
-    )
-    let attributes: [NSAttributedString.Key: Any] = [
-      .font: NSFont.systemFont(ofSize: 12, weight: isSelected ? .bold : .medium),
-      .foregroundColor: titleColor.withAlphaComponent(
-        titleColor.alphaComponent * titleVisibility
-      ),
-      .paragraphStyle: paragraph,
+    let titleAttributes: [NSAttributedString.Key: Any] = [
+      .font: titleFont,
+      .foregroundColor: NSColor.white.withAlphaComponent(0.78),
     ]
-    NSString(string: node.title).draw(
-      in: titleRect,
-      withAttributes: attributes
+    let subtitleAttributes: [NSAttributedString.Key: Any] = [
+      .font: subtitleFont,
+      .foregroundColor: NSColor.white.withAlphaComponent(0.45),
+    ]
+    let titleSize = title.size(withAttributes: titleAttributes)
+    let subtitleSize = subtitle.size(withAttributes: subtitleAttributes)
+    title.draw(
+      at: CGPoint(x: rect.midX - titleSize.width / 2, y: rect.midY + 2),
+      withAttributes: titleAttributes
+    )
+    subtitle.draw(
+      at: CGPoint(x: rect.midX - subtitleSize.width / 2, y: rect.midY - subtitleSize.height - 4),
+      withAttributes: subtitleAttributes
     )
   }
 
-  private func drawAppIcon(for node: WindowNode, in rect: CGRect, size badgeSize: CGFloat) {
-    guard let icon = node.icon else { return }
-    let badgeFrame = CGRect(
-      x: rect.minX - badgeSize / 2,
-      y: rect.maxY - badgeSize / 2,
-      width: badgeSize,
-      height: badgeSize
-    )
+  private func previewViewRect(for node: WindowNode) -> CGRect {
+    let rect = CanvasMath.viewRect(for: node.worldFrame, camera: camera, bounds: bounds)
+    let expansion = 3 * (windowHoverProgress[node.id] ?? 0)
+    return rect.insetBy(dx: -expansion, dy: -expansion)
+  }
+
+  private func previewTitlePresentation(for target: NavigationTarget) -> (
+    progress: CGFloat, lift: CGFloat
+  ) {
+    switch target {
+    case .placeholder(let placeholder):
+      let isSelected = selectedPlaceholderBundleIdentifier == placeholder.bundleIdentifier
+      let progress: CGFloat = isSelected || groupSelectionIDs.contains(target.key) ? 1 : 0
+      return (progress, CanvasMath.selectionTitleLift(progress: progress, isPrimary: isSelected))
+    case .window(let node):
+      let isSelected = node.id == selectedWindowID
+      let isSelectedApplication =
+        nodes.first(where: { $0.id == selectedWindowID })?.processID == node.processID
+      if selectionStaysWithinApplication && isSelectedApplication {
+        let progress = selectionProgress[node.id] ?? (isSelected ? 1 : 0)
+        return (1, CanvasMath.sameApplicationSelectionMetrics(primaryProgress: progress).titleLift)
+      }
+      let progress: CGFloat
+      if groupSelectionIDs.contains(target.key) {
+        progress = 1
+      } else {
+        let selection =
+          isSelectedApplication && !isSelected
+          ? selectedWindowID.flatMap { selectionProgress[$0] } ?? 1
+          : selectionProgress[node.id] ?? (isSelected ? 1 : 0)
+        progress =
+          CanvasMath.selectionAnimationPhases(
+            progress: selection, synchronized: synchronizesSelectionAnimation
+          ).title
+      }
+      return (
+        progress,
+        CanvasMath.selectionTitleLift(
+          progress: progress, isPrimary: isSelected || selectionStartProgress[node.id] != nil
+        )
+      )
+    }
+  }
+
+  private func drawAppIcon(_ icon: NSImage?, in badgeFrame: CGRect) {
+    guard let icon else { return }
+    let badgeSize = badgeFrame.width
     let badgeCornerRadius = badgeSize * 0.22
     let badgePath = NSBezierPath(
       roundedRect: badgeFrame,
@@ -1573,8 +2432,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     outside.addClip()
     let shadow = NSShadow()
     shadow.shadowColor = NSColor.black.withAlphaComponent(0.36)
-    shadow.shadowBlurRadius = 7.5 * badgeSize / Self.appIconSize
-    shadow.shadowOffset = CGSize(width: 0, height: -2.25 * badgeSize / Self.appIconSize)
+    shadow.shadowBlurRadius = 7.5 * badgeSize / CanvasMath.appIconSize
+    shadow.shadowOffset = CGSize(width: 0, height: -2.25 * badgeSize / CanvasMath.appIconSize)
     shadow.set()
     NSColor.white.setFill()
     badgePath.fill()
@@ -1668,21 +2527,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     )
   }
 
-  private func drawPreviewStatus(for node: WindowNode, in rect: CGRect) {
-    let color: NSColor = switch node.previewState {
-    case .loading: NSColor(srgbRed: 1, green: 0.62, blue: 0.15, alpha: 1)
-    case .current: NSColor(srgbRed: 0.25, green: 0.85, blue: 0.39, alpha: 1)
-    case .failed: NSColor(srgbRed: 1, green: 0.27, blue: 0.23, alpha: 1)
-    }
-
-    let indicator = NSBezierPath(ovalIn: previewStatusFrame(in: rect))
-    color.setFill()
-    indicator.fill()
-    NSColor.white.setStroke()
-    indicator.lineWidth = 2
-    indicator.stroke()
-  }
-
   private func schedulePreviewToolTipUpdate() {
     previewToolTipUpdateTask?.cancel()
     previewToolTipUpdateTask = Task { [weak self] in
@@ -1698,6 +2542,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     previewToolTipWindowIDs.removeAll(keepingCapacity: true)
 
     for node in nodes {
+      guard node.previewState != .current, node.previewState != .redacted else { continue }
       let rect = CanvasMath.viewRect(for: node.worldFrame, camera: camera, bounds: bounds)
       guard rect.intersects(bounds) else { continue }
       let tag = addToolTip(
@@ -1733,6 +2578,34 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       .foregroundColor: NSColor.white.withAlphaComponent(0.62),
     ]
     status.draw(at: CGPoint(x: 24, y: 20), withAttributes: attributes)
+  }
+
+  private func drawDesktopTitleNudge() {
+    let width = CanvasMath.desktopTitleNudgeWidth(
+      textWidth: desktopTabsScrollView.frame.width - 24,
+      availableWidth: bounds.width - 64
+    )
+    let cornerRadius: CGFloat = 22
+    let layout = desktopTitleNudgeLayout
+    let frame = CGRect(
+      x: bounds.midX - width / 2,
+      y: bounds.maxY - layout.depth,
+      width: width,
+      height: layout.depth + cornerRadius
+    )
+    let path = NSBezierPath(
+      roundedRect: frame,
+      xRadius: cornerRadius,
+      yRadius: cornerRadius
+    )
+    background.color.withAlphaComponent(0.75).setFill()
+    path.fill()
+  }
+
+  private var desktopTitleNudgeLayout: CanvasMath.DesktopTitleNudgeLayout {
+    CanvasMath.desktopTitleNudgeLayout(
+      safeAreaTop: window?.screen?.safeAreaInsets.top ?? 32
+    )
   }
 
   private func drawDebugInformation() {
@@ -1845,6 +2718,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     if isSearching { drawSearchStatus(in: panel) }
 
     guard let projection = miniMapProjection() else { return }
+    renderedMiniMapCamera = projection.camera
     let mapBackground = NSBezierPath(roundedRect: projection.frame, xRadius: 8, yRadius: 8)
     NSColor.black.withAlphaComponent(0.28).setFill()
     mapBackground.fill()
@@ -1852,6 +2726,24 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     NSGraphicsContext.saveGraphicsState()
     mapBackground.addClip()
     let selectedProcessID = nodes.first(where: { $0.id == selectedWindowID })?.processID
+    for placeholder in appPlaceholders {
+      var rect = CanvasMath.viewRect(
+        for: placeholder.worldFrame,
+        camera: projection.camera,
+        bounds: projection.contentBounds
+      )
+      if rect.width < 3 { rect = rect.insetBy(dx: -(3 - rect.width) / 2, dy: 0) }
+      if rect.height < 3 { rect = rect.insetBy(dx: 0, dy: -(3 - rect.height) / 2) }
+      let color = if groupSelectionIDs.contains(NavigationTarget.placeholder(placeholder).key) {
+        groupSelectionColor
+      } else if placeholder.bundleIdentifier == selectedPlaceholderBundleIdentifier {
+        selectionColor
+      } else {
+        NSColor.white.withAlphaComponent(0.22)
+      }
+      color.setFill()
+      NSBezierPath(roundedRect: rect, xRadius: 2, yRadius: 2).fill()
+    }
     for node in nodes {
       var rect = CanvasMath.viewRect(
         for: node.worldFrame,
@@ -1860,9 +2752,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       )
       if rect.width < 3 { rect = rect.insetBy(dx: -(3 - rect.width) / 2, dy: 0) }
       if rect.height < 3 { rect = rect.insetBy(dx: 0, dy: -(3 - rect.height) / 2) }
-      let isGroupSelection =
-        groupSelectionIDs.count > 1 && groupSelectionIDs.contains(node.id)
-      let color = if isSearching && !matchesSearch(node) {
+      let isGroupSelection = groupSelectionIDs.contains(NavigationTarget.window(node).key)
+      let color = if isSearching && !matchesSearch(.window(node)) {
         NSColor.white.withAlphaComponent(0.1)
       } else if isGroupSelection {
         groupSelectionColor.withAlphaComponent(node.id == selectedWindowID ? 1 : 0.7)
@@ -1877,24 +2768,13 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       NSBezierPath(roundedRect: rect, xRadius: 2, yRadius: 2).fill()
     }
 
-    let viewportRect = CanvasMath.viewRect(
-      for: projection.viewportWorldFrame,
-      camera: projection.camera,
-      bounds: projection.contentBounds
-    )
-    let viewportPath = NSBezierPath(roundedRect: viewportRect, xRadius: 4, yRadius: 4)
-    NSColor.controlAccentColor.withAlphaComponent(0.12).setFill()
-    viewportPath.fill()
-    NSColor.controlAccentColor.withAlphaComponent(0.9).setStroke()
-    viewportPath.lineWidth = 2
-    viewportPath.stroke()
     NSGraphicsContext.restoreGraphicsState()
   }
 
   private func drawSearchStatus(in panel: CGRect) {
     let query = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
     let matches = searchResults
-    let selectedIndex = matches.firstIndex { $0.id == selectedWindowID }
+    let selectedIndex = matches.firstIndex { $0.key == selectedNavigationTarget?.key }
     let message = CanvasSearch.status(
       query: query,
       resultCount: matches.count,
@@ -1905,10 +2785,12 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       .foregroundColor: NSColor.white.withAlphaComponent(0.56),
     ]
     let size = message.size(withAttributes: attributes)
+    let arrowCount = [previousSearchResultButton, nextSearchResultButton].filter { !$0.isHidden }.count
+    let statusX = panel.minX + 18 + CGFloat(arrowCount) * 28
     let statusFrame = CGRect(
-      x: panel.minX + 74,
+      x: statusX,
       y: panel.minY,
-      width: panel.width - 86,
+      width: panel.maxX - 12 - statusX,
       height: 48
     )
     message.draw(
@@ -1950,7 +2832,95 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     desktopTitleField.target = self
     desktopTitleField.action = #selector(commitDesktopTitle(_:))
     desktopTitleField.setAccessibilityLabel("Desktop title")
-    addSubview(desktopTitleField)
+    desktopTitleField.wantsLayer = true
+    desktopTitleField.layer?.cornerRadius = 10
+    desktopTabsScrollView.drawsBackground = false
+    desktopTabsScrollView.hasHorizontalScroller = true
+    desktopTabsScrollView.autohidesScrollers = true
+    desktopTabsScrollView.scrollerStyle = .overlay
+    desktopTabsScrollView.horizontalScrollElasticity = .allowed
+    desktopTabsScrollView.verticalScrollElasticity = .none
+    desktopTabsScrollView.documentView = desktopTabsContent
+    desktopTabsScrollView.setAccessibilityLabel("Desktops")
+    addSubview(desktopTabsScrollView)
+    desktopTabsContent.addSubview(desktopTitleField)
+    rebuildDesktopTabs()
+  }
+
+  private func rebuildDesktopTabs() {
+    desktopTabButtons.forEach { $0.removeFromSuperview() }
+    desktopTabButtons = desktopPages.pages.enumerated().map { index, page in
+      let button = NSButton(title: page.displayTitle, target: self, action: #selector(selectDesktopTab(_:)))
+      button.tag = index
+      button.isBordered = false
+      button.font = Self.desktopTabFont
+      button.contentTintColor = .white.withAlphaComponent(0.65)
+      button.cell?.lineBreakMode = .byTruncatingTail
+      button.toolTip = "Switch to \(page.displayTitle)"
+      button.setAccessibilityLabel(button.toolTip)
+      desktopTabsContent.addSubview(button)
+      return button
+    }
+    updateDesktopTabs()
+  }
+
+  private func updateDesktopTabs() {
+    let multiple = desktopPages.pages.count > 1
+    desktopTitleField.stringValue = desktopPages.selectedPage.title
+    desktopTitleField.font = multiple ? Self.desktopTabFont : Self.desktopTitleFont
+    if let placeholder = desktopTitleField.placeholderAttributedString?.mutableCopy() as? NSMutableAttributedString {
+      placeholder.addAttribute(.font, value: desktopTitleField.font!, range: NSRange(location: 0, length: placeholder.length))
+      desktopTitleField.placeholderAttributedString = placeholder
+      desktopTitleField.placeholderAttributedStrings = [placeholder]
+    }
+    desktopTitleField.layer?.backgroundColor = multiple
+      ? NSColor.white.withAlphaComponent(0.14).cgColor : NSColor.clear.cgColor
+    desktopTitleField.toolTip = "Rename this desktop"
+    for (button, page) in zip(desktopTabButtons, desktopPages.pages) {
+      button.title = page.displayTitle
+      button.toolTip = "Switch to \(page.displayTitle)"
+      button.setAccessibilityLabel(button.toolTip)
+      button.isHidden = page.id == desktopPages.selectedID
+    }
+    layoutDesktopTabs()
+    desktopTabsScrollView.layoutSubtreeIfNeeded()
+    desktopTabsContent.scrollToVisible(desktopTitleField.frame)
+    needsDisplay = true
+  }
+
+  private func layoutDesktopTabs() {
+    let multiple = desktopPages.pages.count > 1
+    let font = multiple ? Self.desktopTabFont : Self.desktopTitleFont
+    let widths = desktopPages.pages.map { page in
+      let title = page.title.isEmpty ? "Name this desktop" : page.displayTitle
+      let textWidth = title.size(withAttributes: [.font: font]).width
+      // Whole-point widths keep the last tab fully inside AppKit's rounded scroll bounds.
+      return ceil(min(multiple ? 260 : 720, max(multiple ? 96 : 180, textWidth + 32)))
+    }
+    let gap: CGFloat = 8
+    let contentWidth = widths.reduce(0, +) + CGFloat(max(0, widths.count - 1)) * gap
+    let layout = desktopTitleNudgeLayout
+    let visibleWidth = min(contentWidth, max(0, bounds.width - 96))
+    desktopTabsScrollView.frame = CGRect(
+      x: bounds.midX - visibleWidth / 2,
+      y: bounds.maxY - layout.titleTopInset - layout.titleBoxHeight,
+      width: visibleWidth, height: layout.titleBoxHeight
+    )
+    desktopTabsContent.frame = CGRect(x: 0, y: 0, width: contentWidth, height: layout.titleBoxHeight)
+    var x: CGFloat = 0
+    for (index, width) in widths.enumerated() {
+      let frame = CGRect(x: x, y: 0, width: width, height: layout.titleBoxHeight)
+      desktopTabButtons[index].frame = frame
+      if desktopPages.pages[index].id == desktopPages.selectedID {
+        desktopTitleField.frame = frame
+      }
+      x += width + gap
+    }
+  }
+
+  @objc private func selectDesktopTab(_ sender: NSButton) {
+    guard desktopPages.pages.indices.contains(sender.tag) else { return }
+    selectDesktop(id: desktopPages.pages[sender.tag].id)
   }
 
   private func configureNavigatorPanel() {
@@ -2038,6 +3008,22 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     debugInformationMenuItem.target = self
     debugInformationMenuItem.action = #selector(toggleDebugInformation(_:))
     navigatorMenu.addItem(debugInformationMenuItem)
+    centerGuideMenuItem.title = "Show Center Guide"
+    centerGuideMenuItem.target = self
+    centerGuideMenuItem.action = #selector(toggleCenterGuide(_:))
+    navigatorMenu.addItem(centerGuideMenuItem)
+    synchronizedSelectionMenuItem.title = "Animate Selection from Start"
+    synchronizedSelectionMenuItem.target = self
+    synchronizedSelectionMenuItem.action = #selector(toggleSynchronizedSelection(_:))
+    navigatorMenu.addItem(synchronizedSelectionMenuItem)
+    lightClosedCardsMenuItem.title = "Use Light Closed Cards"
+    lightClosedCardsMenuItem.target = self
+    lightClosedCardsMenuItem.action = #selector(toggleLightClosedCards(_:))
+    navigatorMenu.addItem(lightClosedCardsMenuItem)
+    privateBrowserPreviewsMenuItem.title = "Show Private Browser Previews"
+    privateBrowserPreviewsMenuItem.target = self
+    privateBrowserPreviewsMenuItem.action = #selector(togglePrivateBrowserPreviews(_:))
+    navigatorMenu.addItem(privateBrowserPreviewsMenuItem)
     navigatorMenu.addItem(.separator())
     commandTabShortcutMenuItem.title = "Use ⌘Tab for OpenPlane"
     commandTabShortcutMenuItem.target = self
@@ -2099,6 +3085,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     addSubview(searchField)
 
     nextSearchResultButton.title = ""
+    nextSearchResultButton.usesOpacityOnlyHover = true
     nextSearchResultButton.image = Self.searchResultImage(previous: false)
     nextSearchResultButton.imagePosition = .imageOnly
     nextSearchResultButton.isBordered = false
@@ -2111,6 +3098,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     addSubview(nextSearchResultButton)
 
     previousSearchResultButton.title = ""
+    previousSearchResultButton.usesOpacityOnlyHover = true
     previousSearchResultButton.image = Self.searchResultImage(previous: true)
     previousSearchResultButton.imagePosition = .imageOnly
     previousSearchResultButton.isBordered = false
@@ -2165,12 +3153,20 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
 
   private func updateNavigatorPanel() {
     let selectedNode = nodes.first(where: { $0.id == selectedWindowID })
-    let node =
+    let selectedPlaceholder = selectedPlaceholderBundleIdentifier.flatMap { bundleIdentifier in
+      appPlaceholders.first { $0.bundleIdentifier == bundleIdentifier }
+    }
+    let previewNode =
       isHoveringBackButton ? backNavigationTarget
       : isHoveringForwardButton ? forwardNavigationTarget : selectedNode
-    let title = node?.applicationName ?? "No app selected"
-    focusButton.isEnabled = selectedNode != nil
-    if !hasDisplayedNavigatorContent || displayedNavigatorNodeID != node?.id {
+    let title = previewNode?.applicationName
+      ?? selectedPlaceholder?.applicationName
+      ?? "No app selected"
+    let icon = previewNode?.icon ?? selectedPlaceholder?.icon
+    let contentID = previewNode.map { "window:\($0.id)" }
+      ?? selectedPlaceholder.map { "app:\($0.bundleIdentifier)" }
+    focusButton.isEnabled = selectedNode != nil || selectedPlaceholder != nil
+    if !hasDisplayedNavigatorContent || displayedNavigatorContentID != contentID {
       if hasDisplayedNavigatorContent {
         let transition = CATransition()
         transition.type = .fade
@@ -2182,30 +3178,36 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
         string: title,
         attributes: [
           .font: Self.navigatorTextFont,
-          .foregroundColor: NSColor.white.withAlphaComponent(node == nil ? 0.42 : 0.92),
+          .foregroundColor: NSColor.white.withAlphaComponent(contentID == nil ? 0.42 : 0.92),
         ]
       )
-      if let icon = node?.icon?.copy() as? NSImage {
+      if let icon = icon?.copy() as? NSImage {
         icon.size = CGSize(width: 22, height: 22)
         focusButton.image = icon
       } else {
         focusButton.image = nil
       }
-      displayedNavigatorNodeID = node?.id
+      displayedNavigatorContentID = contentID
       hasDisplayedNavigatorContent = true
     }
-    focusButton.toolTip = selectedNode.map { "Open \($0.applicationName)" }
-    focusButton.setAccessibilityLabel(selectedNode.map { "Open \($0.applicationName)" } ?? title)
+    let selectedApplicationName = selectedNode?.applicationName
+      ?? selectedPlaceholder?.applicationName
+    focusButton.toolTip = selectedApplicationName.map { "Open \($0)" }
+    focusButton.setAccessibilityLabel(selectedApplicationName.map { "Open \($0)" } ?? title)
     backButton.isEnabled = backNavigationTarget != nil
-    backButton.isHidden = isSearching
+    backButton.isHidden = isSearching || backNavigationTarget == nil
     backButton.toolTip = backNavigationTarget.map { "Select \($0.applicationName)" }
     backButton.setAccessibilityLabel(backButton.toolTip ?? "Select previous app")
     forwardButton.isEnabled = forwardNavigationTarget != nil
-    forwardButton.isHidden = isSearching
+    forwardButton.isHidden = isSearching || forwardNavigationTarget == nil
     forwardButton.toolTip = forwardNavigationTarget.map { "Select \($0.applicationName)" }
     forwardButton.setAccessibilityLabel(forwardButton.toolTip ?? "Select next app")
     expandLandscapePreviewsMenuItem.state = expandsLandscapePreviews ? .on : .off
     debugInformationMenuItem.state = showsDebugInformation ? .on : .off
+    centerGuideMenuItem.state = showsCenterGuide ? .on : .off
+    synchronizedSelectionMenuItem.state = synchronizesSelectionAnimation ? .on : .off
+    lightClosedCardsMenuItem.state = usesLightClosedCards ? .on : .off
+    privateBrowserPreviewsMenuItem.state = showsPrivateBrowserPreviews ? .on : .off
     commandTabShortcutMenuItem.state = usesCommandTabShortcut ? .on : .off
     updateLockViewButton()
     needsLayout = true
@@ -2214,8 +3216,11 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   func controlTextDidChange(_ notification: Notification) {
     guard let field = notification.object as? NSTextField else { return }
     if field === desktopTitleField {
+      keepDesktopTitleInsertionPointWhite()
       desktopPages.renameSelectedPage(field.stringValue)
       scheduleDesktopPagesPersistence()
+      needsLayout = true
+      needsDisplay = true
       return
     }
     if field === searchField { updateSearchResults(centerSelection: true) }
@@ -2228,7 +3233,16 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     else { return }
     editor.alignment = .center
     editor.textColor = .white
+    keepDesktopTitleInsertionPointWhite()
+    DispatchQueue.main.async { [weak self] in
+      self?.keepDesktopTitleInsertionPointWhite()
+    }
+  }
+
+  private func keepDesktopTitleInsertionPointWhite() {
+    guard let editor = desktopTitleField.currentEditor() as? NSTextView else { return }
     editor.insertionPointColor = .white
+    editor.needsDisplay = true
   }
 
   func control(
@@ -2236,6 +3250,12 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     textView: NSTextView,
     doCommandBy commandSelector: Selector
   ) -> Bool {
+    if control === desktopTitleField {
+      DispatchQueue.main.async { [weak self] in
+        self?.keepDesktopTitleInsertionPointWhite()
+      }
+      return false
+    }
     guard control === searchField else { return false }
     if commandSelector == #selector(NSResponder.moveDown(_:)) {
       moveSearchSelection(by: 1)
@@ -2248,17 +3268,26 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     return false
   }
 
-  private func matchesSearch(_ node: WindowNode) -> Bool {
-    CanvasSearch.matches(
-      query: searchField.stringValue,
-      applicationName: node.applicationName,
-      title: node.title
-    )
+  private func matchesSearch(_ target: NavigationTarget) -> Bool {
+    switch target {
+    case .window(let node):
+      CanvasSearch.matches(
+        query: searchField.stringValue, applicationName: node.applicationName, title: node.displayTitle)
+    case .placeholder(let placeholder):
+      CanvasSearch.matches(
+        query: searchField.stringValue, applicationName: placeholder.applicationName, title: "")
+    }
   }
 
-  private var searchResults: [WindowNode] {
+  private func searchOpacity(for target: NavigationTarget) -> CGFloat {
+    // Closed cards already have their subdued appearance; search must not dim them again.
+    guard case .window = target else { return 1 }
+    return isSearching && !matchesSearch(target) ? 0.14 : 1
+  }
+
+  private var searchResults: [NavigationTarget] {
     let query = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-    return query.isEmpty ? [] : nodes.filter(matchesSearch)
+    return query.isEmpty ? [] : navigationTargets.filter(matchesSearch)
   }
 
   private func updateSearchResults(centerSelection: Bool) {
@@ -2271,57 +3300,45 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     }
 
     let matches = searchResults
-    let currentMatch = matches.first { $0.id == selectedWindowID }
+    let currentMatch = matches.first { $0.key == selectedNavigationTarget?.key }
     guard let result = currentMatch ?? matches.first else {
       selectedWindowID = nil
+      selectedPlaceholderBundleIdentifier = nil
       updateSearchNavigationButtons()
       return
     }
 
-    let changed = selectedWindowID != result.id
-    selectedWindowID = result.id
+    let changed = selectedNavigationTarget?.key != result.key
+    selectNavigationTarget(result)
     updateSearchNavigationButtons()
     if centerSelection, changed {
-      animateCamera(
-        to: CameraState(
-          center: CGPoint(x: result.worldFrame.midX, y: result.worldFrame.midY),
-          zoom: camera.zoom
-        ),
-        duration: Self.selectionTransitionDuration
-      ) {}
+      centerCamera(on: result)
     }
   }
 
   private func moveSearchSelection(by offset: Int) {
     let matches = searchResults
-    guard let currentIndex = matches.firstIndex(where: { $0.id == selectedWindowID }) else {
+    guard let currentIndex = matches.firstIndex(where: { $0.key == selectedNavigationTarget?.key }) else {
       return
     }
     let nextIndex = currentIndex + offset
     guard matches.indices.contains(nextIndex) else { return }
     let result = matches[nextIndex]
-    selectedWindowID = result.id
+    selectNavigationTarget(result)
     updateSearchNavigationButtons()
-    animateCamera(
-      to: CameraState(
-        center: CGPoint(x: result.worldFrame.midX, y: result.worldFrame.midY),
-        zoom: camera.zoom
-      ),
-      duration: Self.selectionTransitionDuration
-    ) {}
+    centerCamera(on: result)
   }
 
   private func updateSearchNavigationButtons() {
     let matches = searchResults
-    let selectedIndex = matches.firstIndex { $0.id == selectedWindowID }
-    let showsNavigation = isSearching && matches.count >= 2
-    nextSearchResultButton.isHidden = !showsNavigation
-    previousSearchResultButton.isHidden = !showsNavigation
-    nextSearchResultButton.isEnabled = selectedIndex.map { $0 < matches.count - 1 } ?? false
-    previousSearchResultButton.isEnabled = selectedIndex.map { $0 > 0 } ?? false
+    let selectedIndex = matches.firstIndex { $0.key == selectedNavigationTarget?.key }
+    nextSearchResultButton.isEnabled = isSearching && (selectedIndex.map { $0 < matches.count - 1 } ?? false)
+    previousSearchResultButton.isEnabled = isSearching && (selectedIndex.map { $0 > 0 } ?? false)
     for button in [nextSearchResultButton, previousSearchResultButton] {
-      button.contentTintColor = NSColor.white.withAlphaComponent(button.isEnabled ? 0.82 : 0.5)
+      button.isHidden = !button.isEnabled
+      button.contentTintColor = .white
     }
+    needsLayout = true
     needsDisplay = true
   }
 
@@ -2363,7 +3380,11 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     menuButton.isHidden = visible
     nextSearchResultButton.isHidden = true
     previousSearchResultButton.isHidden = true
-    if visible { updateSearchNavigationButtons() }
+    if visible {
+      updateSearchNavigationButtons()
+    } else {
+      updateNavigatorPanel()
+    }
   }
 
   @objc private func focusSelectedApp(_ sender: NSButton) {
@@ -2385,6 +3406,10 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   @objc private func showNavigatorMenu(_ sender: NSButton) {
     expandLandscapePreviewsMenuItem.state = expandsLandscapePreviews ? .on : .off
     debugInformationMenuItem.state = showsDebugInformation ? .on : .off
+    centerGuideMenuItem.state = showsCenterGuide ? .on : .off
+    synchronizedSelectionMenuItem.state = synchronizesSelectionAnimation ? .on : .off
+    lightClosedCardsMenuItem.state = usesLightClosedCards ? .on : .off
+    privateBrowserPreviewsMenuItem.state = showsPrivateBrowserPreviews ? .on : .off
     commandTabShortcutMenuItem.state = usesCommandTabShortcut ? .on : .off
     rebuildDesktopPagesMenu()
     navigatorMenu.popUp(
@@ -2414,6 +3439,39 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     needsDisplay = true
   }
 
+  @objc private func toggleCenterGuide(_ sender: NSMenuItem) {
+    showsCenterGuide.toggle()
+    UserDefaults.standard.set(showsCenterGuide, forKey: Self.centerGuidePreferenceKey)
+    sender.state = showsCenterGuide ? .on : .off
+    needsDisplay = true
+  }
+
+  @objc private func toggleSynchronizedSelection(_ sender: NSMenuItem) {
+    synchronizesSelectionAnimation.toggle()
+    UserDefaults.standard.set(
+      synchronizesSelectionAnimation,
+      forKey: Self.synchronizedSelectionPreferenceKey
+    )
+    sender.state = synchronizesSelectionAnimation ? .on : .off
+  }
+
+  @objc private func toggleLightClosedCards(_ sender: NSMenuItem) {
+    usesLightClosedCards.toggle()
+    UserDefaults.standard.set(usesLightClosedCards, forKey: Self.lightClosedCardsPreferenceKey)
+    sender.state = usesLightClosedCards ? .on : .off
+    needsDisplay = true
+  }
+
+  @objc private func togglePrivateBrowserPreviews(_ sender: NSMenuItem) {
+    showsPrivateBrowserPreviews.toggle()
+    UserDefaults.standard.set(
+      showsPrivateBrowserPreviews,
+      forKey: OpenPlanePreferences.showPrivateBrowserPreviews
+    )
+    sender.state = showsPrivateBrowserPreviews ? .on : .off
+    delegate?.canvasView(self, setPrivateBrowserPreviews: showsPrivateBrowserPreviews)
+  }
+
   @objc private func toggleCommandTabShortcut(_ sender: NSMenuItem) {
     let enabled = !usesCommandTabShortcut
     guard delegate?.canvasView(self, setCommandTabShortcut: enabled) == true else {
@@ -2430,6 +3488,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   }
 
   @objc private func openSearchResult(_ sender: NSTextField) {
+    guard searchResults.contains(where: { $0.key == selectedNavigationTarget?.key }) else { return }
     focusSelectedWindow()
   }
 
@@ -2446,8 +3505,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       animateCamera(to: lockedCamera) {}
       return
     }
-    guard !nodes.isEmpty else { return }
-    let target = CanvasMath.fitCamera(frames: nodes.map(\.worldFrame), in: bounds)
+    guard !canvasItemFrames.isEmpty else { return }
+    let target = CanvasMath.fitCamera(frames: canvasItemFrames, in: bounds)
     animateCamera(to: target) {}
   }
 
@@ -2455,6 +3514,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     desktopPages.renameSelectedPage(sender.stringValue)
     persistDesktopPages()
     window?.makeFirstResponder(self)
+    updateDesktopTabs()
   }
 
   @objc private func toggleLockedView(_ sender: NSButton) {
@@ -2464,29 +3524,123 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   }
 
   @objc private func addDesktopPage(_ sender: NSMenuItem) {
-    let target = CameraState(
-      center: CGPoint(
-        x: camera.center.x + max(640, bounds.width * 0.82) / camera.zoom,
-        y: camera.center.y
-      ),
-      zoom: camera.zoom
-    )
-    _ = desktopPages.addPage(camera: target)
-    desktopTitleField.stringValue = desktopPages.selectedPage.title
-    persistDesktopPages()
-    updateLockViewButton()
-    animateCamera(to: target) {}
+    transitionDesktop { [weak self] in
+      guard let self else { return }
+      // Desktops are independent arrangements, not adjacent regions of one plane.
+      _ = self.desktopPages.addPage(camera: self.camera)
+      self.rebuildDesktopTabs()
+      self.applySelectedDesktop(camera: self.camera)
+    }
   }
 
   @objc private func selectDesktopPage(_ sender: NSMenuItem) {
     guard let rawID = sender.representedObject as? String,
-      let id = UUID(uuidString: rawID),
-      let target = desktopPages.select(id)
+      let id = UUID(uuidString: rawID)
     else { return }
-    desktopTitleField.stringValue = desktopPages.selectedPage.title
+    selectDesktop(id: id)
+  }
+
+  private func selectDesktop(id: UUID) {
+    guard desktopPages.pages.contains(where: { $0.id == id }) else { return }
+    guard id != desktopPages.selectedID || desktopTransitionStartedAt != nil else { return }
+    transitionDesktop { [weak self] in
+      guard let self else { return }
+      let target = self.desktopPages.select(id) ?? self.camera
+      self.applySelectedDesktop(camera: target)
+    }
+  }
+
+  private func applySelectedDesktop(camera target: CameraState) {
+    clearGroupSelection()
+    selectedWindowID = nil
+    selectedPlaceholderBundleIdentifier = nil
+    // Assign, don't interpolate: both the layout and camera change under the opaque fade.
+    camera = target
+    applySelectedDesktopLayout(around: target.center)
+    updateDesktopTabs()
+    updateNavigatorPanel()
     persistDesktopPages()
     updateLockViewButton()
-    animateCamera(to: target) {}
+  }
+
+  private func transitionDesktop(_ change: @escaping () -> Void) {
+    if desktopTransitionStartedAt != nil {
+      pendingDesktopChange = change
+      return
+    }
+    window?.makeFirstResponder(self)
+    dismissSearch()
+    dismissSettings()
+    stopKeyboardZoom(completingTap: false)
+    stopKeyboardTapZoom()
+    animationDisplayLink?.invalidate()
+    animationDisplayLink = nil
+    cameraAnimation = nil
+    isPresentingFinalAnimationFrame = false
+    endFocusTransition()
+    interaction = nil
+    setHoveredWindow(nil)
+    synchronizeManifestedPlacements()
+    persistDesktopPages()
+
+    desktopFadeView.frame = bounds
+    desktopFadeView.autoresizingMask = [.width, .height]
+    desktopFadeView.wantsLayer = true
+    desktopFadeView.layer?.backgroundColor = background.color.cgColor
+    desktopFadeView.alphaValue = 0
+    addSubview(desktopFadeView, positioned: .above, relativeTo: nil)
+    // The tab strip stays stationary and usable while the canvas fades underneath it.
+    addSubview(desktopTabsScrollView, positioned: .above, relativeTo: desktopFadeView)
+    desktopTransitionChange = change
+    desktopTransitionStartedAt = CACurrentMediaTime()
+    let link = displayLink(target: self, selector: #selector(stepDesktopTransition(_:)))
+    desktopTransitionDisplayLink = link
+    link.add(to: .main, forMode: .common)
+  }
+
+  @objc private func stepDesktopTransition(_ displayLink: CADisplayLink) {
+    guard let startedAt = desktopTransitionStartedAt else {
+      displayLink.invalidate()
+      return
+    }
+    advanceDesktopTransition(to: (CACurrentMediaTime() - startedAt) / Self.desktopTransitionDuration)
+  }
+
+  var desktopTransitionOpacity: CGFloat {
+    desktopTransitionStartedAt == nil ? 0 : desktopFadeView.alphaValue
+  }
+
+  // Also exercised at exact frame boundaries by the desktop interaction regression tests.
+  func advanceDesktopTransition(to progress: CGFloat) {
+    guard desktopTransitionStartedAt != nil else { return }
+    let progress = min(1, max(0, progress))
+    desktopFadeView.alphaValue = CanvasMath.easedTransition(1 - abs(2 * progress - 1))
+    if progress >= 0.5, let change = desktopTransitionChange {
+      desktopTransitionChange = nil
+      desktopFadeView.alphaValue = 1
+      change()
+    }
+    if progress >= 1 {
+      let pending = pendingDesktopChange
+      pendingDesktopChange = nil
+      finishDesktopTransition()
+      if let pending { transitionDesktop(pending) }
+    }
+  }
+
+  private func finishDesktopTransition() {
+    guard desktopTransitionStartedAt != nil else { return }
+    let change = desktopTransitionChange
+    let pending = pendingDesktopChange
+    desktopTransitionChange = nil
+    pendingDesktopChange = nil
+    desktopTransitionStartedAt = nil
+    desktopTransitionDisplayLink?.invalidate()
+    desktopTransitionDisplayLink = nil
+    change?()
+    pending?()
+    desktopFadeView.removeFromSuperview()
+    needsDisplay = true
   }
 
   private func rebuildDesktopPagesMenu() {
@@ -2522,6 +3676,272 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     perform(#selector(persistDesktopPages), with: nil, afterDelay: 0.3)
   }
 
+  private func currentWindowSnapshots() -> [WindowPlacementSnapshot] {
+    nodes.map { node in
+      WindowPlacementSnapshot(
+        windowID: node.id,
+        bundleIdentifier: node.bundleIdentifier,
+        title: node.displayTitle,
+        center: CGPoint(x: node.worldFrame.midX, y: node.worldFrame.midY),
+        size: node.worldFrame.size
+      )
+    }
+  }
+
+  private func synchronizeManifestedPlacements() {
+    let snapshots = currentWindowSnapshots()
+    let placements = desktopPages.selectedAppPlacements
+    guard !snapshots.isEmpty, !placements.isEmpty else { return }
+    let before = desktopPages
+    for placement in placements {
+      let windows = snapshots.filter { $0.bundleIdentifier == placement.bundleIdentifier }
+      guard !windows.isEmpty else { continue }
+      let applicationName = nodes.first(where: {
+        $0.bundleIdentifier == placement.bundleIdentifier
+      })?.applicationName ?? placement.applicationName
+      desktopPages.updateSelectedAppPlacement(
+        bundleIdentifier: placement.bundleIdentifier,
+        applicationName: applicationName,
+        home: placement.home,
+        windows: windows
+      )
+    }
+    if desktopPages != before { scheduleDesktopPagesPersistence() }
+  }
+
+  private func manifestMovedItems(originalFrames: [String: CGRect], primaryTarget: NavigationTarget?) {
+    // Save closed homes before refreshing placeholders as part of window persistence.
+    for placeholder in appPlaceholders
+    where originalFrames[NavigationTarget.placeholder(placeholder).key] != nil {
+      desktopPages.moveSelectedAppPlacement(
+        bundleIdentifier: placeholder.bundleIdentifier,
+        to: CGPoint(x: placeholder.worldFrame.midX, y: placeholder.worldFrame.midY)
+      )
+    }
+    let windowFrames = Dictionary(uniqueKeysWithValues: nodes.compactMap { node in
+      originalFrames[NavigationTarget.window(node).key].map { (node.id, $0) }
+    })
+    let primaryWindowID: CGWindowID? = if case .window(let node) = primaryTarget { node.id } else { nil }
+    manifestMovedWindows(Set(windowFrames.keys), primaryWindowID: primaryWindowID, originalFrames: windowFrames)
+  }
+
+  private func manifestMovedWindows(
+    _ movedWindowIDs: Set<CGWindowID>,
+    primaryWindowID: CGWindowID?,
+    originalFrames: [CGWindowID: CGRect]
+  ) {
+    let movedNodes = nodes.filter { movedWindowIDs.contains($0.id) }
+    for bundleIdentifier in Set(movedNodes.map(\.bundleIdentifier)) {
+      let applicationNodes = nodes.filter { $0.bundleIdentifier == bundleIdentifier }
+      guard !applicationNodes.isEmpty else { continue }
+      let existing = desktopPages.selectedAppPlacement(for: bundleIdentifier)
+      let movedAllApplicationWindows = Set(applicationNodes.map(\.id)).isSubset(
+        of: movedWindowIDs
+      )
+      let preferredNode = primaryWindowID.flatMap { id in
+        applicationNodes.first(where: { $0.id == id })
+      } ?? movedNodes.first(where: { $0.bundleIdentifier == bundleIdentifier })
+        ?? applicationNodes.min(by: { $0.id < $1.id })!
+
+      let home: CGPoint
+      if let existing, movedAllApplicationWindows,
+        let original = originalFrames[preferredNode.id]
+      {
+        home = CGPoint(
+          x: existing.home.x + preferredNode.worldFrame.midX - original.midX,
+          y: existing.home.y + preferredNode.worldFrame.midY - original.midY
+        )
+      } else if let existing {
+        home = existing.home
+      } else {
+        home = CGPoint(x: preferredNode.worldFrame.midX, y: preferredNode.worldFrame.midY)
+      }
+
+      desktopPages.updateSelectedAppPlacement(
+        bundleIdentifier: bundleIdentifier,
+        applicationName: preferredNode.applicationName,
+        home: home,
+        windows: applicationNodes.map(windowSnapshot)
+      )
+    }
+    persistDesktopPages()
+    refreshPlaceholders()
+  }
+
+  private func windowSnapshot(_ node: WindowNode) -> WindowPlacementSnapshot {
+    WindowPlacementSnapshot(
+      windowID: node.id,
+      bundleIdentifier: node.bundleIdentifier,
+      title: node.displayTitle,
+      center: CGPoint(x: node.worldFrame.midX, y: node.worldFrame.midY),
+      size: node.worldFrame.size
+    )
+  }
+
+  private func applySelectedDesktopLayout(around anchor: CGPoint) {
+    refreshPlaceholders()
+    let centers = desktopPages.selectedWindowCenters(for: currentWindowSnapshots())
+    var occupied = reservedAppFrames()
+
+    for node in nodes {
+      guard let center = centers[node.id] else { continue }
+      node.worldFrame = CGRect(
+        x: center.x - node.worldFrame.width / 2,
+        y: center.y - node.worldFrame.height / 2,
+        width: node.worldFrame.width,
+        height: node.worldFrame.height
+      )
+      occupied.append(node.worldFrame)
+    }
+    for node in nodes where centers[node.id] == nil {
+      node.worldFrame = CanvasMath.nearestAvailableFrame(
+        size: node.worldFrame.size,
+        centeredAt: anchor,
+        avoiding: occupied
+      )
+      occupied.append(node.worldFrame)
+    }
+    needsDisplay = true
+    schedulePreviewToolTipUpdate()
+  }
+
+  private func refreshPlaceholders() {
+    for placeholder in appPlaceholders
+    where groupSelectionIDs.contains(NavigationTarget.placeholder(placeholder).key) {
+      if let node = nodes.first(where: { $0.bundleIdentifier == placeholder.bundleIdentifier }) {
+        groupSelectionIDs.insert(NavigationTarget.window(node).key)
+      }
+    }
+    let previousFrames = itemFrames
+    let liveBundles = Set(nodes.map(\.bundleIdentifier))
+    appPlaceholders = desktopPages.selectedAppPlacements.compactMap { placement in
+      guard !liveBundles.contains(placement.bundleIdentifier) else { return nil }
+      let applicationURL = NSWorkspace.shared.urlForApplication(
+        withBundleIdentifier: placement.bundleIdentifier
+      ).flatMap {
+        FileManager.default.fileExists(atPath: $0.path) ? $0 : nil
+      }
+      let icon = appIconsByBundle[placement.bundleIdentifier] ?? applicationURL.map {
+        NSWorkspace.shared.icon(forFile: $0.path)
+      } ?? NSImage(systemSymbolName: "app.dashed", accessibilityDescription: "Application")
+      if let icon { appIconsByBundle[placement.bundleIdentifier] = icon }
+      let applicationName = applicationURL?.deletingPathExtension().lastPathComponent
+        ?? placement.applicationName
+      let size = fullviewPreviewSize
+      return AppPlaceholder(
+        bundleIdentifier: placement.bundleIdentifier,
+        applicationName: applicationName,
+        worldFrame: CGRect(
+          x: placement.home.x - size.width / 2,
+          y: placement.home.y - size.height / 2,
+          width: size.width,
+          height: size.height
+        ),
+        icon: icon,
+        isAvailable: applicationURL != nil,
+        isLaunching: launchingPlaceholderBundles.contains(placement.bundleIdentifier),
+        errorMessage: placeholderErrors[placement.bundleIdentifier]
+      )
+    }.sorted { $0.applicationName.localizedStandardCompare($1.applicationName) == .orderedAscending }
+    if case .items(_, _, let frames, _, true) = interaction {
+      for index in appPlaceholders.indices {
+        let key = NavigationTarget.placeholder(appPlaceholders[index]).key
+        if frames[key] != nil, let frame = previousFrames[key] {
+          appPlaceholders[index].worldFrame = frame
+        }
+      }
+    }
+    groupSelectionIDs.formIntersection(itemFrames.keys)
+    if interaction == nil { fitGroupSelectionToItems() }
+    needsDisplay = true
+  }
+
+  private func selectPlaceholder(_ bundleIdentifier: String) {
+    selectedWindowID = nil
+    selectedPlaceholderBundleIdentifier = bundleIdentifier
+  }
+
+  private func activatePlaceholder(_ bundleIdentifier: String) {
+    guard let placeholder = appPlaceholders.first(where: {
+      $0.bundleIdentifier == bundleIdentifier
+    }) else { return }
+    selectPlaceholder(bundleIdentifier)
+    guard !launchingPlaceholderBundles.contains(bundleIdentifier) else { return }
+    guard placeholder.isAvailable else {
+      placeholderErrors[bundleIdentifier] = "App unavailable"
+      refreshPlaceholders()
+      return
+    }
+    placeholderErrors[bundleIdentifier] = nil
+    launchingPlaceholderBundles.insert(bundleIdentifier)
+    refreshPlaceholders()
+    delegate?.canvasView(
+      self,
+      didRequestLaunch: bundleIdentifier,
+      applicationName: placeholder.applicationName,
+      at: CGPoint(x: placeholder.worldFrame.midX, y: placeholder.worldFrame.midY)
+    )
+  }
+
+  func showLaunchError(for bundleIdentifier: String, message: String) {
+    launchingPlaceholderBundles.remove(bundleIdentifier)
+    placeholderErrors[bundleIdentifier] = message
+    refreshPlaceholders()
+  }
+
+  func completePlaceholderLaunch(for bundleIdentifier: String) {
+    launchingPlaceholderBundles.remove(bundleIdentifier)
+    placeholderErrors[bundleIdentifier] = nil
+    refreshPlaceholders()
+  }
+
+  var hasCanvasSelection: Bool {
+    if let selectedWindowID, nodes.contains(where: { $0.id == selectedWindowID }) { return true }
+    if let selectedPlaceholderBundleIdentifier {
+      return appPlaceholders.contains {
+        $0.bundleIdentifier == selectedPlaceholderBundleIdentifier
+      }
+    }
+    return false
+  }
+
+  var hasManifestedAppPlacements: Bool {
+    desktopPages.hasSelectedAppPlacements
+  }
+
+  func restoredWindowCenters(
+    for windows: [WindowPlacementSnapshot]
+  ) -> [CGWindowID: CGPoint] {
+    desktopPages.selectedWindowCenters(for: windows)
+  }
+
+  func manifestedAppHome(for bundleIdentifier: String) -> CGPoint? {
+    desktopPages.selectedAppPlacement(for: bundleIdentifier)?.home
+  }
+
+  func reservedAppFrames(excluding bundleIdentifier: String? = nil) -> [CGRect] {
+    return desktopPages.selectedAppPlacements.compactMap { placement in
+      guard placement.bundleIdentifier != bundleIdentifier else { return nil }
+      let size = fullviewPreviewSize
+      return CGRect(
+        x: placement.home.x - size.width / 2,
+        y: placement.home.y - size.height / 2,
+        width: size.width,
+        height: size.height
+      )
+    }
+  }
+
+  private var fullviewPreviewSize: CGSize {
+    let size = bounds.size
+    return size.width > 0 && size.height > 0
+      ? size : CGSize(width: 960, height: 600)
+  }
+
+  private var canvasItemFrames: [CGRect] {
+    nodes.map(\.worldFrame) + appPlaceholders.map(\.worldFrame)
+  }
+
   @objc private func persistDesktopPages() {
     guard let data = try? JSONEncoder().encode(desktopPages) else { return }
     UserDefaults.standard.set(data, forKey: Self.desktopPagesPreferenceKey)
@@ -2535,10 +3955,20 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   }
 
   private func focusSelectedWindow() {
+    if let selectedWindowID,
+      let node = nodes.first(where: { $0.id == selectedWindowID })
+    {
+      delegate?.canvasView(self, didRequestFocus: node)
+    } else if let selectedPlaceholderBundleIdentifier {
+      activatePlaceholder(selectedPlaceholderBundleIdentifier)
+    }
+  }
+
+  private func quitSelectedApplication() {
     guard let selectedWindowID,
       let node = nodes.first(where: { $0.id == selectedWindowID })
     else { return }
-    delegate?.canvasView(self, didRequestFocus: node)
+    delegate?.canvasView(self, didRequestQuit: node)
   }
 
   @objc private func showSettings(_ sender: NSButton) {

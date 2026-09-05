@@ -9,10 +9,50 @@ struct DiscoveredWindow {
   let bundleIdentifier: String
   let applicationName: String
   let title: String
+  let isPrivateBrowsing: Bool
   let frame: CGRect
   let icon: NSImage?
   let captureWindow: SCWindow
   let accessibilityElement: AXUIElement?
+}
+
+enum BrowserPrivacy {
+  private static let browserBundleMarkers = [
+    "com.apple.safari", "com.google.chrome", "org.chromium", "org.mozilla.firefox",
+    "com.microsoft.edgemac", "com.brave.browser", "company.thebrowser",
+    "com.operasoftware.opera", "com.vivaldi.vivaldi", "com.duckduckgo.macos.browser",
+    "com.kagi.kagimacos",
+  ]
+  private static let browserNameMarkers = [
+    "safari", "chrome", "chromium", "firefox", "edge", "brave", "arc", "dia",
+    "opera", "vivaldi", "duckduckgo", "orion", "zen browser",
+  ]
+  private static let privateTitleMarkers = [
+    "incognito", "inprivate", "private browsing", "private window", "private mode",
+    "inkognito", "privates surfen", "privates fenster", "privater modus",
+    "navigation privee", "navegacion privada", "navegacao privada",
+    "navigazione privata", "privenavigatie", "tryb incognito", "инкогнито",
+    "シークレット", "プライベートブラウズ", "无痕", "無痕", "시크릿",
+  ]
+
+  static func isPrivateWindow(
+    bundleIdentifier: String,
+    applicationName: String,
+    title: String
+  ) -> Bool {
+    let bundle = normalized(bundleIdentifier)
+    let application = normalized(applicationName)
+    let isBrowser = browserBundleMarkers.contains(where: bundle.contains)
+      || browserNameMarkers.contains(where: application.contains)
+    guard isBrowser else { return false }
+    let title = normalized(title)
+    return privateTitleMarkers.contains(where: title.contains)
+  }
+
+  private static func normalized(_ value: String) -> String {
+    value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+      .lowercased()
+  }
 }
 
 struct WindowGeometry {
@@ -23,6 +63,14 @@ struct WindowGeometry {
 struct CapturedPreview: @unchecked Sendable {
   let image: CGImage
   let size: CGSize
+}
+
+enum WindowCaptureError: LocalizedError {
+  case privateBrowsing
+
+  var errorDescription: String? {
+    "Preview disabled for private browsing."
+  }
 }
 
 private struct AccessibilityWindowRequest: Sendable {
@@ -207,8 +255,8 @@ private enum AccessibilityWindowMatching {
 
 enum WindowIdentity {
   static func titleMatchScore(source: String, candidate: String) -> Int? {
-    let source = normalized(source)
-    let candidate = normalized(candidate)
+    let source = normalizedTitle(source)
+    let candidate = normalizedTitle(candidate)
     guard !source.isEmpty, !candidate.isEmpty else { return nil }
     if source == candidate { return 0 }
     if source.contains(candidate) || candidate.contains(source) { return 1 }
@@ -226,7 +274,7 @@ enum WindowIdentity {
     return 2
   }
 
-  private static func normalized(_ title: String) -> String {
+  static func normalizedTitle(_ title: String) -> String {
     title.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
       .replacingOccurrences(of: "...", with: "…")
       .split(whereSeparator: \.isWhitespace)
@@ -275,12 +323,18 @@ final class WindowService {
         accessibility.eligibleProcessIDs.contains(application.processID)
       else { return nil }
       let title = window.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+      let resolvedTitle = title?.isEmpty == false ? title! : application.applicationName
       return DiscoveredWindow(
         id: window.windowID,
         processID: application.processID,
         bundleIdentifier: application.bundleIdentifier,
         applicationName: application.applicationName,
-        title: title?.isEmpty == false ? title! : application.applicationName,
+        title: resolvedTitle,
+        isPrivateBrowsing: BrowserPrivacy.isPrivateWindow(
+          bundleIdentifier: application.bundleIdentifier,
+          applicationName: application.applicationName,
+          title: resolvedTitle
+        ),
         frame: window.frame,
         icon: applicationIcon(for: application.processID),
         captureWindow: window,
@@ -297,6 +351,16 @@ final class WindowService {
     window: SCWindow,
     targetLongEdgePixels: Int = 1_200
   ) async throws -> CapturedPreview {
+    if let application = window.owningApplication,
+      BrowserPrivacy.isPrivateWindow(
+        bundleIdentifier: application.bundleIdentifier,
+        applicationName: application.applicationName,
+        title: window.title ?? ""
+      ),
+      !UserDefaults.standard.bool(forKey: OpenPlanePreferences.showPrivateBrowserPreviews)
+    {
+      throw WindowCaptureError.privateBrowsing
+    }
     let size = window.frame.size
     let longEdge = max(size.width, size.height)
     let scale = min(2, CGFloat(targetLongEdgePixels) / max(1, longEdge))
@@ -342,6 +406,23 @@ final class WindowService {
       AXUIElementPerformAction(element, kAXRaiseAction as CFString)
     }
     NSRunningApplication(processIdentifier: node.processID)?.activate(options: [])
+  }
+
+  @discardableResult
+  func activate(_ application: NSRunningApplication) -> Bool {
+    let activated = application.activate(options: [.activateAllWindows])
+    let accessibilityApplication = AXUIElementCreateApplication(application.processIdentifier)
+    let madeFrontmost = AXUIElementSetAttributeValue(
+      accessibilityApplication,
+      kAXFrontmostAttribute as CFString,
+      kCFBooleanTrue
+    ) == .success
+    let raisedWindow = AccessibilityWindowMatching.windows(
+      processID: application.processIdentifier
+    ).first.map {
+      AXUIElementPerformAction($0, kAXRaiseAction as CFString) == .success
+    } ?? false
+    return activated || madeFrontmost || raisedWindow
   }
 
   func geometry(of node: WindowNode, on screen: NSScreen) -> WindowGeometry? {

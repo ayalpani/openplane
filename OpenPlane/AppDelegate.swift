@@ -47,13 +47,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   private var nodesByID: [CGWindowID: WindowNode] = [:]
   private var stateMachine = CanvasStateMachine()
   private var lastOverviewCamera = CameraState()
-  private var pendingLaunch: PendingLaunch?
+  private var pendingLaunchesByBundle: [String: PendingLaunch] = [:]
+  private var pendingQuitSuppressions: [pid_t: PendingQuitWindowSuppression] = [:]
+  private var requestedLaunchAnchors: [String: CGPoint] = [:]
   private var lastFocusedByBundle: [String: CGWindowID] = [:]
   private var appHistory = AppNavigationHistory()
   private var inventoryTracker = WindowInventoryTracker()
   private var didInitialLayout = false
   private var isReturning = false
   private var isDismissing = false
+  private var activatedFocusWindowID: CGWindowID?
 
   private var inventoryTask: Task<Void, Never>?
   private var previewTask: Task<Void, Never>?
@@ -82,6 +85,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   func applicationWillTerminate(_ notification: Notification) {
+    if stateMachine.mode != .overview {
+      canvasView.camera = lastOverviewCamera
+    }
+    canvasView.persistState()
     stopCanvasLoops()
     permissionTimer?.invalidate()
     if let globalKeyMonitor { NSEvent.removeMonitor(globalKeyMonitor) }
@@ -103,6 +110,80 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
 
   func canvasView(_ canvasView: CanvasView, didRequestFocus node: WindowNode) {
     focus(node)
+  }
+
+  func canvasView(_ canvasView: CanvasView, didRequestQuit node: WindowNode) {
+    pendingQuitSuppressions[node.processID] = PendingQuitWindowSuppression(
+      knownWindowIDs: Set(nodesByID.values.lazy.filter { $0.processID == node.processID }.map(\.id)),
+      deadline: Date().addingTimeInterval(5)
+    )
+    guard NSRunningApplication(processIdentifier: node.processID)?.terminate() == true else {
+      pendingQuitSuppressions[node.processID] = nil
+      canvasView.statusMessage = "Couldn’t close \(node.applicationName)"
+      return
+    }
+    canvasView.statusMessage = nil
+  }
+
+  func canvasView(
+    _ canvasView: CanvasView,
+    didRequestLaunch bundleIdentifier: String,
+    applicationName: String,
+    at anchor: CGPoint
+  ) {
+    guard
+      let applicationURL = NSWorkspace.shared.urlForApplication(
+        withBundleIdentifier: bundleIdentifier
+      ),
+      FileManager.default.fileExists(atPath: applicationURL.path)
+    else {
+      canvasView.showLaunchError(for: bundleIdentifier, message: "App unavailable")
+      return
+    }
+
+    if let runningApplication = NSRunningApplication.runningApplications(
+      withBundleIdentifier: bundleIdentifier
+    ).first(where: { !$0.isTerminated }) {
+      if windowService.activate(runningApplication) {
+        canvasView.completePlaceholderLaunch(for: bundleIdentifier)
+        overlayWindow.orderOut(nil)
+        stopCanvasLoops()
+        canvasView.statusMessage = nil
+      } else {
+        canvasView.showLaunchError(
+          for: bundleIdentifier,
+          message: "Couldn’t activate \(applicationName)"
+        )
+      }
+      return
+    }
+
+    requestedLaunchAnchors[bundleIdentifier] = anchor
+    let configuration = NSWorkspace.OpenConfiguration()
+    configuration.activates = false
+    configuration.addsToRecentItems = false
+    NSWorkspace.shared.openApplication(at: applicationURL, configuration: configuration) {
+      [weak self] application, error in
+      Task { @MainActor in
+        guard let self else { return }
+        if let error {
+          self.requestedLaunchAnchors[bundleIdentifier] = nil
+          canvasView.showLaunchError(
+            for: bundleIdentifier,
+            message: "Couldn’t open \(applicationName): \(error.localizedDescription)"
+          )
+        } else if let application {
+          if let node = self.nodesByID.values.first(where: {
+            $0.bundleIdentifier == bundleIdentifier
+          }) {
+            self.requestedLaunchAnchors[bundleIdentifier] = nil
+            self.focus(node)
+          } else {
+            self.beginPendingLaunch(for: application, anchor: anchor)
+          }
+        }
+      }
+    }
   }
 
   func canvasViewDidRequestBack(_ canvasView: CanvasView) {
@@ -130,6 +211,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
 
   func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool {
     configureCommandTabEventTap(enabled: enabled)
+  }
+
+  func canvasView(_ canvasView: CanvasView, setPrivateBrowserPreviews enabled: Bool) {
+    for node in nodesByID.values where node.isPrivateBrowsing {
+      if enabled {
+        guard node.previewState == .redacted else { continue }
+        node.previewState = .loading
+        canvasView.setNeedsDisplay(for: [node.id])
+      } else {
+        redactPrivatePreview(node)
+      }
+    }
   }
 
   @objc private func showCanvasFromMenu() {
@@ -352,13 +445,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       var target = lastOverviewCamera
       if let node {
         canvasView.selectedWindowID = node.id
-        node.previewState = .loading
-        canvasView.setNeedsDisplay(for: [node.id])
-        do {
-          let preview = try await windowService.capture(window: node.captureWindow)
-          applyFreshPreview(preview, to: node)
-        } catch {
-          node.previewState = .failed
+        if shouldRedactPrivatePreview(node) {
+          redactPrivatePreview(node)
+        } else {
+          node.previewState = .loading
+          canvasView.setNeedsDisplay(for: [node.id])
+          do {
+            let preview = try await windowService.capture(window: node.captureWindow)
+            applyFreshPreview(preview, to: node)
+          } catch WindowCaptureError.privateBrowsing {
+            node.isPrivateBrowsing = true
+            redactPrivatePreview(node)
+          } catch {
+            node.previewState = .failed
+          }
         }
         if let geometry = windowService.geometry(of: node, on: mainScreen) {
           node.sourceFrame.size = geometry.size
@@ -384,6 +484,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
 
   private func focus(_ node: WindowNode, recordInHistory: Bool = true) {
     guard stateMachine.beginFocus(on: node.id) else { return }
+    activatedFocusWindowID = nil
     canvasView.selectedWindowID = node.id
     lastOverviewCamera = canvasView.camera
     lastFocusedByBundle[node.bundleIdentifier] = node.id
@@ -408,36 +509,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
           node.sourceFrame.height / node.worldFrame.height
         )
       )
-    windowService.activate(node)
-    Task { [weak self, weak node] in
-      guard let self, let node else { return }
-      await waitForActivation(of: node)
-      guard stateMachine.mode == .focusing(node.id) else { return }
-      canvasView.animateCamera(
-        to: target,
-        tracking: CGPoint(x: node.worldFrame.midX, y: node.worldFrame.midY),
-        isolating: node.id,
-        duration: 0.5,
-        cameraCompletionFraction: 0.7,
-        progressHandler: { [weak self] progress in
-          self?.overlayWindow.alphaValue = CanvasMath.focusOverlayOpacity(progress: progress)
-        }
-      ) { [weak self, weak node] in
+    // Keep the real window fully covered until the preview reaches its exact frame.
+    // The final 250 ms then crossfade two already aligned representations.
+    let duration: TimeInterval = 0.6
+    let cameraCompletionFraction: CGFloat = 7 / 12
+    let activationLeadFraction: CGFloat = 0.04
+    overlayWindow.alphaValue = 1
+    canvasView.animateCamera(
+      to: target,
+      tracking: CGPoint(x: node.worldFrame.midX, y: node.worldFrame.midY),
+      isolating: node.id,
+      duration: duration,
+      cameraCompletionFraction: cameraCompletionFraction,
+      progressHandler: { [weak self, weak node] progress in
         guard let self, let node else { return }
-        overlayWindow.orderOut(nil)
-        overlayWindow.alphaValue = 1
-        canvasView.endFocusTransition()
-        stateMachine.completeFocus(on: node.id)
+        if progress >= cameraCompletionFraction - activationLeadFraction,
+          activatedFocusWindowID != node.id
+        {
+          activatedFocusWindowID = node.id
+          windowService.activate(node)
+        }
+        overlayWindow.alphaValue = CanvasMath.focusOverlayOpacity(
+          progress: progress,
+          handoffStart: cameraCompletionFraction
+        )
       }
-    }
-  }
-
-  private func waitForActivation(of node: WindowNode) async {
-    let deadline = CACurrentMediaTime() + 0.05
-    while NSWorkspace.shared.frontmostApplication?.processIdentifier != node.processID,
-      CACurrentMediaTime() < deadline
-    {
-      try? await Task.sleep(for: .milliseconds(5))
+    ) { [weak self, weak node] in
+      guard let self, let node else { return }
+      if activatedFocusWindowID != node.id {
+        windowService.activate(node)
+      }
+      activatedFocusWindowID = nil
+      overlayWindow.orderOut(nil)
+      overlayWindow.alphaValue = 1
+      canvasView.endFocusTransition()
+      stateMachine.completeFocus(on: node.id)
     }
   }
 
@@ -484,8 +590,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     guard overlayWindow.isVisible, overlayWindow.contentView === canvasView else { return }
     guard !canvasView.defersBackgroundWork else { return }
     do {
-      let discovered = try await windowService.discover(on: mainScreen)
+      let allDiscovered = try await windowService.discover(on: mainScreen)
       guard !Task.isCancelled, !canvasView.defersBackgroundWork else { return }
+      let now = Date()
+      for (processID, var suppression) in pendingQuitSuppressions {
+        let currentWindowIDs = Set(
+          allDiscovered.lazy.filter { $0.processID == processID }.map(\.id)
+        )
+        if suppression.observe(currentWindowIDs: currentWindowIDs, now: now) {
+          pendingQuitSuppressions[processID] = suppression
+        } else {
+          pendingQuitSuppressions[processID] = nil
+        }
+      }
+      let discovered = allDiscovered.filter { item in
+        pendingQuitSuppressions[item.processID]?.allows(item.id) ?? true
+      }
       let discoveredIDs = Set(discovered.map(\.id))
       let previousIDs = Set(nodesByID.keys)
       let potentiallyMissingIDs = previousIDs.subtracting(discoveredIDs)
@@ -505,20 +625,78 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       for item in discovered {
         if change.retained.contains(item.id), let node = nodesByID[item.id] {
           if node.applicationName != item.applicationName || node.title != item.title
+            || node.isPrivateBrowsing != item.isPrivateBrowsing
             || (node.icon == nil) != (item.icon == nil)
           {
             changedMetadataIDs.append(item.id)
           }
           if node.sourceFrame.size != item.frame.size { needsPreviewSizeUpdate = true }
           node.update(from: item)
+          if shouldRedactPrivatePreview(node) {
+            redactPrivatePreview(node)
+          } else if node.previewState == .redacted {
+            node.previewState = .loading
+          }
         } else if change.added.contains(item.id) {
           newWindows.append(item)
         }
       }
 
+      let snapshots = discovered.map {
+        WindowPlacementSnapshot(
+          windowID: $0.id,
+          bundleIdentifier: $0.bundleIdentifier,
+          title: $0.title,
+          center: .zero,
+          size: $0.frame.size
+        )
+      }
+      let restoredCenters = canvasView.restoredWindowCenters(for: snapshots)
+      let requestedLaunchCenters = Dictionary(
+        uniqueKeysWithValues: requestedLaunchAnchors.compactMap { bundleIdentifier, anchor in
+          newWindows
+            .filter { $0.bundleIdentifier == bundleIdentifier }
+            .min(by: { $0.id < $1.id })
+            .map { ($0.id, anchor) }
+        }
+      )
+
       if !didInitialLayout && !discovered.isEmpty {
         let sizes = canvasView.preferredPreviewSizes(for: discovered.map { $0.frame.size })
-        let frames = CanvasMath.gridFrames(for: sizes)
+        let frames: [CGRect]
+        if canvasView.hasManifestedAppPlacements {
+          let items = Array(zip(discovered, sizes))
+          var framesByID: [CGWindowID: CGRect] = [:]
+          var occupied: [CGRect] = []
+          for (item, size) in items {
+            if let center = requestedLaunchCenters[item.id] ?? restoredCenters[item.id] {
+              let frame = CGRect(
+                x: center.x - size.width / 2,
+                y: center.y - size.height / 2,
+                width: size.width,
+                height: size.height
+              )
+              framesByID[item.id] = frame
+              occupied.append(frame)
+            }
+          }
+          for (item, size) in items where framesByID[item.id] == nil {
+            let frame = CanvasMath.nearestAvailableFrame(
+              size: size,
+              centeredAt: placementAnchor(for: item),
+              avoiding: occupied + canvasView.reservedAppFrames(
+                excluding: item.bundleIdentifier
+              )
+            )
+            framesByID[item.id] = frame
+            occupied.append(frame)
+          }
+          frames = discovered.compactMap { framesByID[$0.id] }
+        } else {
+          frames = CanvasMath.gridFrames(for: sizes).map {
+            $0.offsetBy(dx: canvasView.camera.center.x, dy: canvasView.camera.center.y)
+          }
+        }
         for (item, frame) in zip(discovered, frames) {
           nodesByID[item.id] = await makeNode(for: item, worldFrame: frame)
         }
@@ -527,16 +705,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
           fitting: CanvasMath.fitCamera(frames: frames, in: canvasView.bounds)
         )
       } else {
-        for item in newWindows {
-          let anchor = placementAnchor(for: item)
-          let frame = CanvasMath.cascadedFrame(
-            size: item.frame.size,
-            centeredAt: anchor,
-            avoiding: nodesByID.values.map(\.worldFrame)
-          )
+        let orderedNewWindows = newWindows.sorted { lhs, rhs in
+          let lhsHasCenter = requestedLaunchCenters[lhs.id] != nil
+            || restoredCenters[lhs.id] != nil
+          let rhsHasCenter = requestedLaunchCenters[rhs.id] != nil
+            || restoredCenters[rhs.id] != nil
+          if lhsHasCenter != rhsHasCenter { return lhsHasCenter }
+          return lhs.id < rhs.id
+        }
+        for item in orderedNewWindows {
+          let size = canvasView.preferredPreviewSizes(for: [item.frame.size])[0]
+          let frame: CGRect
+          if let center = requestedLaunchCenters[item.id] ?? restoredCenters[item.id] {
+            frame = CGRect(
+              x: center.x - size.width / 2,
+              y: center.y - size.height / 2,
+              width: size.width,
+              height: size.height
+            )
+          } else {
+            frame = CanvasMath.nearestAvailableFrame(
+              size: size,
+              centeredAt: placementAnchor(for: item),
+              avoiding: nodesByID.values.map(\.worldFrame)
+                + canvasView.reservedAppFrames(excluding: item.bundleIdentifier)
+            )
+          }
           nodesByID[item.id] = await makeNode(for: item, worldFrame: frame)
         }
       }
+      if !didInitialLayout { didInitialLayout = true }
 
       let structureChanged = !change.removed.isEmpty || !newWindows.isEmpty
       if structureChanged {
@@ -556,31 +754,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   private func placementAnchor(for item: DiscoveredWindow) -> CGPoint {
-    if let pendingLaunch, pendingLaunch.bundleIdentifier == item.bundleIdentifier {
+    if let home = canvasView.manifestedAppHome(for: item.bundleIdentifier) {
+      return home
+    }
+    if let pendingLaunch = pendingLaunchesByBundle[item.bundleIdentifier] {
       return pendingLaunch.anchor
     }
     if let id = lastFocusedByBundle[item.bundleIdentifier], let active = nodesByID[id] {
-      return CGPoint(x: active.worldFrame.midX + 80, y: active.worldFrame.midY - 80)
+      return CGPoint(x: active.worldFrame.midX, y: active.worldFrame.midY)
     }
     return canvasView.camera.center
   }
 
   private func resolvePendingLaunch(with newWindows: [DiscoveredWindow]) {
-    guard let pendingLaunch else { return }
-    if let item = newWindows.first(where: {
-      !pendingLaunch.knownWindowIDs.contains($0.id)
-        && ($0.processID == pendingLaunch.processID
-          || $0.bundleIdentifier == pendingLaunch.bundleIdentifier)
-    }), let node = nodesByID[item.id] {
-      self.pendingLaunch = nil
-      focus(node)
-      return
+    guard !pendingLaunchesByBundle.isEmpty else { return }
+    var openedNodes: [WindowNode] = []
+    var fallbackApplication: NSRunningApplication?
+
+    for pendingLaunch in Array(pendingLaunchesByBundle.values) {
+      if let item = newWindows.first(where: {
+        !pendingLaunch.knownWindowIDs.contains($0.id)
+          && ($0.processID == pendingLaunch.processID
+            || $0.bundleIdentifier == pendingLaunch.bundleIdentifier)
+      }), let node = nodesByID[item.id] {
+        requestedLaunchAnchors[pendingLaunch.bundleIdentifier] = nil
+        pendingLaunchesByBundle[pendingLaunch.bundleIdentifier] = nil
+        openedNodes.append(node)
+        continue
+      }
+
+      guard Date() >= pendingLaunch.deadline else { continue }
+      pendingLaunchesByBundle[pendingLaunch.bundleIdentifier] = nil
+      if requestedLaunchAnchors[pendingLaunch.bundleIdentifier] != nil {
+        requestedLaunchAnchors[pendingLaunch.bundleIdentifier] = nil
+        canvasView.showLaunchError(
+          for: pendingLaunch.bundleIdentifier,
+          message: "No window appeared"
+        )
+      } else {
+        fallbackApplication = NSRunningApplication(
+          processIdentifier: pendingLaunch.processID
+        )
+      }
     }
-    guard Date() >= pendingLaunch.deadline else { return }
-    self.pendingLaunch = nil
-    overlayWindow.orderOut(nil)
-    stopCanvasLoops()
-    NSRunningApplication(processIdentifier: pendingLaunch.processID)?.activate(options: [])
+
+    if let node = canvasView.selectedWindowID.flatMap({ selectedID in
+      openedNodes.first { $0.id == selectedID }
+    }) ?? openedNodes.last {
+      focus(node)
+    } else if let fallbackApplication {
+      overlayWindow.orderOut(nil)
+      stopCanvasLoops()
+      fallbackApplication.activate(options: [])
+    }
   }
 
   private func refreshVisiblePreviews() async {
@@ -607,6 +833,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     var didChange = false
     for node in nodes where !Task.isCancelled {
       guard !canvasView.defersBackgroundWork else { break }
+      if shouldRedactPrivatePreview(node) {
+        redactPrivatePreview(node)
+        didChange = true
+        continue
+      }
+      if node.previewState == .redacted { node.previewState = .loading }
       let previousState = node.previewState
       let loadingIndicatorTask = Task { [weak self, weak node] in
         try? await Task.sleep(for: .milliseconds(250))
@@ -625,9 +857,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
           continue
         }
         applyFreshPreview(preview, to: node)
+      } catch WindowCaptureError.privateBrowsing {
+        loadingIndicatorTask.cancel()
+        node.isPrivateBrowsing = true
+        redactPrivatePreview(node)
       } catch {
         loadingIndicatorTask.cancel()
-        node.previewState = .failed
+        if shouldRedactPrivatePreview(node) {
+          redactPrivatePreview(node)
+        } else {
+          node.previewState = .failed
+        }
       }
       didChange = true
     }
@@ -635,6 +875,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   private func makeNode(for item: DiscoveredWindow, worldFrame: CGRect) async -> WindowNode {
+    if item.isPrivateBrowsing && protectsPrivateBrowserPreviews {
+      await previewCache.remove(windowID: item.id, bundleIdentifier: item.bundleIdentifier)
+      let node = WindowNode(discovered: item, worldFrame: worldFrame)
+      node.previewState = .redacted
+      return node
+    }
     let data = await previewCache.loadData(
       windowID: item.id,
       bundleIdentifier: item.bundleIdentifier
@@ -647,6 +893,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   private func applyFreshPreview(_ preview: CapturedPreview, to node: WindowNode) {
+    guard !shouldRedactPrivatePreview(node) else {
+      redactPrivatePreview(node)
+      return
+    }
     canvasView.replacePreview(
       NSImage(cgImage: preview.image, size: preview.size),
       for: node
@@ -667,6 +917,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
         windowID: windowID,
         bundleIdentifier: bundleIdentifier
       )
+    }
+  }
+
+  private var protectsPrivateBrowserPreviews: Bool {
+    !UserDefaults.standard.bool(forKey: OpenPlanePreferences.showPrivateBrowserPreviews)
+  }
+
+  private func shouldRedactPrivatePreview(_ node: WindowNode) -> Bool {
+    protectsPrivateBrowserPreviews && node.isPrivateBrowsing
+  }
+
+  private func redactPrivatePreview(_ node: WindowNode) {
+    guard shouldRedactPrivatePreview(node) else { return }
+    let needsCacheRemoval = node.previewState != .redacted || node.preview != nil
+    node.previewState = .redacted
+    canvasView.clearPreview(for: node)
+    guard needsCacheRemoval else { return }
+    let windowID = node.id
+    let bundleIdentifier = node.bundleIdentifier
+    Task {
+      await previewCache.remove(windowID: windowID, bundleIdentifier: bundleIdentifier)
     }
   }
 
@@ -694,6 +965,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     guard isShowingCanvas, let application = workspaceApplication(from: notification),
       shouldFollow(application)
     else { return }
+    if !WorkspaceActivationPolicy.shouldFollow(
+      bundleIdentifier: application.bundleIdentifier,
+      requestedLaunches: Set(requestedLaunchAnchors.keys)
+    ) {
+      return
+    }
     let candidates = nodesByID.values.filter {
       $0.processID == application.processIdentifier
         || $0.bundleIdentifier == application.bundleIdentifier
@@ -708,13 +985,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       focus(node)
     } else if let node = candidates.first {
       focus(node)
-    } else if pendingLaunch == nil {
+    } else if let bundleIdentifier = application.bundleIdentifier,
+      pendingLaunchesByBundle[bundleIdentifier] == nil
+    {
       beginPendingLaunch(for: application)
     }
   }
 
   @objc private func workspaceDidTerminate(_ notification: Notification) {
     guard let application = workspaceApplication(from: notification) else { return }
+    pendingQuitSuppressions[application.processIdentifier] = nil
     let removedIDs = nodesByID.values.filter { $0.processID == application.processIdentifier }.map(
       \.id)
     for id in removedIDs { nodesByID[id] = nil }
@@ -735,7 +1015,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     let nodes = nodesByID.values.sorted { $0.id < $1.id }
     canvasView.nodes = nodes
     updateHistoryNavigation()
-    guard !nodes.contains(where: { $0.id == canvasView.selectedWindowID }) else { return }
+    guard !canvasView.hasCanvasSelection else { return }
     canvasView.selectedWindowID = windowService.frontmostWindowID(among: nodes) ?? nodes.first?.id
   }
 
@@ -778,13 +1058,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     return !ignored.contains(where: { bundle.hasPrefix($0) })
   }
 
-  private func beginPendingLaunch(for application: NSRunningApplication) {
+  private func beginPendingLaunch(
+    for application: NSRunningApplication,
+    anchor requestedAnchor: CGPoint? = nil
+  ) {
     guard let bundleIdentifier = application.bundleIdentifier else { return }
-    pendingLaunch = PendingLaunch(
+    let existing = pendingLaunchesByBundle[bundleIdentifier]
+    pendingLaunchesByBundle[bundleIdentifier] = PendingLaunch(
       processID: application.processIdentifier,
       bundleIdentifier: bundleIdentifier,
-      anchor: canvasView.camera.center,
-      knownWindowIDs: Set(nodesByID.keys),
+      anchor: requestedAnchor
+        ?? requestedLaunchAnchors[bundleIdentifier]
+        ?? existing?.anchor
+        ?? canvasView.camera.center,
+      knownWindowIDs: existing?.knownWindowIDs ?? Set(nodesByID.keys),
       deadline: Date().addingTimeInterval(5)
     )
   }
@@ -792,7 +1079,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   private func installShortcut() {
     if let globalKeyMonitor { NSEvent.removeMonitor(globalKeyMonitor) }
     if let localKeyMonitor { NSEvent.removeMonitor(localKeyMonitor) }
-    localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+    localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) {
+      [weak self] event in
+      if event.type == .keyUp {
+        let handled = MainActor.assumeIsolated {
+          self?.isShowingCanvas == true && self?.canvasView.handleNavigationKeyUp(event) == true
+        }
+        return handled ? nil : event
+      }
       if Self.isCanvasShortcut(event) {
         MainActor.assumeIsolated { self?.handleShortcut() }
         return nil
