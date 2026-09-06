@@ -4,3 +4,8 @@ build/
 xcuserdata/
 *.xcuserstate
 *.profraw
+
+# Local review decisions and Python caches
+review-desk/.state/
+__pycache__/
+*.pyc

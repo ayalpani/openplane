@@ -1,0 +1,25 @@
+0 Zoom 0.06×
+1 Zoom 0.07×
+2 Zoom 0.08×
+*** Terminating app due to uncaught exception 'NSInvalidArgumentException', reason: '*** -[__NSPlaceholderDictionary initWithObjects:forKeys:count:]: attempt to insert nil object from objects[0]'
+*** First throw call stack:
+(
+	0   CoreFoundation                      0x000000018ef771f0 __exceptionPreprocess + 176
+	1   libobjc.A.dylib                     0x000000018e9f291c objc_exception_throw + 88
+	2   CoreFoundation                      0x000000018ee94d40 -[__NSPlaceholderDictionary initWithObjects:forKeys:count:] + 764
+	3   CoreFoundation                      0x000000018eec3dd4 -[NSDictionary initWithDictionary:copyItems:] + 420
+	4   CoreFoundation                      0x000000018eec3b6c -[__NSPlaceholderDictionary initWithDictionary:copyItems:] + 176
+	5   CoreText                            0x0000000191e5d194 _ZN11TAttributes9ApplyFontEPK14__CFDictionaryPK8__CTFontPK11TCharStream7CFRangePPKv + 320
+	6   CoreText                            0x0000000191e5cec0 _ZN11TAttributesC2EPK14__CFDictionaryPK11TCharStream7CFRangeb + 116
+	7   CoreText                            0x0000000191e0a2e4 _ZN21TTypesetterAttrString10InitializeEPK20__CFAttributedStringb + 720
+	8   CoreText                            0x0000000191e09ff8 _ZN21TTypesetterAttrStringC2EPK20__CFAttributedStringPK14__CFDictionaryb + 160
+	9   CoreText                            0x0000000191d972dc CTLineCreateWithAttributedString + 84
+	10  UIFoundation                        0x0000000194ab5698 __NSCoreTypesetterCreateBaseLineFromAttributedString + 704
+	11  UIFoundation                        0x0000000194ab8f00 -[NSCoreTypesetter _stringDrawingCoreTextEngineWithOriginalString:rect:padding:graphicsContext:forceClipping:attributes:stringDrawingOptions:drawingContext:stringDrawingInterface:] + 2816
+	12  UIFoundation                        0x0000000194a30770 __NSStringDrawingEngine + 1844
+	13  UIFoundation                        0x0000000194a70f68 -[NSString(NSExtendedStringDrawing) boundingRectWithSize:options:attributes:context:] + 124
+	14  UIFoundation                        0x0000000194a70edc -[NSString(NSStringDrawing) sizeWithAttributes:] + 40
+	15  isolate                             0x0000000104c3d538 main + 1512
+	16  dyld                                0x000000018ea804e4 start + 6992
+)
+libc++abi: terminating due to uncaught exception of type NSException

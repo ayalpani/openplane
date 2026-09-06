@@ -1,0 +1,10 @@
+{
+  "commit": "09707146f1e93862bfb9e7b734681f28cd1e7020",
+  "source_diff_sha256": "e4035ec84e65613225b15163508f52c81eb1f9a77b75802a27e97f97463478a2",
+  "fix_diff_sha256": "eee9a825f24786568bf35f780c03781971c212b2278f16473795f016ea68a8a0",
+  "candidate_binary_sha256": "b6014d0237800b7f2d0ea7979e0e87562f1da89277813e6248cc43c28a231840",
+  "signed_release_verified": true,
+  "targeted_tests_passed": 13,
+  "preferences_restored": true,
+  "owned_jobs_ended": true
+}

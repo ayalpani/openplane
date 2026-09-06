@@ -1,0 +1,14 @@
+{
+  "commit": "09707146f1e93862bfb9e7b734681f28cd1e7020",
+  "source_diff_sha256": "4eb5c79006f44b3919139a5a7b0c659b5d931871b9b25f86a45a08f513189a83",
+  "fix_diff_sha256": "f549084d2bcacb2ccc9b8b779763e5af15de24a12ffc0dfa51a2d734b5df90d3",
+  "configuration": "Release",
+  "installed_binary_sha256": "983ab32cb686bd4b935d978875cfd2960282c4e58a557452cef14ada827429a2",
+  "baseline_binary_sha256": "c4ed64eac3544e0a7c8d3c97a14eaf6a3d7b8f2a3ec0ff7bf866fe6dae4547bc",
+  "macOS": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83",
+  "hardware": "Mac14,10",
+  "display": "Graphics/Displays:\n\n    Apple M2 Pro:\n\n      Chipset Model: Apple M2 Pro\n      Type: GPU\n      Bus: Built-In\n      Total Number of Cores: 19\n      Vendor: Apple (0x106b)\n      Metal Support: Metal 4\n      Displays:\n        Color LCD:\n          Display Type: Built-in Liquid Retina XDR Display\n          Resolution: 3456 x 2234 Retina\n          Main Display: Yes\n          Mirror: Off\n          Online: Yes\n          Automatically Adjust Brightness: Yes\n          Connection Type: Internal",
+  "power": "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=36307043)\t87%; discharging; 10:38 remaining present: true",
+  "fixture_sha256": "d0f2e7106ec28696ca5d85045ab88831eb6b2fc3b5e0abd049546943a45e68f5",
+  "note": "Short visual/functional comparison only; capture overhead not calibrated; no CPU or frame-time measurement."
+}

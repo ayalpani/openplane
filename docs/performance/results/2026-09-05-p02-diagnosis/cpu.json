@@ -1,0 +1,371 @@
+{
+  "mode": "cpu",
+  "samples": [
+    {
+      "trial": 0,
+      "cache_state": "first route in current warm process",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "idle_before": {
+        "seconds": 5.0022103329974925,
+        "cpu_seconds": 0.1371145416666666,
+        "cpu_percent": 2.7410790938193705
+      },
+      "action": {
+        "seconds": 7.228500832992722,
+        "cpu_seconds": 1.8372925416666663,
+        "cpu_percent": 25.417338727842353
+      },
+      "settling": {
+        "seconds": 1.0050873750005849,
+        "cpu_seconds": 0.029381875000000335,
+        "cpu_percent": 2.923315497817614
+      },
+      "idle_after": {
+        "seconds": 5.00409658299759,
+        "cpu_seconds": 0.11702937499999999,
+        "cpu_percent": 2.33867138771123
+      },
+      "end_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "additional_cpu_pp": 22.676259634022983
+    },
+    {
+      "trial": 1,
+      "cache_state": "warmup",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "idle_before": {
+        "seconds": 5.001935666994541,
+        "cpu_seconds": 0.08473504166666679,
+        "cpu_percent": 1.694045011929964
+      },
+      "action": {
+        "seconds": 7.249739958002465,
+        "cpu_seconds": 1.863172375,
+        "cpu_percent": 25.69985110905086
+      },
+      "settling": {
+        "seconds": 1.003784333996009,
+        "cpu_seconds": 0.013226208333333211,
+        "cpu_percent": 1.3176344644352456
+      },
+      "idle_after": {
+        "seconds": 5.003199082988431,
+        "cpu_seconds": 0.05131487500000009,
+        "cpu_percent": 1.0256412776872654
+      },
+      "end_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "additional_cpu_pp": 24.005806097120896
+    },
+    {
+      "trial": 2,
+      "cache_state": "warmup",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "idle_before": {
+        "seconds": 5.005061959003797,
+        "cpu_seconds": 0.05455541666666708,
+        "cpu_percent": 1.0900048213893787
+      },
+      "action": {
+        "seconds": 7.250298832994304,
+        "cpu_seconds": 1.8466127083333328,
+        "cpu_percent": 25.469470305552903
+      },
+      "settling": {
+        "seconds": 1.0011029169982066,
+        "cpu_seconds": 0.016739041666666843,
+        "cpu_percent": 1.6720600232450256
+      },
+      "idle_after": {
+        "seconds": 5.0040032920078374,
+        "cpu_seconds": 0.03901662500000036,
+        "cpu_percent": 0.7797082200628427
+      },
+      "end_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "additional_cpu_pp": 24.379465484163525
+    },
+    {
+      "trial": 3,
+      "cache_state": "measured warm",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "idle_before": {
+        "seconds": 5.0050479999918025,
+        "cpu_seconds": 0.050991958333333365,
+        "cpu_percent": 1.0188105755113015
+      },
+      "action": {
+        "seconds": 7.20633408401045,
+        "cpu_seconds": 1.856247708333333,
+        "cpu_percent": 25.7585574953014
+      },
+      "settling": {
+        "seconds": 1.0003889579966199,
+        "cpu_seconds": 0.013000791666666345,
+        "cpu_percent": 1.2995736870888446
+      },
+      "idle_after": {
+        "seconds": 5.002113958005793,
+        "cpu_seconds": 0.05453250000000054,
+        "cpu_percent": 1.0901890772144895
+      },
+      "end_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "additional_cpu_pp": 24.739746919790097
+    },
+    {
+      "trial": 4,
+      "cache_state": "measured warm",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "idle_before": {
+        "seconds": 5.004179458002909,
+        "cpu_seconds": 0.06656029166666677,
+        "cpu_percent": 1.3300940189149404
+      },
+      "action": {
+        "seconds": 7.177279000010458,
+        "cpu_seconds": 1.8342447083333333,
+        "cpu_percent": 25.55626872427086
+      },
+      "settling": {
+        "seconds": 1.0026476250059204,
+        "cpu_seconds": 0.004395541666665892,
+        "cpu_percent": 0.43839346516578415
+      },
+      "idle_after": {
+        "seconds": 5.004614624995156,
+        "cpu_seconds": 0.06470808333333267,
+        "cpu_percent": 1.292968353849929
+      },
+      "end_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "additional_cpu_pp": 24.22617470535592
+    },
+    {
+      "trial": 5,
+      "cache_state": "measured warm",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "idle_before": {
+        "seconds": 5.005049208004493,
+        "cpu_seconds": 0.06731999999999871,
+        "cpu_percent": 1.3450417209152497
+      },
+      "action": {
+        "seconds": 7.2048076250066515,
+        "cpu_seconds": 1.833151916666667,
+        "cpu_percent": 25.443454038996283
+      },
+      "settling": {
+        "seconds": 1.0051171250088373,
+        "cpu_seconds": 0.01160899999999998,
+        "cpu_percent": 1.154989772947895
+      },
+      "idle_after": {
+        "seconds": 5.004394667004817,
+        "cpu_seconds": 0.04108954166666656,
+        "cpu_percent": 0.8210691682168841
+      },
+      "end_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "additional_cpu_pp": 24.09841231808103
+    },
+    {
+      "trial": 6,
+      "cache_state": "measured warm",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "idle_before": {
+        "seconds": 5.005046542006312,
+        "cpu_seconds": 0.04320274999999896,
+        "cpu_percent": 0.8631837813576214
+      },
+      "action": {
+        "seconds": 7.209778166012256,
+        "cpu_seconds": 1.812872791666667,
+        "cpu_percent": 25.14464037482821
+      },
+      "settling": {
+        "seconds": 1.0050516659975983,
+        "cpu_seconds": 0.01340112499999968,
+        "cpu_percent": 1.333376726130585
+      },
+      "idle_after": {
+        "seconds": 5.001231625006767,
+        "cpu_seconds": 0.05024837500000068,
+        "cpu_percent": 1.0047200123416138
+      },
+      "end_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "additional_cpu_pp": 24.28145659347059
+    },
+    {
+      "trial": 7,
+      "cache_state": "measured warm",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "idle_before": {
+        "seconds": 5.004375500007882,
+        "cpu_seconds": 0.04300404166666816,
+        "cpu_percent": 0.8593288346687898
+      },
+      "action": {
+        "seconds": 7.1895045840064995,
+        "cpu_seconds": 1.8343362083333332,
+        "cpu_percent": 25.514083576967575
+      },
+      "settling": {
+        "seconds": 1.0010426670050947,
+        "cpu_seconds": 0.002306416666666422,
+        "cpu_percent": 0.2304014346927616
+      },
+      "idle_after": {
+        "seconds": 5.005067916994449,
+        "cpu_seconds": 0.05120008333333104,
+        "cpu_percent": 1.0229648065210826
+      },
+      "end_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9241.562891205906
+        ]
+      },
+      "additional_cpu_pp": 24.654754742298785
+    }
+  ],
+  "binary_sha256": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+  "fixture_sha256": "fa7e0a1f292da61fb1f99a1f840e6444ff40dd173dd53bc1b92b65a635e18fdf",
+  "original_camera": {
+    "zoom": 1,
+    "center": [
+      1587.5938992302272,
+      9241.562891205906
+    ]
+  },
+  "started_at": 1788643257.579967,
+  "accepted_actions": null,
+  "succeeded_actions": null,
+  "limitations": [
+    "Personal live scene; not frozen fixture",
+    "Input calls counted, accepted and completed action counts unavailable",
+    "No presented pixel observer",
+    "No A/B candidate"
+  ],
+  "pid": 90646,
+  "desktop": "Desktop 2",
+  "search_open": "false",
+  "reset_camera": {
+    "zoom": 0.06,
+    "center": [
+      1587.5938992302272,
+      9241.562891205906
+    ]
+  },
+  "restored": true,
+  "finished_at": 1788643413.913304
+}

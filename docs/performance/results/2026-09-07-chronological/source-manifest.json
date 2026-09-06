@@ -1,0 +1,7 @@
+{
+  "OpenPlane/CanvasView.swift": "352b57a87000015082dda391f0bf7e4edb65f81e6489c7a276c51ed9c7661a94",
+  "OpenPlane/CanvasModel.swift": "d2f949776a03b9377fe1276f99d7ca2b1267d9082e8b810356504957b964c550",
+  "OpenPlane/AppDelegate.swift": "9681616fa4f372d5156fc97acabb726d9cc2c76c4cf91a31d0822c1aec54e4d8",
+  "OpenPlane/WindowService.swift": "a06d598eb2aa883d85797e9b6f04f87488cc43e563c801aa8d04710108c67c97",
+  "OpenPlaneTests/CanvasMathTests.swift": "597d5431f058eb175b09a9ec0769b201e9f728370c89bb073216ca21b14f5247"
+}

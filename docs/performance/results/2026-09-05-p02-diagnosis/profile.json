@@ -1,0 +1,35 @@
+{
+  "mode": "profile",
+  "samples": [],
+  "binary_sha256": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+  "fixture_sha256": "a62242333a77d18d2e5a53eb362d77cd61663eef12cb6f223dbfb7c8361e7cc6",
+  "original_camera": {
+    "zoom": 1,
+    "center": [
+      1587.5938992302272,
+      9241.562891205906
+    ]
+  },
+  "started_at": 1788643158.77194,
+  "accepted_actions": null,
+  "succeeded_actions": null,
+  "limitations": [
+    "Personal live scene; not frozen fixture",
+    "Input calls counted, accepted and completed action counts unavailable",
+    "No presented pixel observer",
+    "No A/B candidate"
+  ],
+  "pid": 82112,
+  "desktop": "Desktop 2",
+  "search_open": "false",
+  "reset_camera": {
+    "zoom": 0.06,
+    "center": [
+      1587.5938992302272,
+      9262.562891205906
+    ]
+  },
+  "error": "Trace did not start; see profile.log",
+  "restored": true,
+  "finished_at": 1788643192.514923
+}

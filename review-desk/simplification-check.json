@@ -1,0 +1,19 @@
+{
+  "api_read_ms": [
+    14.044,
+    2.339,
+    1.929,
+    1.924,
+    1.951
+  ],
+  "scope": "Five sequential warm loopback GET reads; not input-to-pixel latency or CPU performance verification.",
+  "ui_checks": [
+    "list render wide and narrow",
+    "expand proposal",
+    "accept with comment",
+    "reload retains accepted decision",
+    "reject and save"
+  ],
+  "context_checks": "exact source evidence, constraints, dependency, decision and question tested; clipboard success observed",
+  "codex_navigation": "BLOCKED by browser security policy during in-app browser verification"
+}

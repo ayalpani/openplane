@@ -1,0 +1,12 @@
+{
+  "commit": "09707146f1e93862bfb9e7b734681f28cd1e7020",
+  "source_diff_sha256": "b918ccb3799e09e65f167c584424776af093f5e2fd4ce385f1c6cb85d1c0bb64",
+  "fix_diff_sha256": "9c06480bfb61eb2f3b871e599015cf054f18fefc796ae121a765a786f99058aa",
+  "baseline_binary_sha256": "4afef6a3bac5bda25fa83e9102b44b13d874b1f8ef5865f6abfd5d4e1e20d6fb",
+  "candidate_binary_sha256": "bb302e3a3fd63f604187a4bae134797690b59949489b39d37531baa867a34516",
+  "signed_release_verified": true,
+  "tests_passed": 12,
+  "preferences_restored": true,
+  "macOS": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83\n",
+  "hardware": "Mac14,10"
+}

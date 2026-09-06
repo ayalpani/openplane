@@ -1,0 +1,34 @@
+--- CanvasView-before.swift
++++ CanvasView.swift
+@@ -3875,8 +3875,21 @@
+ 
+     CATransaction.begin()
+     CATransaction.setDisableActions(true)
++    let previousIndex = desktopPages.pages.firstIndex(where: { $0.id == desktopPages.selectedID }) ?? 0
+     change()
++    let nextIndex = desktopPages.pages.firstIndex(where: { $0.id == desktopPages.selectedID }) ?? previousIndex
+     synchronizeScene()
++    if nextIndex != previousIndex {
++      let offset: CGFloat = nextIndex > previousIndex ? -40 : 40
++      for layer in [cameraLayer, gridLayer] {
++        let slide = CABasicAnimation(keyPath: "position")
++        slide.fromValue = NSValue(point: CGPoint(x: layer.position.x + offset, y: layer.position.y))
++        slide.toValue = NSValue(point: layer.position)
++        slide.duration = Self.desktopTransitionDuration
++        slide.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
++        layer.add(slide, forKey: "desktopSlide")
++      }
++    }
+     hudView.needsDisplay = true
+     hudView.displayIfNeeded()
+     for layer in [sceneView.layer, hudView.layer].compactMap({ $0 }) {
+@@ -3924,6 +3937,9 @@
+     }
+     for layer in [sceneView.layer, hudView.layer].compactMap({ $0 }) {
+       layer.removeAnimation(forKey: "desktopCrossfade")
++    }
++    for layer in [cameraLayer, gridLayer] {
++      layer.removeAnimation(forKey: "desktopSlide")
+     }
+     needsDisplay = true
+   }

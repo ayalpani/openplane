@@ -474,7 +474,7 @@ final class CanvasMathTests: XCTestCase {
     XCTAssertEqual(camera.zoom, 0.515, accuracy: 0.001)
   }
 
-  func testSelectionMovesTitleBeforeShowingBorder() {
+  func testSelectionHighlightsImmediately() {
     let start = CanvasMath.selectionAnimationPhases(progress: 0)
     let titleReady = CanvasMath.selectionAnimationPhases(progress: 0.55)
     let end = CanvasMath.selectionAnimationPhases(progress: 1)
@@ -482,12 +482,11 @@ final class CanvasMathTests: XCTestCase {
     XCTAssertEqual(start.title, 0, accuracy: 0.001)
     XCTAssertEqual(start.border, 0, accuracy: 0.001)
     XCTAssertEqual(titleReady.title, 1, accuracy: 0.001)
-    XCTAssertEqual(titleReady.border, 0, accuracy: 0.001)
+    XCTAssertEqual(titleReady.border, 0.55, accuracy: 0.001)
     XCTAssertEqual(end.title, 1, accuracy: 0.001)
     XCTAssertEqual(end.border, 1, accuracy: 0.001)
     let synchronized = CanvasMath.selectionAnimationPhases(
-      progress: 0.25,
-      synchronized: true
+      progress: 0.25
     )
     XCTAssertEqual(synchronized.border, 0.25, accuracy: 0.001)
     XCTAssertEqual(
@@ -512,25 +511,7 @@ final class CanvasMathTests: XCTestCase {
     XCTAssertEqual(CanvasMath.easedTransition(0), 0, accuracy: 0.001)
     XCTAssertEqual(CanvasMath.easedTransition(0.5), 0.5, accuracy: 0.001)
     XCTAssertEqual(CanvasMath.easedTransition(1), 1, accuracy: 0.001)
-    XCTAssertEqual(
-      CanvasMath.selectionHandoffPhase(progress: 0.5, incoming: false),
-      1,
-      accuracy: 0.001
-    )
-    XCTAssertEqual(
-      CanvasMath.selectionHandoffPhase(progress: 0.5, incoming: true),
-      0,
-      accuracy: 0.001
-    )
-    XCTAssertEqual(
-      CanvasMath.selectionHandoffPhase(
-        progress: 0.5,
-        incoming: true,
-        synchronized: true
-      ),
-      CanvasMath.easedTransition(0.5),
-      accuracy: 0.001
-    )
+
   }
 
   func testAppNavigationHistoryMovesBothDirectionsAndDropsForwardBranch() {
@@ -1279,4 +1260,118 @@ final class CanvasMathTests: XCTestCase {
       }
     }
   }
+}
+
+final class RecentWindowOrderTests: XCTestCase {
+  func testActualUsageAndFrozenTraversalAreSeparate() {
+    var order = RecentWindowOrder()
+    order.reconcile([10, 20, 30, 40], reorder: true)
+    order.used(30)
+    order.used(10)
+    order.used(30)
+    XCTAssertEqual(order.visible, [10, 20, 30, 40])
+    order.reconcile([10, 20, 30, 40], reorder: true)
+    XCTAssertEqual(order.visible, [30, 10, 20, 40])
+    order.used(20)
+    order.reconcile([10, 20, 40, 50], reorder: false)
+    XCTAssertEqual(order.visible, [10, 20, 40, 50])
+    order.reconcile([10, 20, 40, 50], reorder: true)
+    XCTAssertEqual(order.visible, [20, 10, 40, 50])
+  }
+
+  func testFocusBeforeDiscoveryIsNotLostOrShownPrematurely() {
+    var order = RecentWindowOrder()
+    order.reconcile([1, 2], reorder: true)
+    order.used(3)
+    order.reconcile([1, 2], reorder: true)
+    XCTAssertEqual(order.visible, [1, 2])
+    order.reconcile([1, 2, 3], reorder: true)
+    XCTAssertEqual(order.visible, [3, 1, 2])
+    order.reconcile([1, 2], reorder: true)
+    order.reconcile([1, 2, 3], reorder: true)
+    XCTAssertEqual(order.visible, [1, 2, 3])
+  }
+
+  func testEmptySingleDuplicateAndReusedWindowIdentity() {
+    var order = RecentWindowOrder()
+    order.reconcile([1, 1], reorder: true)
+    order.used(1)
+    XCTAssertEqual(order.visible, [1])
+    order.reconcile([], reorder: false)
+    XCTAssertTrue(order.visible.isEmpty)
+    XCTAssertTrue(order.history.isEmpty)
+    order.reconcile([2, 1], reorder: true)
+    XCTAssertEqual(order.visible, [2, 1])
+  }
+
+  func testVerticalFramesHaveSharedAxisAndFixedGapWithMixedSizes() {
+    let sizes = [CGSize(width: 1000, height: 700), CGSize(width: 450, height: 900), CGSize(width: 800, height: 180)]
+    let frames = RecentWindowOrder.frames(sizes: sizes)
+    XCTAssertEqual(frames.map(\.size), sizes)
+    XCTAssertEqual(frames.map(\.midX), [0, 0, 0])
+    XCTAssertEqual(frames[0].minY - frames[1].maxY, 100)
+    XCTAssertEqual(frames[1].minY - frames[2].maxY, 100)
+    XCTAssertTrue(RecentWindowOrder.frames(sizes: []).isEmpty)
+  }
+}
+
+@MainActor
+final class ChronologicalModeTests: XCTestCase {
+  func testModeAndAnimatedCameraNeverOverwriteFreeDesktop() throws {
+    let defaults = UserDefaults.standard
+    let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera"]
+    let backup = keys.map { defaults.object(forKey: $0) }
+    defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
+    defaults.set(false, forKey: "chronologicalMode")
+    let original = DesktopPages(pages: [DesktopPage(title: "Keep me",
+      camera: CameraState(center: CGPoint(x: 1600, y: -700), zoom: 0.3),
+      appPlacements: [AppPlacement(bundleIdentifier: "com.apple.finder", applicationName: "Finder",
+        home: CGPoint(x: 2222, y: 3333), lastKnownSize: CGSize(width: 800, height: 600), windowSlots: [])])])
+    defaults.set(try JSONEncoder().encode(original), forKey: "desktopPages")
+    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1600, height: 1000))
+    defer { canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
+    canvas.setChronological(true)
+    canvas.camera = CameraState(center: CGPoint(x: 0, y: -9000), zoom: 0.7)
+    canvas.animateCamera(to: CameraState(center: CGPoint(x: 0, y: -12000), zoom: 0.7)) {}
+    canvas.persistState()
+    let stored = try JSONDecoder().decode(DesktopPages.self, from: XCTUnwrap(defaults.data(forKey: "desktopPages")))
+    XCTAssertEqual(stored, original)
+    canvas.setChronological(false)
+    XCTAssertEqual(canvas.camera, original.selectedPage.camera)
+    canvas.setChronological(true)
+    XCTAssertEqual(canvas.camera.zoom, 0.7)
+    XCTAssertTrue(defaults.bool(forKey: "chronologicalMode"))
+    canvas.persistState()
+    let reopened = CanvasView(frame: canvas.frame)
+    defer { reopened.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: reopened) }
+    XCTAssertTrue(reopened.isChronological)
+    reopened.setChronological(false)
+    XCTAssertEqual(reopened.camera, original.selectedPage.camera)
+  }
+  func testCatalogBackAndViewportChangeKeepSelectionCamera() {
+    let defaults = UserDefaults.standard
+    let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera"]
+    let backup = keys.map { defaults.object(forKey: $0) }
+    defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
+    defaults.set(true, forKey: "chronologicalMode")
+    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1600, height: 1000))
+    defer { canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
+    canvas.prepareChronologicalOverview()
+    XCTAssertTrue(canvas.hasCanvasSelection) // Empty window list still has All apps.
+    let before = canvas.camera
+    canvas.stepRecent(by: 1, wrapping: true, windowsOnly: true)
+    XCTAssertEqual(canvas.camera, before)
+    canvas.focusSelectedWindow()
+    XCTAssertTrue(canvas.showingAllApps)
+    XCTAssertTrue(canvas.closeCatalog())
+    XCTAssertFalse(canvas.closeCatalog())
+    XCTAssertEqual(canvas.camera, before)
+    XCTAssertTrue(canvas.hasCanvasSelection)
+    let target = CameraState(center: CGPoint(x: 0, y: -6000), zoom: canvas.camera.zoom)
+    canvas.animateCamera(to: target) {}
+    canvas.setFrameSize(CGSize(width: 1200, height: 1000))
+    canvas.layout()
+    XCTAssertEqual(canvas.camera, target)
+  }
+
 }

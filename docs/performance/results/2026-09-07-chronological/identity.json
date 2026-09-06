@@ -1,0 +1,15 @@
+{
+  "base_commit": "09707146f1e93862bfb9e7b734681f28cd1e7020",
+  "installed_app": "/Applications/OpenPlane.app",
+  "configuration": "Release",
+  "executable_sha256": "d8faa750b021b48d78373d08c0197bd6c01c6d37f1efd7dd264c55866c3e10b3",
+  "source_manifest_sha256": "37cc1e4b423916b0d8b5232d01c8904786e16f536f9670918a520f6883a17975",
+  "source_diff_sha256": "11d2c46bcaf7c2d4fc6a2291f4d5abc6c985b637f4732907b55db38a810b5d17",
+  "codesign_verified": true,
+  "final_targeted_tests": {
+    "tests": 6,
+    "failures": 0
+  },
+  "full_performance_status": "BLOCKED",
+  "deferred": "NOT RUN: scheduled overnight"
+}

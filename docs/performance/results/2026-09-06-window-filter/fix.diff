@@ -1,0 +1,55 @@
+--- WindowService-before.swift
++++ WindowService.swift
+@@ -82,7 +82,6 @@
+ 
+ private struct AccessibilityInventoryResult: @unchecked Sendable {
+   let elements: [CGWindowID: AXUIElement]
+-  let eligibleProcessIDs: Set<pid_t>
+ }
+ 
+ private actor AccessibilityInventory {
+@@ -102,7 +101,6 @@
+     retryAfterByWindowID = retryAfterByWindowID.filter { requestsByID[$0.key] != nil }
+ 
+     var elements = matchesByWindowID.mapValues(\.element)
+-    var eligibleProcessIDs = Set(matchesByWindowID.values.map(\.processID))
+     let unresolved = requests.filter { matchesByWindowID[$0.id] == nil }
+     let now = Date()
+ 
+@@ -119,7 +117,6 @@
+         }
+         continue
+       }
+-      eligibleProcessIDs.insert(processID)
+ 
+       var used = matchesByWindowID.values.compactMap {
+         $0.processID == processID ? $0.element : nil
+@@ -144,8 +141,7 @@
+     }
+ 
+     return AccessibilityInventoryResult(
+-      elements: elements,
+-      eligibleProcessIDs: eligibleProcessIDs
++      elements: elements
+     )
+   }
+ 
+@@ -213,7 +209,8 @@
+     }
+ 
+     let geometryMatches = scores.sorted { $0.geometry < $1.geometry }
+-    guard let best = geometryMatches.first,
++    // An unrelated helper surface must not claim the only standard AX window.
++    guard let best = geometryMatches.first, best.geometry <= 8,
+       geometryMatches.count == 1 || geometryMatches[1].geometry - best.geometry > 2
+     else { return nil }
+     return best.element
+@@ -320,7 +317,7 @@
+ 
+     return windows.compactMap { window in
+       guard let application = window.owningApplication,
+-        accessibility.eligibleProcessIDs.contains(application.processID)
++        accessibility.elements[window.windowID] != nil
+       else { return nil }
+       let title = window.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+       let resolvedTitle = title?.isEmpty == false ? title! : application.applicationName

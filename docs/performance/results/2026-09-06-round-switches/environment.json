@@ -1,0 +1,8 @@
+{
+  "commit": "09707146f1e93862bfb9e7b734681f28cd1e7020",
+  "source_diff_sha256": "b5dec56bd258018a356a1dfb68bad5c0ce5b6201bb231c072c6d0280b41e83a2",
+  "fix_diff_sha256": "7832504e3ad03b9e2738d7efe2beceb022a0c6bf272ca3de7bd39af965925569",
+  "candidate_binary_sha256": "22d88578c5c1c64faa5e235f7d5ba35ce97217a261fe1fc12d697afdd9b4885f",
+  "signed_release_verified": true,
+  "targeted_tests": 1
+}

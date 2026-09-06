@@ -45,6 +45,24 @@ charge of launching and running software.
 - Return to OpenPlane through its Dock or app-switcher entry, the configurable
   Command-Tab shortcut, or Control-Option-Space.
 
+## Optional chronological layout
+
+Settings → **View mode → Chronological** arranges individual windows vertically
+by their last actual use. The existing **Canvas** mode and its saved desktops,
+positions and cameras remain separate and intact. Both modes retain zoom and
+canvas gestures. Up/Down follows the chronological window list; Return opens the
+selected window. Moving a card is temporary in Chronological: reopening the
+overview or a structural window change restores the vertical arrangement.
+
+With **Use ⌘Tab for OpenPlane** enabled, Chronological supports holding Command,
+pressing Tab repeatedly (Shift reverses), then releasing Command to activate the
+selected window. The list stays stable during selection. Canvas keeps its
+existing shortcut behavior. Window history starts with the OpenPlane process.
+
+**All apps** at the end opens a searchable installed-app catalog; its back arrow
+returns to the window list. Command-Tab skips this catalog entry. Window context
+menus distinguish **Close Window** from **Quit App**.
+
 ## Run
 
 OpenPlane uses automatic Apple Development signing with the configured Personal
@@ -74,8 +92,12 @@ Run the regression suite with:
 
 ```sh
 xcodebuild -project OpenPlane.xcodeproj -scheme OpenPlane -configuration Debug \
-  -destination 'platform=macOS' test
+  -destination 'platform=macOS' -parallel-testing-enabled NO \
+  PRODUCT_BUNDLE_IDENTIFIER=com.yalpani.openplane.tests test
 ```
+
+The view fixtures share saved preferences, so run them serially in a separate
+preferences domain to keep tests independent of the installed app's desktops.
 
 `CanvasMathTests` includes the captured Finder → Down → LibreOffice layout and
 the earlier OpenCode → Left → zsh regression. A matrix checks 14 layouts in all
@@ -110,6 +132,37 @@ of member without launching it.
 both halves of the fade, independent
 camera restoration, rapid switching, adding a desktop, renaming, scrolling a
 12-desktop row, and drawing the tabs and debug overlay at each transition stage.
+
+## Performance testing is part of development
+
+Every new or changed user-visible function needs a live-UI performance case and
+measured verification on the installed signed Release app. Unit tests alone are
+not sufficient. Missing tooling or measurements must be reported as blocked or
+not run, never as a pass. Documentation-only changes may be marked not applicable.
+
+- [Mandatory performance policy](docs/performance/policy.md): measurement conditions,
+  idle/action CPU, latency, cold/warm states, repeated comparisons and completion gates.
+- [Live runbooks](docs/performance/runbooks.md): navigation, zoom, app activation and
+  launch, OpenPlane startup, desktops, dragging/groups, search and all other current
+  function families. New functionality must extend this catalog.
+- [Result template](docs/performance/report-template.md): raw evidence, interpretation,
+  limitations and follow-up tasks.
+- [Performance backlog and agent workflow](docs/performance/backlog.md): required
+  tooling and the future measure → interpret → fix → retest cycle.
+
+The original arrow-navigation CPU burst and a newer bounded live pilot are
+partly automated. The pilot executes subsets of seven families and records
+missing coverage. These runbooks do not imply full verification or automatic
+implementation by an agent. Historical measurements remain below.
+
+## Human review workspace
+
+[Review Desk](review-desk/README.md) turns actual test evidence into proposals
+with accept/reject/defer/investigate decisions, a persistent audit trail and a
+local handoff queue. Run `python3 review-desk/server.py` and open
+`http://127.0.0.1:8766`. The live pilot covers measured subsets of seven families;
+the dashboard exposes all missing coverage and never treats a partial run as a
+full pass. Accepting work does not start an implementation agent.
 
 ## Canvas rendering
 

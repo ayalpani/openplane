@@ -1,0 +1,62 @@
+--- CanvasView-before.swift
++++ CanvasView.swift
+@@ -738,21 +738,20 @@
+       width: panel.maxX - 48 - focusMinX,
+       height: 40
+     )
+-    let footerButtonsX = panel.midX - 60
+     searchButton.frame = CGRect(
+-      x: footerButtonsX,
++      x: panel.minX + 8,
+       y: panel.minY + 4,
+       width: 40,
+       height: 40
+     )
+     fitAllButton.frame = CGRect(
+-      x: footerButtonsX + 40,
++      x: panel.maxX - 88,
+       y: panel.minY + 4,
+       width: 40,
+       height: 40
+     )
+     lockViewButton.frame = CGRect(
+-      x: footerButtonsX + 80,
++      x: panel.maxX - 48,
+       y: panel.minY + 4,
+       width: 40,
+       height: 40
+@@ -3254,7 +3253,7 @@
+ 
+   private func configureMenuButton() {
+     menuButton.title = ""
+-    menuButton.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Settings")
++    menuButton.image = Self.settingsImage()
+     menuButton.contentTintColor = .white.withAlphaComponent(0.82)
+     menuButton.imagePosition = .imageOnly
+     menuButton.imageScaling = .scaleProportionallyDown
+@@ -4252,16 +4251,15 @@
+     host.showSettings(panel)
+   }
+ 
+-  private static func colorSettingsImage() -> NSImage? {
+-    let svg = """
+-      <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 32 32">
+-        <circle cx="16" cy="10.5" r="8.25" fill="#79AEF0" fill-opacity=".78"/>
+-        <circle cx="11.25" cy="18.75" r="8.25" fill="#BD8ADD" fill-opacity=".78"/>
+-        <circle cx="20.75" cy="18.75" r="8.25" fill="#F08DA4" fill-opacity=".78"/>
+-      </svg>
+-      """
+-    guard let image = NSImage(data: Data(svg.utf8)) else { return nil }
+-    image.size = CGSize(width: 30, height: 30)
++  private static func settingsImage() -> NSImage? {
++    guard let symbol = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Settings") else { return nil }
++    // Bake the light color into the icon so AppKit appearance cannot turn it black.
++    let image = NSImage(size: CGSize(width: 24, height: 24), flipped: false) { rect in
++      symbol.draw(in: rect)
++      NSColor.white.withAlphaComponent(0.9).setFill()
++      rect.fill(using: .sourceIn)
++      return true
++    }
+     image.isTemplate = false
+     return image
+   }

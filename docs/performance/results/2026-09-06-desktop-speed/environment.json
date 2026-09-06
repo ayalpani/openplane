@@ -1,0 +1,8 @@
+{
+  "commit": "09707146f1e93862bfb9e7b734681f28cd1e7020",
+  "source_diff_sha256": "84852b23bc51c0ace92a031c853aa3108296a91a7ef8bb1572f23ab04f7f5912",
+  "builds": {
+    "A": "db22d98f75b7106e8754c6b8cbf976f1ebe01aafd7f28a9fa9ed8fc81daccf3f",
+    "B": "d6c1aa232028fea6d6ba8c4843a8808c7050d0321eb97349e067ddfe5c174157"
+  }
+}

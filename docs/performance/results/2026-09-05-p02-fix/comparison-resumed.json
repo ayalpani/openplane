@@ -1,0 +1,23 @@
+{
+  "samples": [],
+  "fixture_sha256": "0a78ff0c08edac746522974efe877f3e116fe5550d2c8ba9572c279bfe5b8104",
+  "started_at": 1788645625.57014,
+  "limitations": [
+    "Personal scene; live window/preview changes uncontrolled",
+    "Accepted/completed individual inputs and presented-frame latency unavailable"
+  ],
+  "original_camera": {
+    "zoom": 1,
+    "center": [
+      1587.5938992302272,
+      10448.562891205906
+    ]
+  },
+  "builds": {
+    "A": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+    "B": "c2d7f7dce2e109060dc68928f4fddebc83290c0e8db98fb846556a96b5b01fdc"
+  },
+  "error": "Command '['open', '/Applications/OpenPlane.app']' returned non-zero exit status 1.",
+  "restored": true,
+  "finished_at": 1788645627.608358
+}

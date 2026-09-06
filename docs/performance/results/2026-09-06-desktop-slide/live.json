@@ -1,0 +1,54 @@
+{
+  "variants": [
+    {
+      "variant": "before",
+      "build_sha256": "c4ed64eac3544e0a7c8d3c97a14eaf6a3d7b8f2a3ec0ff7bf866fe6dae4547bc",
+      "events": [
+        {
+          "input": {
+            "code": 48,
+            "posted_down": 86373.667324958,
+            "posted_up_before": 86373.692870625
+          },
+          "completed_state_change": true
+        },
+        {
+          "input": {
+            "code": 48,
+            "posted_down": 86374.632703291,
+            "posted_up_before": 86374.643844916
+          },
+          "completed_state_change": true
+        }
+      ],
+      "camera_and_desktop_restored": true,
+      "video": "/tmp/openplane-desktop-slide/before.mov"
+    },
+    {
+      "variant": "after",
+      "build_sha256": "e49253c534551a7fd71bd7103c188b8ec73d8093d90031446c7e458208819828",
+      "events": [
+        {
+          "input": {
+            "code": 48,
+            "posted_down": 86381.918659375,
+            "posted_up_before": 86381.929791625
+          },
+          "completed_state_change": true
+        },
+        {
+          "input": {
+            "code": 48,
+            "posted_down": 86382.867881791,
+            "posted_up_before": 86382.8790395
+          },
+          "completed_state_change": true
+        }
+      ],
+      "camera_and_desktop_restored": true,
+      "video": "/tmp/openplane-desktop-slide/after.mov"
+    }
+  ],
+  "fixture_sha256": "063d221f9c96d1d9c690271c76f7f2aabe0f8659e2563c56cd5eb18d3487be05",
+  "restored_preferences": true
+}

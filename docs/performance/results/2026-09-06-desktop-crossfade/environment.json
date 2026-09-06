@@ -1,0 +1,9 @@
+{
+  "commit": "09707146f1e93862bfb9e7b734681f28cd1e7020",
+  "source_diff_sha256": "52ed9cfa0195e3d0227df977dfa1878804a40e8a1e25bf7642ace46515ff8ab6",
+  "product_source_sha256": "c33ad743cad8cbe292437f11ba0f75955e7d50054db4de182eb81d258bb6f71a",
+  "builds": {
+    "before": "d6c1aa232028fea6d6ba8c4843a8808c7050d0321eb97349e067ddfe5c174157",
+    "after": "d9b3e69d9091bfc427f02ecb85a39d2290dcf94680d6eec9fd90e2e1a1425a39"
+  }
+}

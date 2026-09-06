@@ -1,0 +1,45 @@
+{
+  "mode": "frames",
+  "samples": [],
+  "binary_sha256": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+  "fixture_sha256": "be7db0696db047cc9a222854d76d6b3ca280c8936bebbd0468b1196ce64ea4fc",
+  "original_camera": {
+    "center": [
+      1587.5938992302272,
+      9241.562891205906
+    ],
+    "zoom": 1
+  },
+  "started_at": 1788643451.091032,
+  "accepted_actions": null,
+  "succeeded_actions": null,
+  "limitations": [
+    "Personal live scene; not frozen fixture",
+    "Input calls counted, accepted and completed action counts unavailable",
+    "No presented pixel observer",
+    "No A/B candidate"
+  ],
+  "pid": 91081,
+  "desktop": "Desktop 2",
+  "search_open": "false",
+  "reset_camera": {
+    "center": [
+      1587.5938992302272,
+      9241.562891205906
+    ],
+    "zoom": 0.06
+  },
+  "route_start_monotonic": 72821.13194375,
+  "route_end_monotonic": 72844.1360485,
+  "requested_taps": 270,
+  "end_camera": {
+    "center": [
+      1587.5938992302272,
+      9241.562891205906
+    ],
+    "zoom": 0.06
+  },
+  "error": "Command '['xcrun', 'xctrace', 'record', '--template', 'Animation Hitches', '--attach', '91081', '--time-limit', '25s', '--output', '/Users/ayalpani/dev/_products/openplane/docs/performance/results/2026-09-05-p02-diagnosis/frames.trace', '--no-prompt']' timed out after 40 seconds",
+  "restored": true,
+  "finished_at": 1788643525.050376
+}

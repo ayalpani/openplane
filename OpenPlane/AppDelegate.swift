@@ -23,6 +23,14 @@ private func openPlaneCommandTabEventTapCallback(
     return Unmanaged.passUnretained(event)
   }
 
+  if type == .flagsChanged {
+    MainActor.assumeIsolated { appDelegate.commandModifiersChanged(event.flags) }
+    return Unmanaged.passUnretained(event)
+  }
+  if type == .keyDown, event.getIntegerValueField(.keyboardEventKeycode) == 53 {
+    let cancelled = MainActor.assumeIsolated { appDelegate.cancelCommandCycleForEscape() }
+    if cancelled { return nil }
+  }
   guard ShortcutMatcher.isCommandTab(
     keyCode: event.getIntegerValueField(.keyboardEventKeycode),
     flags: event.flags
@@ -31,7 +39,7 @@ private func openPlaneCommandTabEventTapCallback(
   if type == .keyDown,
     event.getIntegerValueField(.keyboardEventAutorepeat) == 0
   {
-    MainActor.assumeIsolated { appDelegate.handleShortcut() }
+    MainActor.assumeIsolated { appDelegate.handleCommandTab(backward: event.flags.contains(.maskShift)) }
   }
   return nil
 }
@@ -41,6 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   private let windowService = WindowService()
   private let previewCache = PreviewCache()
   private let canvasView = CanvasView(frame: .zero)
+  private lazy var workspaceView = CanvasWorkspaceView(canvas: canvasView)
   private let permissionView = PermissionView(frame: .zero)
 
   private var overlayWindow: NSWindow!
@@ -52,6 +61,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   private var requestedLaunchAnchors: [String: CGPoint] = [:]
   private var lastFocusedByBundle: [String: CGWindowID] = [:]
   private var appHistory = AppNavigationHistory()
+  private let windowFocusObserver = WindowFocusObserver()
+  private var commandCycleActive = false
+  private var commandCycleOrigin: CGWindowID?
+  private var chronologicalOverviewReady = false
+  private var overviewGeneration = 0
+  private var pendingCommandSteps: [Int] = []
+  private var commandCycleReleased = false
   private var inventoryTracker = WindowInventoryTracker()
   private var didInitialLayout = false
   private var isReturning = false
@@ -71,7 +87,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     buildMenu()
     buildOverlayWindow()
     configurePermissionView()
+    windowFocusObserver.onFocus = { [weak self] id in self?.canvasView.recentWindows.used(id) }
+    canvasView.onModeChange = { [weak self] in
+      _ = self?.cancelCommandCycle()
+      self?.chronologicalOverviewReady = true
+      self?.overviewGeneration += 1
+    }
     observeWorkspace()
+    windowFocusObserver.observeFrontmost()
     installShortcut()
 
     if UserDefaults.standard.bool(forKey: "didCompleteOnboarding")
@@ -94,6 +117,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     if let globalKeyMonitor { NSEvent.removeMonitor(globalKeyMonitor) }
     if let localKeyMonitor { NSEvent.removeMonitor(localKeyMonitor) }
     removeCommandTabEventTap()
+    windowFocusObserver.stop()
     NSWorkspace.shared.notificationCenter.removeObserver(self)
   }
 
@@ -141,23 +165,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       return
     }
 
-    if let runningApplication = NSRunningApplication.runningApplications(
-      withBundleIdentifier: bundleIdentifier
-    ).first(where: { !$0.isTerminated }) {
-      if windowService.activate(runningApplication) {
-        canvasView.completePlaceholderLaunch(for: bundleIdentifier)
-        overlayWindow.orderOut(nil)
-        stopCanvasLoops()
-        canvasView.statusMessage = nil
-      } else {
-        canvasView.showLaunchError(
-          for: bundleIdentifier,
-          message: "Couldn’t activate \(applicationName)"
-        )
-      }
-      return
-    }
-
+    // A running app can have no windows. Reopen it and wait for a real window
+    // before hiding the canvas; activation alone only changes the menu bar.
     requestedLaunchAnchors[bundleIdentifier] = anchor
     let configuration = NSWorkspace.OpenConfiguration()
     configuration.activates = false
@@ -400,8 +409,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       return
     }
     permissionTimer?.invalidate()
+    if canvasView.isChronological {
+      windowFocusObserver.recordFrontmost()
+      if commandCycleActive && !pendingCommandSteps.isEmpty && !chronologicalOverviewReady { return }
+      configureWindowForCanvas()
+      overlayWindow.contentView = workspaceView
+      canvasView.closeCatalog()
+      canvasView.restoreChronologicalCamera()
+      canvasView.endFocusTransition()
+      stateMachine.returnToOverview()
+      overlayWindow.alphaValue = 1
+      overlayWindow.makeKeyAndOrderFront(nil)
+      NSApp.activate(ignoringOtherApps: true)
+      chronologicalOverviewReady = false
+      overviewGeneration += 1
+      let generation = overviewGeneration
+      Task { [weak self] in
+        guard let self else { return }
+        await self.reconcileWindows()
+        guard self.isShowingCanvas, self.canvasView.isChronological, self.overviewGeneration == generation else { return }
+        self.canvasView.prepareChronologicalOverview()
+        self.chronologicalOverviewReady = true
+        for step in self.pendingCommandSteps {
+          self.canvasView.stepRecent(by: step, wrapping: true, windowsOnly: true)
+        }
+        self.pendingCommandSteps.removeAll()
+        self.startCanvasLoops()
+        if self.commandCycleReleased { self.finishCommandCycle() }
+      }
+      return
+    }
     configureWindowForCanvas()
-    overlayWindow.contentView = canvasView
+    overlayWindow.contentView = workspaceView
 
     switch stateMachine.mode {
     case .working(let id):
@@ -417,6 +456,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
 
   private func dismissCanvas() {
     guard isShowingCanvas, !isDismissing else { return }
+    _ = cancelCommandCycle()
+    overviewGeneration += 1
     canvasView.dismissSettings()
     isDismissing = true
     stopCanvasLoops()
@@ -483,6 +524,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   private func focus(_ node: WindowNode, recordInHistory: Bool = true) {
+    canvasView.dismissSettings()
+    canvasView.revealCatalogWindowForFocus(node.id)
     guard stateMachine.beginFocus(on: node.id) else { return }
     activatedFocusWindowID = nil
     canvasView.selectedWindowID = node.id
@@ -587,7 +630,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   private func reconcileWindows() async {
-    guard overlayWindow.isVisible, overlayWindow.contentView === canvasView else { return }
+    guard overlayWindow.isVisible, overlayWindow.contentView === workspaceView else { return }
     guard !canvasView.defersBackgroundWork else { return }
     do {
       let allDiscovered = try await windowService.discover(on: mainScreen)
@@ -810,7 +853,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   private func refreshVisiblePreviews() async {
-    guard overlayWindow.isVisible, overlayWindow.contentView === canvasView else { return }
+    guard overlayWindow.isVisible, overlayWindow.contentView === workspaceView else { return }
     guard !canvasView.defersBackgroundWork else { return }
     let visibleIDs = canvasView.visibleWindowIDs()
     let refreshIDs = previewScheduler.nextIDs(
@@ -962,6 +1005,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   @objc private func workspaceDidActivate(_ notification: Notification) {
+    windowFocusObserver.observeFrontmost()
     guard isShowingCanvas, let application = workspaceApplication(from: notification),
       shouldFollow(application)
     else { return }
@@ -1007,13 +1051,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   private var isShowingCanvas: Bool {
-    overlayWindow.isVisible && overlayWindow.contentView === canvasView
+    overlayWindow.isVisible && overlayWindow.contentView === workspaceView
       && stateMachine.mode == .overview
   }
 
   private func publishNodes() {
-    let nodes = nodesByID.values.sorted { $0.id < $1.id }
-    canvasView.nodes = nodes
+    let order = (CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+      as? [[String: Any]] ?? []).compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value }
+    let ranks = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($0.element, $0.offset) })
+    let nodes = nodesByID.values.sorted {
+      let a = ranks[$0.id] ?? Int.max, b = ranks[$1.id] ?? Int.max
+      return a == b ? $0.id < $1.id : a < b
+    }
+    canvasView.recentWindows.updateInventory(nodes.map(\.id))
+    canvasView.nodes = nodes.sorted { $0.id < $1.id }
     updateHistoryNavigation()
     guard !canvasView.hasCanvasSelection else { return }
     canvasView.selectedWindowID = windowService.frontmostWindowID(among: nodes) ?? nodes.first?.id
@@ -1095,6 +1146,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
         let dismissed = MainActor.assumeIsolated {
           guard self?.isShowingCanvas == true else { return false }
           if self?.canvasView.dismissSearch() == true { return true }
+          if self?.canvasView.closeCatalog() == true { return true }
           if self?.canvasView.dismissSettings() == true { return true }
           if self?.canvasView.dismissDesktopTitleEditing() == true { return true }
           self?.dismissCanvas()
@@ -1118,11 +1170,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   private func configureCommandTabEventTap(enabled: Bool) -> Bool {
+    if !enabled { _ = cancelCommandCycle() }
     removeCommandTabEventTap()
     guard enabled else { return true }
 
     let eventMask = CGEventMask(1 << CGEventType.keyDown.rawValue)
       | CGEventMask(1 << CGEventType.keyUp.rawValue)
+      | CGEventMask(1 << CGEventType.flagsChanged.rawValue)
     guard
       let eventTap = CGEvent.tapCreate(
         tap: .cgSessionEventTap,
@@ -1173,4 +1227,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       break
     }
   }
+  fileprivate func handleCommandTab(backward: Bool) {
+    guard canvasView.isChronological else { handleShortcut(); return }
+    let step = backward ? -1 : 1
+    if !commandCycleActive {
+      commandCycleActive = true
+      commandCycleReleased = false
+      windowFocusObserver.recordFrontmost()
+      commandCycleOrigin = canvasView.recentWindows.history.first
+      chronologicalOverviewReady = false
+      showCanvas()
+    }
+    if chronologicalOverviewReady { canvasView.stepRecent(by: step, wrapping: true, windowsOnly: true) }
+    else { pendingCommandSteps.append(step) }
+  }
+
+  fileprivate func commandModifiersChanged(_ flags: CGEventFlags) {
+    guard commandCycleActive, !flags.contains(.maskCommand) else { return }
+    commandCycleReleased = true
+    if chronologicalOverviewReady { finishCommandCycle() }
+  }
+
+  private func finishCommandCycle() {
+    guard commandCycleActive else { return }
+    commandCycleActive = false
+    commandCycleReleased = false
+    pendingCommandSteps.removeAll()
+    guard canvasView.selectedWindowID != nil else { return }
+    canvasView.focusSelectedWindow()
+  }
+
+  fileprivate func cancelCommandCycleForEscape() -> Bool {
+    guard cancelCommandCycle() else { return false }
+    dismissCanvas()
+    return true
+  }
+
+  @discardableResult fileprivate func cancelCommandCycle() -> Bool {
+    guard commandCycleActive else { return false }
+    commandCycleActive = false
+    commandCycleReleased = false
+    pendingCommandSteps.removeAll()
+    if let id = commandCycleOrigin, nodesByID[id] != nil { canvasView.selectedWindowID = id }
+    return true
+  }
+
 }

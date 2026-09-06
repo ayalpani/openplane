@@ -1,0 +1,72 @@
+--- /tmp/openplane-grid/CanvasView-before.swift	2026-09-06 00:59:35.042791210 +0200
++++ OpenPlane/CanvasView.swift	2026-09-06 00:59:35.080993151 +0200
+@@ -607,6 +607,7 @@
+   private let newDesktopMenuItem = NSMenuItem()
+   private let expandLandscapePreviewsMenuItem = NSMenuItem()
+   private let debugInformationMenuItem = NSMenuItem()
++  private let gridMenuItem = NSMenuItem()
+   private let centerGuideMenuItem = NSMenuItem()
+   private let synchronizedSelectionMenuItem = NSMenuItem()
+   private let lightClosedCardsMenuItem = NSMenuItem()
+@@ -618,6 +619,7 @@
+     forKey: CanvasView.debugInformationPreferenceKey)
+   // Retain the font: recreating it across draw/autorelease cycles can crash CoreText.
+   private let debugInformationFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .semibold)
++  private var showsGrid = UserDefaults.standard.object(forKey: "showGrid") as? Bool ?? true
+   private var showsCenterGuide = UserDefaults.standard.bool(
+     forKey: CanvasView.centerGuidePreferenceKey)
+   private var synchronizesSelectionAnimation =
+@@ -912,7 +914,7 @@
+   }
+ 
+   private func updateGrid(camera: CameraState, travel: CGPoint = .zero) {
+-    let opacity = CanvasMath.gridOpacity(at: camera.zoom)
++    let opacity = showsGrid ? CanvasMath.gridOpacity(at: camera.zoom) : 0
+     gridLayer.isHidden = opacity == 0
+     guard opacity > 0 else {
+       if gridZoom != camera.zoom {
+@@ -3272,6 +3274,10 @@
+     debugInformationMenuItem.target = self
+     debugInformationMenuItem.action = #selector(toggleDebugInformation(_:))
+     navigatorMenu.addItem(debugInformationMenuItem)
++    gridMenuItem.title = "Show Grid Dots"
++    gridMenuItem.target = self
++    gridMenuItem.action = #selector(toggleGrid(_:))
++    navigatorMenu.addItem(gridMenuItem)
+     centerGuideMenuItem.title = "Show Center Guide"
+     centerGuideMenuItem.target = self
+     centerGuideMenuItem.action = #selector(toggleCenterGuide(_:))
+@@ -3469,6 +3475,7 @@
+     forwardButton.setAccessibilityLabel(forwardButton.toolTip ?? "Select next app")
+     expandLandscapePreviewsMenuItem.state = expandsLandscapePreviews ? .on : .off
+     debugInformationMenuItem.state = showsDebugInformation ? .on : .off
++    gridMenuItem.state = showsGrid ? .on : .off
+     centerGuideMenuItem.state = showsCenterGuide ? .on : .off
+     synchronizedSelectionMenuItem.state = synchronizesSelectionAnimation ? .on : .off
+     lightClosedCardsMenuItem.state = usesLightClosedCards ? .on : .off
+@@ -3673,6 +3680,7 @@
+   @objc private func showNavigatorMenu(_ sender: NSButton) {
+     expandLandscapePreviewsMenuItem.state = expandsLandscapePreviews ? .on : .off
+     debugInformationMenuItem.state = showsDebugInformation ? .on : .off
++    gridMenuItem.state = showsGrid ? .on : .off
+     centerGuideMenuItem.state = showsCenterGuide ? .on : .off
+     synchronizedSelectionMenuItem.state = synchronizesSelectionAnimation ? .on : .off
+     lightClosedCardsMenuItem.state = usesLightClosedCards ? .on : .off
+@@ -3706,6 +3714,17 @@
+     needsDisplay = true
+   }
+ 
++  @objc private func toggleGrid(_ sender: NSMenuItem) {
++    showsGrid.toggle()
++    UserDefaults.standard.set(showsGrid, forKey: "showGrid")
++    sender.state = showsGrid ? .on : .off
++    gridZoom = nil
++    CATransaction.begin()
++    CATransaction.setDisableActions(true)
++    updateGrid(camera: camera)
++    CATransaction.commit()
++  }
++
+   @objc private func toggleCenterGuide(_ sender: NSMenuItem) {
+     showsCenterGuide.toggle()
+     UserDefaults.standard.set(showsCenterGuide, forKey: Self.centerGuidePreferenceKey)

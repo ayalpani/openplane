@@ -1,0 +1,93 @@
+{
+  "cases": {
+    "P05": {
+      "status": "partial",
+      "launch_to_ax_seconds": 1.2452778330043657,
+      "desktop": "Desktop 2"
+    },
+    "P01": {
+      "status": "partial",
+      "requested": 100,
+      "phase": {
+        "seconds": 10.083017417011433,
+        "cpu_seconds": 0.5543594999999999,
+        "cpu_percent": 5.497952419131196
+      },
+      "accepted": null
+    },
+    "P02": {
+      "status": "partial",
+      "low": {
+        "zoom": 0.06,
+        "center": [
+          3555.593899230227,
+          10385.562891205906
+        ]
+      },
+      "high": {
+        "zoom": 1.25,
+        "center": [
+          3555.593899230227,
+          10385.562891205906
+        ]
+      },
+      "end": {
+        "zoom": 0.06,
+        "center": [
+          3555.593899230227,
+          10385.562891205906
+        ]
+      },
+      "bounds_correct": true,
+      "reversals_requested": 5,
+      "arrow_interruption_requested": true
+    },
+    "P03": {
+      "status": "partial",
+      "trips": [
+        {
+          "finder_and_return_observed": true
+        },
+        {
+          "finder_and_return_observed": true
+        },
+        {
+          "finder_and_return_observed": true
+        }
+      ]
+    },
+    "P06": {
+      "status": "partial",
+      "requested": 10,
+      "start": "Desktop 2",
+      "end": "Desktop 2",
+      "accepted": null
+    },
+    "P14": {
+      "status": "partial",
+      "idle": {
+        "seconds": 30.000874874996953,
+        "cpu_seconds": 0.3963994166666662,
+        "cpu_percent": 1.3212928566860884
+      }
+    },
+    "P04": {
+      "status": "BLOCKED",
+      "reason": "No dedicated disposable app/start-readiness fixture; PERF-001/005"
+    }
+  },
+  "screenshots": [
+    "/tmp/openplane-p02-ab/A-candidate-minimum.png",
+    "/tmp/openplane-p02-ab/A-candidate-maximum.png"
+  ],
+  "started_at": 1788646682.097305,
+  "limitations": [
+    "Coarse script/AX timings are not first-frame latency",
+    "No held-key/pinch or pointer-route automation",
+    "P04 disposable app fixture unavailable"
+  ],
+  "fixture_sha256": "a61396e917edd1c91a16a86c71da71b9722eee75c3478f511631c6a1e560e32c",
+  "binary_sha256": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+  "restored_preferences": true,
+  "finished_at": 1788646770.263702
+}

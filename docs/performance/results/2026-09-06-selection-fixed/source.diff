@@ -1,0 +1,2621 @@
+diff --git a/OpenPlane/AppDelegate.swift b/OpenPlane/AppDelegate.swift
+index dfb0969..0a71f6d 100644
+--- a/OpenPlane/AppDelegate.swift
++++ b/OpenPlane/AppDelegate.swift
+@@ -41,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+   private let windowService = WindowService()
+   private let previewCache = PreviewCache()
+   private let canvasView = CanvasView(frame: .zero)
++  private lazy var workspaceView = CanvasWorkspaceView(canvas: canvasView)
+   private let permissionView = PermissionView(frame: .zero)
+ 
+   private var overlayWindow: NSWindow!
+@@ -141,23 +142,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+       return
+     }
+ 
+-    if let runningApplication = NSRunningApplication.runningApplications(
+-      withBundleIdentifier: bundleIdentifier
+-    ).first(where: { !$0.isTerminated }) {
+-      if windowService.activate(runningApplication) {
+-        canvasView.completePlaceholderLaunch(for: bundleIdentifier)
+-        overlayWindow.orderOut(nil)
+-        stopCanvasLoops()
+-        canvasView.statusMessage = nil
+-      } else {
+-        canvasView.showLaunchError(
+-          for: bundleIdentifier,
+-          message: "Couldn’t activate \(applicationName)"
+-        )
+-      }
+-      return
+-    }
+-
++    // A running app can have no windows. Reopen it and wait for a real window
++    // before hiding the canvas; activation alone only changes the menu bar.
+     requestedLaunchAnchors[bundleIdentifier] = anchor
+     let configuration = NSWorkspace.OpenConfiguration()
+     configuration.activates = false
+@@ -401,7 +387,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+     }
+     permissionTimer?.invalidate()
+     configureWindowForCanvas()
+-    overlayWindow.contentView = canvasView
++    overlayWindow.contentView = workspaceView
+ 
+     switch stateMachine.mode {
+     case .working(let id):
+@@ -483,6 +469,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+   }
+ 
+   private func focus(_ node: WindowNode, recordInHistory: Bool = true) {
++    canvasView.dismissSettings()
+     guard stateMachine.beginFocus(on: node.id) else { return }
+     activatedFocusWindowID = nil
+     canvasView.selectedWindowID = node.id
+@@ -587,7 +574,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+   }
+ 
+   private func reconcileWindows() async {
+-    guard overlayWindow.isVisible, overlayWindow.contentView === canvasView else { return }
++    guard overlayWindow.isVisible, overlayWindow.contentView === workspaceView else { return }
+     guard !canvasView.defersBackgroundWork else { return }
+     do {
+       let allDiscovered = try await windowService.discover(on: mainScreen)
+@@ -810,7 +797,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+   }
+ 
+   private func refreshVisiblePreviews() async {
+-    guard overlayWindow.isVisible, overlayWindow.contentView === canvasView else { return }
++    guard overlayWindow.isVisible, overlayWindow.contentView === workspaceView else { return }
+     guard !canvasView.defersBackgroundWork else { return }
+     let visibleIDs = canvasView.visibleWindowIDs()
+     let refreshIDs = previewScheduler.nextIDs(
+@@ -1007,7 +994,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+   }
+ 
+   private var isShowingCanvas: Bool {
+-    overlayWindow.isVisible && overlayWindow.contentView === canvasView
++    overlayWindow.isVisible && overlayWindow.contentView === workspaceView
+       && stateMachine.mode == .overview
+   }
+ 
+diff --git a/OpenPlane/CanvasModel.swift b/OpenPlane/CanvasModel.swift
+index bfd7fd4..29a1856 100644
+--- a/OpenPlane/CanvasModel.swift
++++ b/OpenPlane/CanvasModel.swift
+@@ -978,13 +978,12 @@ enum CanvasMath {
+   }
+ 
+   static func selectionAnimationPhases(
+-    progress: CGFloat,
+-    synchronized: Bool = false
++    progress: CGFloat
+   ) -> (title: CGFloat, border: CGFloat) {
+     let progress = min(1, max(0, progress))
+     return (
+       title: min(1, progress / 0.55),
+-      border: synchronized ? progress : max(0, (progress - 0.55) / 0.45)
++      border: progress
+     )
+   }
+ 
+@@ -1004,16 +1003,6 @@ enum CanvasMath {
+     return progress * progress * (3 - 2 * progress)
+   }
+ 
+-  static func selectionHandoffPhase(
+-    progress: CGFloat,
+-    incoming: Bool,
+-    synchronized: Bool = false
+-  ) -> CGFloat {
+-    if synchronized { return easedTransition(progress) }
+-    let local = incoming ? (progress - 0.5) * 2 : progress * 2
+-    return easedTransition(local)
+-  }
+-
+   static func appIconScale(at zoom: CGFloat) -> CGFloat {
+     let progress = (zoom - minimumZoom) / (0.18 - minimumZoom)
+     return 0.5 + 0.5 * easedTransition(progress)
+diff --git a/OpenPlane/CanvasView.swift b/OpenPlane/CanvasView.swift
+index 8793ffa..b5d4ada 100644
+--- a/OpenPlane/CanvasView.swift
++++ b/OpenPlane/CanvasView.swift
+@@ -227,8 +227,12 @@ private final class CanvasCardLayer: CALayer {
+   let preview = CALayer()
+   let previousPreview = CALayer()
+   let icon = CALayer()
+-  let header = CATextLayer()
+-  let activeHeader = CATextLayer()
++  let header = CALayer()
++  let activeHeader = CALayer()
++  let regularTitle = CATextLayer()
++  let boldTitle = CATextLayer()
++  let regularActiveTitle = CATextLayer()
++  let boldActiveTitle = CATextLayer()
+   let status = CATextLayer()
+   let border = CAShapeLayer()
+   let indicator = CAShapeLayer()
+@@ -262,8 +266,14 @@ private final class CanvasCardLayer: CALayer {
+     border.fillColor = nil
+     border.shadowOffset = .zero
+     border.shadowRadius = 16
+-    header.truncationMode = .end
+-    activeHeader.truncationMode = .end
++    header.addSublayer(regularTitle)
++    header.addSublayer(boldTitle)
++    activeHeader.addSublayer(regularActiveTitle)
++    activeHeader.addSublayer(boldActiveTitle)
++    for title in [regularTitle, boldTitle, regularActiveTitle, boldActiveTitle] {
++      title.truncationMode = .end
++      title.actions = ["contents": NSNull()]
++    }
+     status.alignmentMode = .center
+     status.truncationMode = .end
+     // CATextLayer may prepare contents after the surrounding transaction commits.
+@@ -282,16 +292,23 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   private let sceneView = CanvasDrawingView()
+   private let hudView = CanvasDrawingView()
+   let cameraLayer = CALayer()
+-  private let gridLayer = CAShapeLayer()
++  private let gridLayer = CAReplicatorLayer()
++  private let gridRows = CAReplicatorLayer()
++  private let gridTile = CALayer()
+   private let centerGuideLayer = CAShapeLayer()
+   private let miniMapViewport = CAShapeLayer()
+   private let miniMapClip = CAShapeLayer()
++  private let miniMapContent = CALayer()
++  private let miniMapContainer = CALayer()
++  private let miniMapContentClip = CAShapeLayer()
++  private var miniMapCards: [String: CAShapeLayer] = [:]
+   private var renderedMiniMapCamera: CameraState?
+   private var cardLayers: [String: CanvasCardLayer] = [:]
+   private var gridZoom: CGFloat?
+   private var gridSize = CGSize.zero
+   // Counts actual image preparation, not camera/selection layer property updates.
+   private(set) var sceneContentUpdates = 0
++  private(set) var sceneCardUpdates = 0
+ 
+   private static let backgroundPreferenceKey = "canvasBackground"
+   private static let navigatorPanelXPreferenceKey = "navigatorPanelX"
+@@ -299,14 +316,13 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   private static let expandLandscapePreviewsPreferenceKey = "expandLandscapePreviews"
+   private static let debugInformationPreferenceKey = "showDebugInformation"
+   private static let centerGuidePreferenceKey = "showCenterGuide"
+-  private static let synchronizedSelectionPreferenceKey = "synchronizeSelectionAnimation"
+   private static let lightClosedCardsPreferenceKey = "useLightClosedCards"
+   private static let desktopPagesPreferenceKey = "desktopPages"
+   private static let navigatorPanelSize = CGSize(width: 268, height: 244)
+-  private static let navigatorTextFont = NSFont.systemFont(ofSize: 14, weight: .medium)
++  private static let navigatorTextFont = NSFont.systemFont(ofSize: 12, weight: .medium)
+   private static let desktopTitleFont = NSFont.systemFont(ofSize: 36, weight: .heavy)
+   private static let desktopTabFont = NSFont.systemFont(ofSize: 20, weight: .semibold)
+-  static let desktopTransitionDuration: TimeInterval = 0.28
++  static let desktopTransitionDuration: TimeInterval = selectionTransitionDuration
+   private static let selectionHandleHitSize: CGFloat = 20
+   private static let minimumGroupSize: CGFloat = 80
+   private static let previewFadeDuration: TimeInterval = 0.25
+@@ -360,17 +376,30 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       guard selectedWindowID != oldValue else { return }
+       if selectedWindowID != nil { selectedPlaceholderBundleIdentifier = nil }
+       animateSelection(from: oldValue, to: selectedWindowID)
+-      needsDisplay = true
++      invalidateSelectionHUD()
+       updateNavigatorPanel()
+     }
+   }
+-  var camera = CameraState() {
+-    didSet {
+-      desktopPages.updateSelectedCamera(camera)
+-      scheduleDesktopPagesPersistence()
+-      updateSceneCamera()
+-      if oldValue.zoom != camera.zoom { synchronizeScene() }
+-      schedulePreviewToolTipUpdate()
++  private var cameraState = CameraState()
++  var camera: CameraState {
++    get {
++      guard nativeCameraTravel, let animation = cameraAnimation else { return cameraState }
++      return CanvasMath.interpolatedCamera(from: animation.start, to: animation.target,
++        tracking: nil, progress: CanvasMath.easedTransition(
++          min(1, (CACurrentMediaTime() - animation.startedAt) / animation.duration)), in: bounds)
++    }
++    set {
++      let oldValue = camera
++      stopNativeCameraTravel()
++      cameraState = newValue
++      guard newValue != oldValue else { return }
++      desktopPages.updateSelectedCamera(newValue)
++      scheduleCameraMaintenance()
++      if oldValue.zoom != newValue.zoom {
++        synchronizeScene()
++      } else {
++        updateSceneCamera()
++      }
+     }
+   }
+   var statusMessage: String? {
+@@ -448,7 +477,9 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   private var selectedPlaceholderBundleIdentifier: String? {
+     didSet {
+       guard selectedPlaceholderBundleIdentifier != oldValue else { return }
+-      needsDisplay = true
++      synchronizeScene(targetKeys: Set([oldValue, selectedPlaceholderBundleIdentifier]
++        .compactMap { $0.map { "app:\($0)" } }))
++      invalidateSelectionHUD()
+       updateNavigatorPanel()
+     }
+   }
+@@ -458,6 +489,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     }
+   }
+   private var backgroundWorkDeferredUntil: TimeInterval = 0
++  private var displayedLockState: Bool?
+   private(set) var groupSelectionIDs: Set<String> = []
+   private var resizingGroupSelectionWorldRect: CGRect?
+   var groupSelectionWorldRect: CGRect? {
+@@ -483,6 +515,9 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   private var keyboardTapZoomDisplayLink: CADisplayLink?
+   private var animationDisplayLink: CADisplayLink?
+   private var cameraAnimation: CameraAnimation?
++  private(set) var nativeCameraTravel = false
++  private var nativeCameraBounds = CGRect.zero
++  private(set) var cameraFrameCallbacks = 0
+   private var isPresentingFinalAnimationFrame = false
+   private var focusTransitionWindowID: CGWindowID?
+   private var focusTransitionProgress: CGFloat = 0
+@@ -506,6 +541,10 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   private var previewToolTipTags: [NSView.ToolTipTag] = []
+   private var previewToolTipWindowIDs: [NSView.ToolTipTag: CGWindowID] = [:]
+   private var previewToolTipUpdateTask: Task<Void, Never>?
++  private var cameraMaintenancePending = false
++  private var cameraChangedAt: TimeInterval = 0
++  private(set) var cameraMaintenanceStarts = 0
++  private(set) var cameraMaintenanceRuns = 0
+   private var hoveredWindowID: CGWindowID?
+   private var isHoveringGroupSelection = false
+   private var hoveredSelectionResizeHandle: SelectionResizeHandle?
+@@ -513,11 +552,22 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   private var windowHoverStartProgress: [CGWindowID: CGFloat] = [:]
+   private var windowHoverAnimationStartedAt: TimeInterval?
+   private var windowHoverDisplayLink: CADisplayLink?
+-  private var selectionProgress: [CGWindowID: CGFloat] = [:]
++  private var selectionSamplingTime: TimeInterval?
++  private var selectionTargetWindowID: CGWindowID?
++  private func selectionProgress(for windowID: CGWindowID) -> CGFloat? {
++    guard let startedAt = selectionAnimationStartedAt,
++      let start = selectionStartProgress[windowID] else { return nil }
++    let time = selectionSamplingTime ?? CACurrentMediaTime()
++    let progress = time >= startedAt + Self.selectionTransitionDuration
++      ? 1 : max(0, (time - startedAt) / Self.selectionTransitionDuration)
++    let incoming = windowID == selectionTargetWindowID
++    let phase = CanvasMath.easedTransition(progress)
++    return start + ((incoming ? 1 : 0) - start) * phase
++  }
+   private var selectionStartProgress: [CGWindowID: CGFloat] = [:]
+   private var selectionStaysWithinApplication = false
+   private var selectionAnimationStartedAt: TimeInterval?
+-  private var selectionDisplayLink: CADisplayLink?
++
+   private var previousPreviews: [CGWindowID: NSImage] = [:]
+   private var previewFadeStartedAt: [CGWindowID: TimeInterval] = [:]
+   private var previewFadeDisplayLink: CADisplayLink?
+@@ -531,7 +581,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   private let menuButton = HoverButton()
+   private let fitAllButton = HoverButton()
+   private let searchButton = HoverButton()
+-  private let settingsButton = HoverButton()
++  private let addDesktopButton = NSButton()
+   private let lockViewButton = HoverButton()
+   private let closeSearchButton = HoverButton()
+   private let nextSearchResultButton = HoverButton()
+@@ -541,20 +591,14 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   private let desktopTabsScrollView = NSScrollView()
+   private let desktopTabsContent = NSView()
+   private var desktopTabButtons: [NSButton] = []
+-  private let desktopFadeView = NSView()
+   private var desktopTransitionStartedAt: TimeInterval?
+-  private var desktopTransitionChange: (() -> Void)?
+-  private var pendingDesktopChange: (() -> Void)?
++  private var pendingDesktopChanges: [(direction: Int?, change: () -> Void)] = []
+   private var desktopTransitionDisplayLink: CADisplayLink?
+-  private let settingsPopover = NSPopover()
+-  private let navigatorMenu = NSMenu()
+-  private let desktopPagesMenu = NSMenu()
+-  private let desktopPagesMenuItem = NSMenuItem()
+-  private let newDesktopMenuItem = NSMenuItem()
++  private var settingsWorkspace: CanvasWorkspaceView? { superview as? CanvasWorkspaceView }
+   private let expandLandscapePreviewsMenuItem = NSMenuItem()
+   private let debugInformationMenuItem = NSMenuItem()
++  private let gridMenuItem = NSMenuItem()
+   private let centerGuideMenuItem = NSMenuItem()
+-  private let synchronizedSelectionMenuItem = NSMenuItem()
+   private let lightClosedCardsMenuItem = NSMenuItem()
+   private let commandTabShortcutMenuItem = NSMenuItem()
+   private let privateBrowserPreviewsMenuItem = NSMenuItem()
+@@ -562,11 +606,11 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   private var expandsLandscapePreviews = true
+   private var showsDebugInformation = UserDefaults.standard.bool(
+     forKey: CanvasView.debugInformationPreferenceKey)
++  // Retain the font: recreating it across draw/autorelease cycles can crash CoreText.
++  private let debugInformationFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .semibold)
++  private var showsGrid = UserDefaults.standard.object(forKey: "showGrid") as? Bool ?? true
+   private var showsCenterGuide = UserDefaults.standard.bool(
+     forKey: CanvasView.centerGuidePreferenceKey)
+-  private var synchronizesSelectionAnimation =
+-    UserDefaults.standard.object(forKey: CanvasView.synchronizedSelectionPreferenceKey) == nil
+-    || UserDefaults.standard.bool(forKey: CanvasView.synchronizedSelectionPreferenceKey)
+   private var usesLightClosedCards = UserDefaults.standard.bool(
+     forKey: CanvasView.lightClosedCardsPreferenceKey)
+   private var usesCommandTabShortcut = UserDefaults.standard.bool(
+@@ -600,8 +644,9 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+ 
+   override init(frame frameRect: NSRect) {
+     let defaults = UserDefaults.standard
++    defaults.removeObject(forKey: "synchronizeSelectionAnimation")
+     desktopPages = Self.loadDesktopPages(from: defaults)
+-    camera = desktopPages.selectedPage.camera ?? camera
++    cameraState = desktopPages.selectedPage.camera ?? cameraState
+     if defaults.object(forKey: Self.navigatorPanelXPreferenceKey) != nil,
+       defaults.object(forKey: Self.navigatorPanelYPreferenceKey) != nil
+     {
+@@ -640,6 +685,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   required init?(coder: NSCoder) { nil }
+ 
+   override func hitTest(_ point: NSPoint) -> NSView? {
++    guard frame.contains(point) else { return nil }
+     if isSearching,
+       closeSearchButton.frame.contains(point) || searchField.frame.contains(point)
+     {
+@@ -651,6 +697,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+ 
+   override func layout() {
+     super.layout()
++    if nativeCameraTravel, nativeCameraBounds != bounds { stopNativeCameraTravel() }
+     sceneView.frame = bounds
+     hudView.frame = bounds
+     updateSceneCamera()
+@@ -685,27 +732,20 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       width: panel.maxX - 48 - focusMinX,
+       height: 40
+     )
+-    let footerButtonsX = panel.midX - 80
+     searchButton.frame = CGRect(
+-      x: footerButtonsX,
++      x: panel.minX + 8,
+       y: panel.minY + 4,
+       width: 40,
+       height: 40
+     )
+     fitAllButton.frame = CGRect(
+-      x: footerButtonsX + 40,
+-      y: panel.minY + 4,
+-      width: 40,
+-      height: 40
+-    )
+-    settingsButton.frame = CGRect(
+-      x: footerButtonsX + 120,
++      x: panel.maxX - 88,
+       y: panel.minY + 4,
+       width: 40,
+       height: 40
+     )
+     lockViewButton.frame = CGRect(
+-      x: footerButtonsX + 80,
++      x: panel.maxX - 48,
+       y: panel.minY + 4,
+       width: 40,
+       height: 40
+@@ -783,6 +823,13 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     drawNavigatorPanel()
+   }
+ 
++  private func invalidateSelectionHUD() {
++    // Normal selection only changes retained map layers and the separate focus button.
++    if !groupSelectionIDs.isEmpty || isSearching {
++      hudView.needsDisplay = true
++    }
++  }
++
+   private func configureScene() {
+     for view in [sceneView, hudView] {
+       view.frame = bounds
+@@ -793,9 +840,17 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     sceneView.layer?.masksToBounds = true
+     cameraLayer.anchorPoint = .zero
+     gridLayer.anchorPoint = .zero
++    gridRows.anchorPoint = .zero
++    gridTile.anchorPoint = .zero
++    gridLayer.addSublayer(gridRows)
++    gridRows.addSublayer(gridTile)
+     sceneView.layer?.addSublayer(gridLayer)
+     sceneView.layer?.addSublayer(centerGuideLayer)
+     sceneView.layer?.addSublayer(cameraLayer)
++    miniMapContent.anchorPoint = .zero
++    miniMapContainer.addSublayer(miniMapContent)
++    miniMapContainer.mask = miniMapContentClip
++    hudView.layer?.addSublayer(miniMapContainer)
+     hudView.layer?.addSublayer(miniMapViewport)
+     miniMapViewport.fillColor = NSColor.controlAccentColor.withAlphaComponent(0.12).cgColor
+     miniMapViewport.strokeColor = NSColor.controlAccentColor.withAlphaComponent(0.9).cgColor
+@@ -805,7 +860,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func updateSceneCamera() {
+-    guard sceneView.layer != nil else { return }
++    guard sceneView.layer != nil, !nativeCameraTravel else { return }
+     CATransaction.begin()
+     CATransaction.setDisableActions(true)
+     if cameraAnimation == nil { cameraLayer.removeAnimation(forKey: "cameraTravel") }
+@@ -814,39 +869,119 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       tx: bounds.midX - camera.center.x * camera.zoom,
+       ty: bounds.midY - camera.center.y * camera.zoom
+     ))
++    updateGrid(camera: camera)
++    if let projection = miniMapProjection() {
++      miniMapContainer.isHidden = false
++      miniMapViewport.isHidden = false
++      miniMapContent.setAffineTransform(cameraTransform(projection.camera, in: projection.contentBounds))
++      let rect = CanvasMath.viewRect(for: projection.viewportWorldFrame,
++        camera: projection.camera, bounds: projection.contentBounds)
++      miniMapViewport.path = CGPath(roundedRect: rect, cornerWidth: 4, cornerHeight: 4, transform: nil)
++      miniMapClip.path = CGPath(roundedRect: projection.frame, cornerWidth: 8, cornerHeight: 8, transform: nil)
++      miniMapContentClip.path = miniMapClip.path
++      if renderedMiniMapCamera?.zoom != projection.camera.zoom { synchronizeMiniMap(projection) }
++    } else {
++      miniMapViewport.isHidden = true
++      miniMapContainer.isHidden = true
++    }
++    CATransaction.commit()
++    if !groupSelectionIDs.isEmpty { hudView.needsDisplay = true }
++  }
++
++  private func cameraTransform(_ camera: CameraState, in bounds: CGRect) -> CGAffineTransform {
++    CGAffineTransform(a: camera.zoom, b: 0, c: 0, d: camera.zoom,
++      tx: bounds.midX - camera.center.x * camera.zoom,
++      ty: bounds.midY - camera.center.y * camera.zoom)
++  }
++
++  private func updateGrid(camera: CameraState, travel: CGPoint = .zero) {
++    let opacity = showsGrid ? CanvasMath.gridOpacity(at: camera.zoom) : 0
++    gridLayer.isHidden = opacity == 0
++    guard opacity > 0 else {
++      if gridZoom != camera.zoom {
++        gridZoom = camera.zoom
++        hudView.setNeedsDisplay(CGRect(x: 0, y: bounds.maxY - 60, width: 150, height: 60))
++      }
++      return
++    }
+     let spacing = CanvasMath.gridSpacing(at: camera.zoom)
++    let dotsPerSide = max(1, min(32, Int(ceil(256 / spacing))))
++    let tileSize = spacing * CGFloat(dotsPerSide)
+     if gridZoom != camera.zoom || gridSize != bounds.size {
+       gridZoom = camera.zoom
+       gridSize = bounds.size
+-      let path = CGMutablePath()
+-      let size = CanvasMath.gridDotSize(at: camera.zoom)
+-      for x in stride(from: -spacing, through: bounds.width + spacing * 2, by: spacing) {
+-        for y in stride(from: -spacing, through: bounds.height + spacing * 2, by: spacing) {
+-          path.addEllipse(in: CGRect(x: x - size / 2, y: y - size / 2, width: size, height: size))
++      gridTile.bounds = CGRect(x: 0, y: 0, width: tileSize, height: tileSize)
++      gridTile.contents = sceneImage(size: gridTile.bounds.size) { _ in
++        let path = CGMutablePath()
++        let size = CanvasMath.gridDotSize(at: camera.zoom)
++        for x in 0..<dotsPerSide {
++          for y in 0..<dotsPerSide {
++            path.addEllipse(in: CGRect(x: (CGFloat(x) + 0.5) * spacing - size / 2,
++              y: (CGFloat(y) + 0.5) * spacing - size / 2, width: size, height: size))
++          }
+         }
++        NSGraphicsContext.current?.cgContext.setFillColor(NSColor.white.withAlphaComponent(opacity).cgColor)
++        NSGraphicsContext.current?.cgContext.addPath(path)
++        NSGraphicsContext.current?.cgContext.fillPath()
+       }
+-      gridLayer.path = path
+-      gridLayer.fillColor = NSColor.white.withAlphaComponent(
+-        CanvasMath.gridOpacity(at: camera.zoom)).cgColor
+       hudView.setNeedsDisplay(CGRect(x: 0, y: bounds.maxY - 60, width: 150, height: 60))
+     }
++    // Repeat one rasterized tile, including the area exposed by this camera flight.
++    gridLayer.instanceCount = Int(ceil((bounds.width + abs(travel.x)) / tileSize)) + 3
++    gridRows.instanceCount = Int(ceil((bounds.height + abs(travel.y)) / tileSize)) + 3
++    gridLayer.instanceTransform = CATransform3DMakeTranslation(tileSize, 0, 0)
++    gridRows.instanceTransform = CATransform3DMakeTranslation(0, tileSize, 0)
++    gridRows.position = CGPoint(x: -ceil(max(0, travel.x) / tileSize) * tileSize,
++      y: -ceil(max(0, travel.y) / tileSize) * tileSize)
++    let transform = cameraTransform(camera, in: bounds)
+     gridLayer.position = CGPoint(
+-      x: (bounds.midX - camera.center.x * camera.zoom).truncatingRemainder(dividingBy: spacing),
+-      y: (bounds.midY - camera.center.y * camera.zoom).truncatingRemainder(dividingBy: spacing)
+-    )
+-    if let projection = miniMapProjection() {
+-      if renderedMiniMapCamera != projection.camera { hudView.setNeedsDisplay(projection.frame) }
+-      miniMapViewport.isHidden = false
+-      let rect = CanvasMath.viewRect(for: projection.viewportWorldFrame,
+-        camera: projection.camera, bounds: projection.contentBounds)
+-      miniMapViewport.path = CGPath(roundedRect: rect, cornerWidth: 4, cornerHeight: 4, transform: nil)
+-      miniMapClip.path = CGPath(roundedRect: projection.frame, cornerWidth: 8, cornerHeight: 8, transform: nil)
+-    } else { miniMapViewport.isHidden = true }
+-    CATransaction.commit()
+-    if !groupSelectionIDs.isEmpty { hudView.needsDisplay = true }
++      x: (transform.tx - spacing / 2).truncatingRemainder(dividingBy: tileSize) - tileSize,
++      y: (transform.ty - spacing / 2).truncatingRemainder(dividingBy: tileSize) - tileSize)
+   }
+ 
+-  func synchronizeScene(windowIDs: Set<CGWindowID>? = nil) {
++  private func synchronizeMiniMap(_ projection: MiniMapProjection) {
++    let targets = appPlaceholders.map(NavigationTarget.placeholder) + nodes.map(NavigationTarget.window)
++    let keys = Set(targets.map(\.key))
++    for key in Array(miniMapCards.keys) where !keys.contains(key) {
++      miniMapCards.removeValue(forKey: key)?.removeFromSuperlayer()
++    }
++    let selectedPID = nodes.first { $0.id == selectedWindowID }?.processID
++    for target in targets {
++      let card = miniMapCards[target.key] ?? CAShapeLayer()
++      if card.superlayer == nil {
++        card.anchorPoint = .zero
++        miniMapContent.addSublayer(card)
++        miniMapCards[target.key] = card
++      }
++      let zoom = projection.camera.zoom
++      var rect = target.worldFrame
++      if rect.width * zoom < 3 { rect = rect.insetBy(dx: -(3 / zoom - rect.width) / 2, dy: 0) }
++      if rect.height * zoom < 3 { rect = rect.insetBy(dx: 0, dy: -(3 / zoom - rect.height) / 2) }
++      if card.bounds.size != rect.size || renderedMiniMapCamera?.zoom != zoom {
++        card.bounds = CGRect(origin: .zero, size: rect.size)
++        card.path = CGPath(roundedRect: card.bounds, cornerWidth: 2 / zoom, cornerHeight: 2 / zoom, transform: nil)
++      }
++      card.position = rect.origin
++      let grouped = groupSelectionIDs.contains(target.key)
++      let color: NSColor
++      switch target {
++      case .placeholder(let placeholder):
++        color = grouped ? groupSelectionColor
++          : placeholder.bundleIdentifier == selectedPlaceholderBundleIdentifier ? selectionColor
++          : NSColor.white.withAlphaComponent(0.22)
++      case .window(let node):
++        color = isSearching && !matchesSearch(target) ? NSColor.white.withAlphaComponent(0.1)
++          : grouped ? groupSelectionColor.withAlphaComponent(node.id == selectedWindowID ? 1 : 0.7)
++          : node.id == selectedWindowID ? selectionColor
++          : selectedPID == node.processID ? selectionColor.withAlphaComponent(0.48)
++          : NSColor.white.withAlphaComponent(0.38)
++      }
++      card.fillColor = color.cgColor
++    }
++    renderedMiniMapCamera = projection.camera
++  }
++
++  func synchronizeScene(windowIDs: Set<CGWindowID>? = nil, targetKeys: Set<String>? = nil) {
+     guard sceneView.layer != nil else { return }
+     CATransaction.begin()
+     CATransaction.setDisableActions(true)
+@@ -872,6 +1007,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     }
+     let selectedPID = nodes.first(where: { $0.id == selectedWindowID })?.processID
+     for (index, target) in targets.enumerated() {
++      if let targetKeys, !targetKeys.contains(target.key) { continue }
+       if let windowIDs {
+         guard case .window(let node) = target, windowIDs.contains(node.id) else { continue }
+       }
+@@ -879,6 +1015,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       if let existing = cardLayers[target.key] { card = existing }
+       else {
+         card = CanvasCardLayer()
++        card.name = target.key
+         cardLayers[target.key] = card
+         cameraLayer.addSublayer(card)
+       }
+@@ -886,11 +1023,13 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       card.zPosition = CGFloat(index) + (card.zPosition > 0 ? CGFloat(targets.count) : 0)
+     }
+     updateSceneCamera()
++    if let projection = miniMapProjection() { synchronizeMiniMap(projection) }
+   }
+ 
+   private func updateCard(
+     _ card: CanvasCardLayer, target: NavigationTarget, selectedPID: pid_t?, backdrop: CGFloat
+   ) {
++    sceneCardUpdates += 1
+     let zoom = camera.zoom
+     let scale = window?.backingScaleFactor ?? 2
+     var rect = CGRect(origin: .zero, size: CGSize(
+@@ -996,24 +1135,42 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+         self.drawAppIcon(icon, in: CGRect(x: 21, y: 21, width: 36, height: 36))
+       }
+     }
+-    let font = NSFont.systemFont(ofSize: 12, weight: selected ? .bold : .medium)
++    let font = NSFont.systemFont(ofSize: 12, weight: .medium)
+     let value = NSAttributedString(string: title, attributes: [
+       .font: font, .foregroundColor: NSColor.white.withAlphaComponent(0.76)])
+     if card.headerValue != value {
+-      card.header.string = value; card.headerValue = value; sceneContentUpdates += 1
++      card.regularTitle.string = value
++      card.boldTitle.string = NSAttributedString(string: title, attributes: [
++        .font: NSFont.systemFont(ofSize: 12, weight: .bold),
++        .foregroundColor: NSColor.white.withAlphaComponent(0.76)])
++      card.headerValue = value; sceneContentUpdates += 1
+     }
+     let active = NSAttributedString(string: title, attributes: [.font: font, .foregroundColor: color])
+     if card.activeHeaderValue != active {
+-      card.activeHeader.string = active; card.activeHeaderValue = active; sceneContentUpdates += 1
+-    }
+-    card.header.contentsScale = scale
+-    card.activeHeader.contentsScale = scale
++      card.regularActiveTitle.string = active
++      card.boldActiveTitle.string = NSAttributedString(string: title, attributes: [
++        .font: NSFont.systemFont(ofSize: 12, weight: .bold), .foregroundColor: color])
++      card.activeHeaderValue = active; sceneContentUpdates += 1
++    }
++    for title in [card.regularTitle, card.boldTitle, card.regularActiveTitle, card.boldActiveTitle] {
++      title.contentsScale = scale
++    }
++    card.regularTitle.isHidden = selected
++    card.regularActiveTitle.isHidden = selected
++    card.boldTitle.isHidden = !selected
++    card.boldActiveTitle.isHidden = !selected
+     updateSelectionAppearance(card, target: target, selectedPID: selectedPID)
+   }
+ 
+   private func updateSelectionAppearance(
+-    _ card: CanvasCardLayer, target: NavigationTarget, selectedPID: pid_t?
++    _ card: CanvasCardLayer, target: NavigationTarget, selectedPID: pid_t?,
++    recording: (([Any]) -> Void)? = nil
+   ) {
++    let previousSamplingTime = selectionSamplingTime
++    if previousSamplingTime == nil, let startedAt = selectionAnimationStartedAt {
++      selectionSamplingTime = startedAt + Self.selectionTransitionDuration
++    }
++    defer { selectionSamplingTime = previousSamplingTime }
+     let rect = card.surface.frame
+     let radius = card.surface.cornerRadius
+     let grouped = groupSelectionIDs.contains(target.key)
+@@ -1027,18 +1184,16 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       selected = node.id == selectedWindowID
+       let sameApp = selectedPID == node.processID
+       let phases = CanvasMath.selectionAnimationPhases(
+-        progress: selectionProgress[node.id] ?? (selected ? 1 : 0),
+-        synchronized: synchronizesSelectionAnimation)
++        progress: selectionProgress(for: node.id) ?? (selected ? 1 : 0))
+       if selectionStaysWithinApplication && sameApp {
+-        borderProgress = selectionProgress[node.id] ?? (selected ? 1 : 0)
++        borderProgress = selectionProgress(for: node.id) ?? (selected ? 1 : 0)
+         borderWidth = CanvasMath.sameApplicationSelectionMetrics(primaryProgress: borderProgress).borderWidth
+         secondary = borderProgress == 0
+       } else {
+         borderProgress = phases.border
+         if !selected && (grouped || sameApp) && borderProgress == 0 {
+           let appPhase = CanvasMath.selectionAnimationPhases(
+-            progress: selectedWindowID.flatMap { selectionProgress[$0] } ?? 1,
+-            synchronized: synchronizesSelectionAnimation).border
++            progress: selectedWindowID.flatMap { selectionProgress(for: $0) } ?? 1).border
+           secondary = grouped || appPhase > 0
+         }
+       }
+@@ -1049,6 +1204,32 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     }
+     let inset: CGFloat = secondary ? 4 : 2 + borderWidth / 2
+     let borderRect = rect.insetBy(dx: -inset, dy: -inset)
++    let (titleProgress, titleLift) = previewTitlePresentation(for: target)
++    let layout = CanvasMath.previewHeaderLayout(for: rect, zoom: camera.zoom, titleLift: titleLift)
++    if let recording {
++      let path: CGPath
++      let shadowPath: CGPath
++      if card.borderGeometry == borderRect, card.borderRadius == radius + inset,
++        card.borderStrokeWidth == borderWidth,
++        let existingPath = card.border.path, let existingShadow = card.border.shadowPath {
++        path = existingPath
++        shadowPath = existingShadow
++      } else {
++        path = CGPath(roundedRect: borderRect, cornerWidth: radius + inset,
++          cornerHeight: radius + inset, transform: nil)
++        shadowPath = path.copy(strokingWithWidth: borderWidth,
++          lineCap: .round, lineJoin: .round, miterLimit: 0)
++      }
++      let titlePosition = NSValue(point: CGPoint(x: layout.title.midX, y: layout.title.midY))
++      recording([
++        NSNumber(value: Float(secondary ? 1 : borderProgress)),
++        NSNumber(value: Double(secondary ? 2 : borderWidth)), path, shadowPath,
++        NSNumber(value: secondary ? 0 : 0.9),
++        NSNumber(value: Float(layout.titleVisibility * (1 - titleProgress))), titlePosition,
++        NSNumber(value: Float(layout.titleVisibility * titleProgress)), titlePosition,
++      ])
++      return
++    }
+     if card.borderGeometry != borderRect || card.borderRadius != radius + inset
+       || card.borderStrokeWidth != borderWidth {
+       card.borderGeometry = borderRect
+@@ -1064,10 +1245,11 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     card.border.opacity = Float(secondary ? 1 : borderProgress)
+     card.border.shadowColor = color.cgColor
+     card.border.shadowOpacity = secondary ? 0 : 0.9
+-    let (titleProgress, titleLift) = previewTitlePresentation(for: target)
+-    let layout = CanvasMath.previewHeaderLayout(for: rect, zoom: camera.zoom, titleLift: titleLift)
+     card.header.frame = layout.title
+     card.activeHeader.frame = layout.title
++    for title in [card.regularTitle, card.boldTitle, card.regularActiveTitle, card.boldActiveTitle] {
++      title.frame = card.header.bounds
++    }
+     card.header.opacity = Float(layout.titleVisibility * (1 - titleProgress))
+     card.activeHeader.opacity = Float(layout.titleVisibility * titleProgress)
+   }
+@@ -1267,29 +1449,42 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   func persistState() {
++    stopNativeCameraTravel()
++    NSObject.cancelPreviousPerformRequests(
++      withTarget: self, selector: #selector(performCameraMaintenance), object: nil)
++    cameraMaintenancePending = false
+     synchronizeManifestedPlacements()
+     persistDesktopPages()
+   }
+ 
+   func handleNavigationKey(_ event: NSEvent) -> Bool {
+-    if desktopTransitionStartedAt != nil { return true }
+-    guard !settingsPopover.isShown else { return false }
+     guard desktopTitleField.currentEditor() == nil else { return false }
+     let modifiers = event.modifierFlags.intersection([.shift, .command, .control, .option])
+     guard modifiers.isEmpty || modifiers == [.shift] else { return false }
+ 
+     if isSearching { return false }
+ 
++    if event.characters == "+" {
++      if !event.isARepeat { addDesktopPage(nil) }
++      return true
++    }
++
+     if event.keyCode == 48 {
+-      guard !event.isARepeat, desktopPages.pages.count > 1,
+-        let index = desktopPages.pages.firstIndex(where: { $0.id == desktopPages.selectedID })
+-      else { return true }
++      guard !event.isARepeat, desktopPages.pages.count > 1 else { return true }
+       let offset = modifiers == [.shift] ? -1 : 1
+-      let nextIndex = (index + offset + desktopPages.pages.count) % desktopPages.pages.count
+-      selectDesktop(id: desktopPages.pages[nextIndex].id)
++      transitionDesktop(direction: offset) { [weak self] in
++        guard let self,
++          let index = self.desktopPages.pages.firstIndex(where: { $0.id == self.desktopPages.selectedID })
++        else { return }
++        let nextIndex = (index + offset + self.desktopPages.pages.count) % self.desktopPages.pages.count
++        let target = self.desktopPages.select(self.desktopPages.pages[nextIndex].id) ?? self.camera
++        self.applySelectedDesktop(camera: target)
++      }
+       return true
+     }
+ 
++    if desktopTransitionStartedAt != nil { return true }
++
+     if modifiers == [.shift] {
+       switch event.keyCode {
+       case 36, 76:
+@@ -1404,6 +1599,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+         return
+       }
+       stopKeyboardTapZoom()
++      stopNativeCameraTravel()
+       animationDisplayLink?.invalidate()
+       animationDisplayLink = nil
+       cameraAnimation = nil
+@@ -1475,8 +1671,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+ 
+   @discardableResult
+   func dismissSettings() -> Bool {
+-    guard settingsPopover.isShown else { return false }
+-    settingsPopover.close()
++    guard let host = settingsWorkspace, host.isSettingsVisible else { return false }
++    host.hideSettings()
+     return true
+   }
+ 
+@@ -1508,14 +1704,19 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     if cameraAnimation != nil, let presentation = cameraLayer.presentation() {
+       let transform = presentation.affineTransform()
+       if transform.a > 0 {
++        // A translation never changes zoom. Decomposing its presentation matrix can
++        // round the scale and accidentally turn the next flight into a CPU zoom.
++        let zoom = nativeCameraTravel ? camera.zoom : transform.a
+         camera = CameraState(center: CGPoint(
+-          x: (bounds.midX - transform.tx) / transform.a,
+-          y: (bounds.midY - transform.ty) / transform.a), zoom: transform.a)
++          x: (bounds.midX - transform.tx) / zoom,
++          y: (bounds.midY - transform.ty) / zoom), zoom: zoom)
+       }
+     }
++    stopNativeCameraTravel()
+     cameraLayer.removeAnimation(forKey: "cameraTravel")
+     setHoveredWindow(nil)
+     animationDisplayLink?.invalidate()
++    animationDisplayLink = nil
+     isPresentingFinalAnimationFrame = false
+     if let focusWindowID {
+       focusTransitionWindowID = focusWindowID
+@@ -1534,19 +1735,11 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       duration: duration,
+       completion: completion
+     )
+-    if target.zoom == camera.zoom, focusWindowID == nil {
+-      let travel = CAKeyframeAnimation(keyPath: "transform")
+-      let start = camera
+-      travel.values = (0...60).map { index in
+-        let state = CanvasMath.interpolatedCamera(from: start, to: target, tracking: nil,
+-          progress: CanvasMath.easedTransition(CGFloat(index) / 60), in: bounds)
+-        return NSValue(caTransform3D: CATransform3DMakeAffineTransform(CGAffineTransform(
+-          a: state.zoom, b: 0, c: 0, d: state.zoom,
+-          tx: bounds.midX - state.center.x * state.zoom,
+-          ty: bounds.midY - state.center.y * state.zoom)))
+-      }
+-      travel.duration = duration
+-      cameraLayer.add(travel, forKey: "cameraTravel")
++    if target.zoom == camera.zoom, focusWindowID == nil, worldPoint == nil,
++      progressHandler == nil, cameraCompletionFraction == 1, groupSelectionIDs.isEmpty,
++      duration > 0, let animation = cameraAnimation {
++      beginNativeCameraTravel(animation)
++      return
+     }
+     let displayLink = displayLink(
+       target: self, selector: #selector(stepCameraAnimation(_:)))
+@@ -1555,6 +1748,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   @objc private func stepCameraAnimation(_ displayLink: CADisplayLink) {
++    cameraFrameCallbacks += 1
+     guard let animation = cameraAnimation else {
+       displayLink.invalidate()
+       return
+@@ -1587,7 +1781,79 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     }
+   }
+ 
++  private func beginNativeCameraTravel(_ animation: CameraAnimation) {
++    CATransaction.begin()
++    CATransaction.setDisableActions(true)
++    defer { CATransaction.commit() }
++    nativeCameraTravel = true
++    nativeCameraBounds = bounds
++    cameraState = animation.target
++    desktopPages.updateSelectedCamera(animation.target)
++    scheduleCameraMaintenance()
++    let startTransform = cameraTransform(animation.start, in: bounds)
++    let endTransform = cameraTransform(animation.target, in: bounds)
++    let delta = CGPoint(x: endTransform.tx - startTransform.tx, y: endTransform.ty - startTransform.ty)
++    updateGrid(camera: animation.start, travel: delta)
++    let gridStart = gridLayer.position
++    var transforms: [Any] = []
++    var gridPositions: [Any] = []
++    var mapTransforms: [Any] = []
++    var viewportPaths: [Any] = []
++    let itemBounds = canvasItemFrames.reduce(CGRect.null) { $0.union($1) }
++    for index in 0...60 {
++      let progress = CanvasMath.easedTransition(CGFloat(index) / 60)
++      let state = CanvasMath.interpolatedCamera(from: animation.start, to: animation.target,
++        tracking: nil, progress: progress, in: bounds)
++      transforms.append(NSValue(caTransform3D: CATransform3DMakeAffineTransform(cameraTransform(state, in: bounds))))
++      gridPositions.append(NSValue(point: CGPoint(x: gridStart.x + delta.x * progress,
++        y: gridStart.y + delta.y * progress)))
++      if let projection = miniMapProjection(camera: state, itemBounds: itemBounds) {
++        mapTransforms.append(NSValue(caTransform3D: CATransform3DMakeAffineTransform(
++          cameraTransform(projection.camera, in: projection.contentBounds))))
++        let rect = CanvasMath.viewRect(for: projection.viewportWorldFrame,
++          camera: projection.camera, bounds: projection.contentBounds)
++        viewportPaths.append(CGPath(roundedRect: rect, cornerWidth: 4, cornerHeight: 4, transform: nil))
++      }
++    }
++    if let projection = miniMapProjection(camera: animation.target) { synchronizeMiniMap(projection) }
++    for (layer, key, values) in [
++      (cameraLayer, "transform", transforms), (gridLayer, "position", gridPositions),
++      (miniMapContent, "transform", mapTransforms), (miniMapViewport, "path", viewportPaths),
++    ] {
++      guard let last = values.last else { continue }
++      layer.setValue(last, forKeyPath: key)
++      let travel = CAKeyframeAnimation(keyPath: key)
++      travel.values = values
++      travel.duration = animation.duration
++      travel.beginTime = layer.convertTime(animation.startedAt, from: nil)
++      layer.add(travel, forKey: "cameraTravel")
++    }
++    perform(#selector(finishNativeCameraTravel), with: nil, afterDelay: animation.duration)
++  }
++
++  private func stopNativeCameraTravel() {
++    guard nativeCameraTravel else { return }
++    cameraState = camera
++    nativeCameraTravel = false
++    cameraAnimation = nil
++    NSObject.cancelPreviousPerformRequests(withTarget: self,
++      selector: #selector(finishNativeCameraTravel), object: nil)
++    for layer in [cameraLayer, gridLayer, miniMapContent, miniMapViewport] {
++      layer.removeAnimation(forKey: "cameraTravel")
++    }
++    desktopPages.updateSelectedCamera(cameraState)
++    updateSceneCamera()
++  }
++
++  @objc private func finishNativeCameraTravel() {
++    guard nativeCameraTravel, let animation = cameraAnimation else { return }
++    stopNativeCameraTravel()
++    camera = animation.target
++    animation.completion()
++  }
++
+   func endFocusTransition() {
++    guard focusTransitionWindowID != nil || focusTransitionProgress != 0 else { return }
+     focusTransitionWindowID = nil
+     setFocusTransitionProgress(0)
+   }
+@@ -1653,15 +1919,17 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func animateSelection(from oldID: CGWindowID?, to newID: CGWindowID?) {
++    // Evaluate an interrupted transition only when another selection actually arrives.
++    var current: [CGWindowID: CGFloat] = [:]
++    for id in selectionStartProgress.keys { current[id] = selectionProgress(for: id) }
++    let previouslyAnimated = Set(selectionStartProgress.keys)
++    if let oldID, current[oldID] == nil { current[oldID] = 1 }
+     selectionStaysWithinApplication = {
+       guard let oldID, let newID,
+         let oldNode = nodes.first(where: { $0.id == oldID }),
+-        let newNode = nodes.first(where: { $0.id == newID })
+-      else { return false }
++        let newNode = nodes.first(where: { $0.id == newID }) else { return false }
+       return oldNode.processID == newNode.processID
+     }()
+-    var current = selectionProgress
+-    if let oldID, current[oldID] == nil { current[oldID] = 1 }
+     let outgoing = current.max { $0.value < $1.value }
+     selectionStartProgress.removeAll(keepingCapacity: true)
+     if let outgoing, outgoing.key != newID {
+@@ -1670,66 +1938,63 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     if let newID {
+       selectionStartProgress[newID] = outgoing?.key == newID ? (outgoing?.value ?? 0) : 0
+     }
++    selectionTargetWindowID = newID
+     guard !selectionStartProgress.isEmpty else { return }
+-    selectionProgress = selectionStartProgress
+-    selectionAnimationStartedAt = CACurrentMediaTime()
+-    selectionDisplayLink?.invalidate()
+-    let displayLink = displayLink(
+-      target: self,
+-      selector: #selector(stepSelectionAnimation(_:))
+-    )
+-    selectionDisplayLink = displayLink
+-    displayLink.add(to: .main, forMode: .common)
+-  }
++    let startedAt = CACurrentMediaTime()
++    selectionAnimationStartedAt = startedAt
++    let ids = previouslyAnimated.union(selectionStartProgress.keys)
++    let processes = Set(nodes.filter { ids.contains($0.id) }.map(\.processID))
++    let selectedPID = nodes.first(where: { $0.id == newID })?.processID
+ 
+-  @objc private func stepSelectionAnimation(_ displayLink: CADisplayLink) {
+-    guard let startedAt = selectionAnimationStartedAt else {
+-      displayLink.invalidate()
+-      return
+-    }
+-
+-    let progress = min(
+-      1,
+-      (CACurrentMediaTime() - startedAt) / Self.selectionTransitionDuration
+-    )
+-    for (windowID, start) in selectionStartProgress {
+-      let incoming = windowID == selectedWindowID
+-      let phase = selectionStaysWithinApplication
+-        ? CanvasMath.easedTransition(progress)
+-        : CanvasMath.selectionHandoffPhase(
+-          progress: progress,
+-          incoming: incoming,
+-          synchronized: synchronizesSelectionAnimation
+-        )
+-      let target: CGFloat = incoming ? 1 : 0
+-      selectionProgress[windowID] = start + (target - start) * phase
+-    }
+-    let animatedProcessIDs = Set(
+-      nodes.lazy
+-        .filter { self.selectionStartProgress[$0.id] != nil }
+-        .map(\.processID)
+-    )
+     CATransaction.begin()
+     CATransaction.setDisableActions(true)
+-    let selectedPID = nodes.first(where: { $0.id == selectedWindowID })?.processID
+-    for node in nodes where animatedProcessIDs.contains(node.processID) {
++    defer {
++      selectionSamplingTime = nil
++      CATransaction.commit()
++    }
++    synchronizeScene(windowIDs: Set(nodes.filter { processes.contains($0.processID) }.map(\.id)))
++    for node in nodes where processes.contains(node.processID) {
+       let target = NavigationTarget.window(node)
+-      if let card = cardLayers[target.key] {
+-        updateSelectionAppearance(card, target: target, selectedPID: selectedPID)
++      guard let card = cardLayers[target.key] else { continue }
++      let tracks: [(CALayer, String)] = [
++        (card.border, "opacity"), (card.border, "lineWidth"),
++        (card.border, "path"), (card.border, "shadowPath"), (card.border, "shadowOpacity"),
++        (card.header, "opacity"), (card.header, "position"),
++        (card.activeHeader, "opacity"), (card.activeHeader, "position"),
++      ]
++      let interrupted = tracks.map { layer, key -> Any? in
++        guard layer.animation(forKey: "selection.\(key)") != nil else { return nil }
++        return layer.presentation()?.value(forKeyPath: key)
++      }
++      var values = Array(repeating: [Any](), count: tracks.count)
++      // Sample the existing easing/phase rules once, then let Core Animation play them.
++      for index in 0...12 {
++        selectionSamplingTime = startedAt + Self.selectionTransitionDuration * Double(index) / 12
++        updateSelectionAppearance(card, target: target, selectedPID: selectedPID) { sample in
++          for track in tracks.indices {
++            values[track].append(index == 0 ? interrupted[track] ?? sample[track] : sample[track])
++          }
++        }
++      }
++      // Set destination properties once; preparing keyframes must not mutate the live layers.
++      updateSelectionAppearance(card, target: target, selectedPID: selectedPID)
++      for (track, pair) in tracks.enumerated() {
++        let (layer, key) = pair
++        layer.removeAnimation(forKey: "selection.\(key)")
++        guard values[track].count == 13, let first = values[track].first,
++          values[track].dropFirst().contains(where: { !CFEqual(first as CFTypeRef, $0 as CFTypeRef) })
++        else { continue }
++        let animation = CAKeyframeAnimation(keyPath: key)
++        animation.values = values[track]
++        animation.duration = Self.selectionTransitionDuration
++        animation.beginTime = layer.convertTime(startedAt, from: nil)
++        layer.add(animation, forKey: "selection.\(key)")
+       }
+     }
+-    CATransaction.commit()
+-
+-    guard progress >= 1 else { return }
+-    selectionProgress = selectionProgress.filter { $0.value > 0.001 }
+-    selectionStartProgress.removeAll(keepingCapacity: true)
+-    selectionStaysWithinApplication = false
+-    selectionAnimationStartedAt = nil
+-    selectionDisplayLink = nil
+-    displayLink.invalidate()
+   }
+ 
+   override func mouseDown(with event: NSEvent) {
++    guard bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
+     guard cameraAnimation == nil, desktopTransitionStartedAt == nil else { return }
+     deferBackgroundWork()
+     let point = convert(event.locationInWindow, from: nil)
+@@ -1915,6 +2180,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   override func scrollWheel(with event: NSEvent) {
++    guard bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
+     guard cameraAnimation == nil, desktopTransitionStartedAt == nil else { return }
+     deferBackgroundWork()
+     camera.center = CGPoint(
+@@ -1924,6 +2190,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   override func magnify(with event: NSEvent) {
++    guard bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
+     guard cameraAnimation == nil, desktopTransitionStartedAt == nil else { return }
+     deferBackgroundWork()
+     let point = convert(event.locationInWindow, from: nil)
+@@ -1959,6 +2226,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+ 
+   override func menu(for event: NSEvent) -> NSMenu? {
+     let point = convert(event.locationInWindow, from: nil)
++    guard bounds.contains(point) else { return nil }
+     let bundleIdentifier = hitNode(at: point)?.bundleIdentifier
+       ?? hitPlaceholder(at: point)?.bundleIdentifier
+     guard let bundleIdentifier,
+@@ -1990,10 +2258,11 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func updateHover(at point: CGPoint) {
+-    guard cameraAnimation == nil, !navigatorPanelFrame.contains(point) else {
++    guard bounds.contains(point), cameraAnimation == nil, !navigatorPanelFrame.contains(point) else {
+       hoveredSelectionResizeHandle = nil
+       hoveredPlaceholderBundleIdentifier = nil
+       setHoveredWindow(nil)
++      NSCursor.arrow.set()
+       return
+     }
+     let selectionBounds = groupSelectionBounds()
+@@ -2044,6 +2313,12 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     if !groupSelectionIDs.insert(target.key).inserted {
+       groupSelectionIDs.remove(target.key)
+     }
++    if nativeCameraTravel, !groupSelectionIDs.isEmpty, let animation = cameraAnimation {
++      // The group overlay follows screen-space geometry, so keep its existing frame updates.
++      animateCamera(to: animation.target,
++        duration: max(0.001, animation.duration - (CACurrentMediaTime() - animation.startedAt)),
++        completion: animation.completion)
++    }
+     fitGroupSelectionToItems()
+   }
+ 
+@@ -2140,6 +2415,10 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func moveSelection(_ direction: CanvasDirection) {
++    // Selection, navigator and camera changes belong to one event/one layer commit.
++    CATransaction.begin()
++    CATransaction.setDisableActions(true)
++    defer { CATransaction.commit() }
+     let targets = navigationTargets
+     guard !targets.isEmpty else { return }
+ 
+@@ -2211,8 +2490,10 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     }
+   }
+ 
+-  private func miniMapProjection() -> MiniMapProjection? {
+-    guard !canvasItemFrames.isEmpty, bounds.width >= 480, bounds.height >= 320 else { return nil }
++  private func miniMapProjection(camera: CameraState? = nil, itemBounds: CGRect? = nil) -> MiniMapProjection? {
++    let camera = camera ?? self.camera
++    let itemBounds = itemBounds ?? canvasItemFrames.reduce(CGRect.null) { $0.union($1) }
++    guard !itemBounds.isNull, bounds.width >= 480, bounds.height >= 320 else { return nil }
+ 
+     let panel = navigatorPanelFrame
+     let frame = CGRect(
+@@ -2232,8 +2513,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       width: upperRight.x - lowerLeft.x,
+       height: upperRight.y - lowerLeft.y
+     )
+-    let frames = canvasItemFrames + [viewportWorldFrame]
+-    let worldBounds = frames.dropFirst().reduce(frames[0]) { $0.union($1) }
++    let worldBounds = itemBounds.union(viewportWorldFrame)
+     let zoom = min(
+       contentBounds.width / worldBounds.width,
+       contentBounds.height / worldBounds.height
+@@ -2301,7 +2581,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+           rect = previewViewRect(for: node)
+           hasIcon = node.icon != nil
+           hasTitle = !node.displayTitle.isEmpty
+-          let progress = selectionProgress[node.id] ?? (node.id == selectedWindowID ? 1 : 0)
++          let progress = selectionProgress(for: node.id) ?? (node.id == selectedWindowID ? 1 : 0)
+           if selectionStaysWithinApplication,
+             nodes.first(where: { $0.id == selectedWindowID })?.processID == node.processID
+           {
+@@ -2390,7 +2670,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       let isSelectedApplication =
+         nodes.first(where: { $0.id == selectedWindowID })?.processID == node.processID
+       if selectionStaysWithinApplication && isSelectedApplication {
+-        let progress = selectionProgress[node.id] ?? (isSelected ? 1 : 0)
++        let progress = selectionProgress(for: node.id) ?? (isSelected ? 1 : 0)
+         return (1, CanvasMath.sameApplicationSelectionMetrics(primaryProgress: progress).titleLift)
+       }
+       let progress: CGFloat
+@@ -2399,11 +2679,11 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       } else {
+         let selection =
+           isSelectedApplication && !isSelected
+-          ? selectedWindowID.flatMap { selectionProgress[$0] } ?? 1
+-          : selectionProgress[node.id] ?? (isSelected ? 1 : 0)
++          ? selectedWindowID.flatMap { selectionProgress(for: $0) } ?? 1
++          : selectionProgress(for: node.id) ?? (isSelected ? 1 : 0)
+         progress =
+           CanvasMath.selectionAnimationPhases(
+-            progress: selection, synchronized: synchronizesSelectionAnimation
++            progress: selection
+           ).title
+       }
+       return (
+@@ -2527,7 +2807,34 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     )
+   }
+ 
++  private func scheduleCameraMaintenance() {
++    cameraChangedAt = CACurrentMediaTime()
++    guard !cameraMaintenancePending else { return }
++    cameraMaintenanceStarts += 1
++    previewToolTipUpdateTask?.cancel()
++    previewToolTipUpdateTask = nil
++    NSObject.cancelPreviousPerformRequests(
++      withTarget: self, selector: #selector(persistDesktopPages), object: nil)
++    cameraMaintenancePending = true
++    perform(#selector(performCameraMaintenance), with: nil, afterDelay: 0.3)
++  }
++
++  @objc private func performCameraMaintenance() {
++    guard CACurrentMediaTime() - cameraChangedAt >= 0.3,
++      cameraAnimation == nil, keyboardZoomGesture == nil,
++      keyboardTapZoomAnimation == nil, desktopTransitionStartedAt == nil,
++      interaction == nil else {
++      perform(#selector(performCameraMaintenance), with: nil, afterDelay: 0.3)
++      return
++    }
++    cameraMaintenancePending = false
++    cameraMaintenanceRuns += 1
++    persistDesktopPages()
++    updatePreviewToolTips()
++  }
++
+   private func schedulePreviewToolTipUpdate() {
++    guard !cameraMaintenancePending else { return }
+     previewToolTipUpdateTask?.cancel()
+     previewToolTipUpdateTask = Task { [weak self] in
+       try? await Task.sleep(for: .milliseconds(120))
+@@ -2611,7 +2918,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   private func drawDebugInformation() {
+     let label = String(format: "Zoom %.2f×", camera.zoom)
+     let attributes: [NSAttributedString.Key: Any] = [
+-      .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .semibold),
++      .font: debugInformationFont,
+       .foregroundColor: NSColor.white.withAlphaComponent(0.9),
+     ]
+     let labelSize = label.size(withAttributes: attributes)
+@@ -2718,57 +3025,9 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     if isSearching { drawSearchStatus(in: panel) }
+ 
+     guard let projection = miniMapProjection() else { return }
+-    renderedMiniMapCamera = projection.camera
+     let mapBackground = NSBezierPath(roundedRect: projection.frame, xRadius: 8, yRadius: 8)
+     NSColor.black.withAlphaComponent(0.28).setFill()
+     mapBackground.fill()
+-
+-    NSGraphicsContext.saveGraphicsState()
+-    mapBackground.addClip()
+-    let selectedProcessID = nodes.first(where: { $0.id == selectedWindowID })?.processID
+-    for placeholder in appPlaceholders {
+-      var rect = CanvasMath.viewRect(
+-        for: placeholder.worldFrame,
+-        camera: projection.camera,
+-        bounds: projection.contentBounds
+-      )
+-      if rect.width < 3 { rect = rect.insetBy(dx: -(3 - rect.width) / 2, dy: 0) }
+-      if rect.height < 3 { rect = rect.insetBy(dx: 0, dy: -(3 - rect.height) / 2) }
+-      let color = if groupSelectionIDs.contains(NavigationTarget.placeholder(placeholder).key) {
+-        groupSelectionColor
+-      } else if placeholder.bundleIdentifier == selectedPlaceholderBundleIdentifier {
+-        selectionColor
+-      } else {
+-        NSColor.white.withAlphaComponent(0.22)
+-      }
+-      color.setFill()
+-      NSBezierPath(roundedRect: rect, xRadius: 2, yRadius: 2).fill()
+-    }
+-    for node in nodes {
+-      var rect = CanvasMath.viewRect(
+-        for: node.worldFrame,
+-        camera: projection.camera,
+-        bounds: projection.contentBounds
+-      )
+-      if rect.width < 3 { rect = rect.insetBy(dx: -(3 - rect.width) / 2, dy: 0) }
+-      if rect.height < 3 { rect = rect.insetBy(dx: 0, dy: -(3 - rect.height) / 2) }
+-      let isGroupSelection = groupSelectionIDs.contains(NavigationTarget.window(node).key)
+-      let color = if isSearching && !matchesSearch(.window(node)) {
+-        NSColor.white.withAlphaComponent(0.1)
+-      } else if isGroupSelection {
+-        groupSelectionColor.withAlphaComponent(node.id == selectedWindowID ? 1 : 0.7)
+-      } else if node.id == selectedWindowID {
+-        selectionColor
+-      } else if selectedProcessID.map({ $0 == node.processID }) ?? false {
+-        selectionColor.withAlphaComponent(0.48)
+-      } else {
+-        NSColor.white.withAlphaComponent(0.38)
+-      }
+-      color.setFill()
+-      NSBezierPath(roundedRect: rect, xRadius: 2, yRadius: 2).fill()
+-    }
+-
+-    NSGraphicsContext.restoreGraphicsState()
+   }
+ 
+   private func drawSearchStatus(in panel: CGRect) {
+@@ -2844,6 +3103,15 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     desktopTabsScrollView.setAccessibilityLabel("Desktops")
+     addSubview(desktopTabsScrollView)
+     desktopTabsContent.addSubview(desktopTitleField)
++    addDesktopButton.title = ""
++    addDesktopButton.image = NSImage(systemSymbolName: "plus", accessibilityDescription: "New desktop")
++    addDesktopButton.isBordered = false
++    addDesktopButton.contentTintColor = .white.withAlphaComponent(0.7)
++    addDesktopButton.toolTip = "New desktop (+)"
++    addDesktopButton.setAccessibilityLabel("New desktop")
++    addDesktopButton.target = self
++    addDesktopButton.action = #selector(addDesktopPage(_:))
++    desktopTabsContent.addSubview(addDesktopButton)
+     rebuildDesktopTabs()
+   }
+ 
+@@ -2898,7 +3166,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       return ceil(min(multiple ? 260 : 720, max(multiple ? 96 : 180, textWidth + 32)))
+     }
+     let gap: CGFloat = 8
+-    let contentWidth = widths.reduce(0, +) + CGFloat(max(0, widths.count - 1)) * gap
++    let contentWidth = widths.reduce(0, +) + CGFloat(widths.count) * gap + 36
+     let layout = desktopTitleNudgeLayout
+     let visibleWidth = min(contentWidth, max(0, bounds.width - 96))
+     desktopTabsScrollView.frame = CGRect(
+@@ -2916,6 +3184,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       }
+       x += width + gap
+     }
++    addDesktopButton.frame = CGRect(x: x, y: 0, width: 36, height: layout.titleBoxHeight)
+   }
+ 
+   @objc private func selectDesktopTab(_ sender: NSButton) {
+@@ -2980,55 +3249,39 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+ 
+   private func configureMenuButton() {
+     menuButton.title = ""
+-    menuButton.image = Self.menuImage()
++    menuButton.image = Self.settingsImage()
++    menuButton.contentTintColor = .white.withAlphaComponent(0.82)
+     menuButton.imagePosition = .imageOnly
+     menuButton.imageScaling = .scaleProportionallyDown
+     menuButton.isBordered = false
+     menuButton.focusRingType = .none
+-    menuButton.toolTip = "Menu"
+-    menuButton.setAccessibilityLabel("Menu")
++    menuButton.toolTip = "Settings"
++    menuButton.setAccessibilityLabel("Settings")
+     menuButton.target = self
+-    menuButton.action = #selector(showNavigatorMenu(_:))
++    menuButton.action = #selector(showSettings(_:))
+     addSubview(menuButton)
+ 
+-    navigatorMenu.autoenablesItems = false
+-    newDesktopMenuItem.title = "New Desktop"
+-    newDesktopMenuItem.target = self
+-    newDesktopMenuItem.action = #selector(addDesktopPage(_:))
+-    navigatorMenu.addItem(newDesktopMenuItem)
+-    desktopPagesMenuItem.title = "Desktops"
+-    desktopPagesMenuItem.submenu = desktopPagesMenu
+-    navigatorMenu.addItem(desktopPagesMenuItem)
+-    navigatorMenu.addItem(.separator())
+     expandLandscapePreviewsMenuItem.title = "Expand previews"
+     expandLandscapePreviewsMenuItem.target = self
+     expandLandscapePreviewsMenuItem.action = #selector(toggleLandscapePreviewExpansion(_:))
+-    navigatorMenu.addItem(expandLandscapePreviewsMenuItem)
+     debugInformationMenuItem.title = "Show Debug Information"
+     debugInformationMenuItem.target = self
+     debugInformationMenuItem.action = #selector(toggleDebugInformation(_:))
+-    navigatorMenu.addItem(debugInformationMenuItem)
++    gridMenuItem.title = "Show Grid Dots"
++    gridMenuItem.target = self
++    gridMenuItem.action = #selector(toggleGrid(_:))
+     centerGuideMenuItem.title = "Show Center Guide"
+     centerGuideMenuItem.target = self
+     centerGuideMenuItem.action = #selector(toggleCenterGuide(_:))
+-    navigatorMenu.addItem(centerGuideMenuItem)
+-    synchronizedSelectionMenuItem.title = "Animate Selection from Start"
+-    synchronizedSelectionMenuItem.target = self
+-    synchronizedSelectionMenuItem.action = #selector(toggleSynchronizedSelection(_:))
+-    navigatorMenu.addItem(synchronizedSelectionMenuItem)
+     lightClosedCardsMenuItem.title = "Use Light Closed Cards"
+     lightClosedCardsMenuItem.target = self
+     lightClosedCardsMenuItem.action = #selector(toggleLightClosedCards(_:))
+-    navigatorMenu.addItem(lightClosedCardsMenuItem)
+     privateBrowserPreviewsMenuItem.title = "Show Private Browser Previews"
+     privateBrowserPreviewsMenuItem.target = self
+     privateBrowserPreviewsMenuItem.action = #selector(togglePrivateBrowserPreviews(_:))
+-    navigatorMenu.addItem(privateBrowserPreviewsMenuItem)
+-    navigatorMenu.addItem(.separator())
+     commandTabShortcutMenuItem.title = "Use ⌘Tab for OpenPlane"
+     commandTabShortcutMenuItem.target = self
+     commandTabShortcutMenuItem.action = #selector(toggleCommandTabShortcut(_:))
+-    navigatorMenu.addItem(commandTabShortcutMenuItem)
+   }
+ 
+   private func configureSearch() {
+@@ -3112,17 +3365,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func configureSettingsButton() {
+-    settingsButton.title = ""
+-    settingsButton.image = Self.colorSettingsImage()
+-    settingsButton.imagePosition = .imageOnly
+-    settingsButton.imageScaling = .scaleProportionallyDown
+-    settingsButton.isBordered = false
+-    settingsButton.focusRingType = .none
+-    settingsButton.toolTip = "Color palette"
+-    settingsButton.setAccessibilityLabel("Color palette")
+-    settingsButton.target = self
+-    settingsButton.action = #selector(showSettings(_:))
+-    addSubview(settingsButton)
++
+   }
+ 
+   private func configureLockViewButton() {
+@@ -3152,6 +3395,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func updateNavigatorPanel() {
++    let previousVisibility = [backButton.isHidden, forwardButton.isHidden]
+     let selectedNode = nodes.first(where: { $0.id == selectedWindowID })
+     let selectedPlaceholder = selectedPlaceholderBundleIdentifier.flatMap { bundleIdentifier in
+       appPlaceholders.first { $0.bundleIdentifier == bundleIdentifier }
+@@ -3204,13 +3448,15 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     forwardButton.setAccessibilityLabel(forwardButton.toolTip ?? "Select next app")
+     expandLandscapePreviewsMenuItem.state = expandsLandscapePreviews ? .on : .off
+     debugInformationMenuItem.state = showsDebugInformation ? .on : .off
++    gridMenuItem.state = showsGrid ? .on : .off
+     centerGuideMenuItem.state = showsCenterGuide ? .on : .off
+-    synchronizedSelectionMenuItem.state = synchronizesSelectionAnimation ? .on : .off
+     lightClosedCardsMenuItem.state = usesLightClosedCards ? .on : .off
+     privateBrowserPreviewsMenuItem.state = showsPrivateBrowserPreviews ? .on : .off
+     commandTabShortcutMenuItem.state = usesCommandTabShortcut ? .on : .off
+     updateLockViewButton()
+-    needsLayout = true
++    if previousVisibility != [backButton.isHidden, forwardButton.isHidden] {
++      needsLayout = true
++    }
+   }
+ 
+   func controlTextDidChange(_ notification: Notification) {
+@@ -3343,7 +3589,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func beginSearch(with text: String = "") {
+-    dismissSettings()
+     isSearching = true
+     searchField.stringValue = text
+     setSearchControlsVisible(true)
+@@ -3375,7 +3620,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     focusButton.isHidden = visible
+     searchButton.isHidden = visible
+     fitAllButton.isHidden = visible
+-    settingsButton.isHidden = visible
+     lockViewButton.isHidden = visible
+     menuButton.isHidden = visible
+     nextSearchResultButton.isHidden = true
+@@ -3403,22 +3647,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     beginSearch()
+   }
+ 
+-  @objc private func showNavigatorMenu(_ sender: NSButton) {
+-    expandLandscapePreviewsMenuItem.state = expandsLandscapePreviews ? .on : .off
+-    debugInformationMenuItem.state = showsDebugInformation ? .on : .off
+-    centerGuideMenuItem.state = showsCenterGuide ? .on : .off
+-    synchronizedSelectionMenuItem.state = synchronizesSelectionAnimation ? .on : .off
+-    lightClosedCardsMenuItem.state = usesLightClosedCards ? .on : .off
+-    privateBrowserPreviewsMenuItem.state = showsPrivateBrowserPreviews ? .on : .off
+-    commandTabShortcutMenuItem.state = usesCommandTabShortcut ? .on : .off
+-    rebuildDesktopPagesMenu()
+-    navigatorMenu.popUp(
+-      positioning: nil,
+-      at: CGPoint(x: sender.bounds.minX, y: sender.bounds.minY),
+-      in: sender
+-    )
+-  }
+-
+   @objc private func toggleLandscapePreviewExpansion(_ sender: NSMenuItem) {
+     expandsLandscapePreviews.toggle()
+     UserDefaults.standard.set(
+@@ -3439,6 +3667,17 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     needsDisplay = true
+   }
+ 
++  @objc private func toggleGrid(_ sender: NSMenuItem) {
++    showsGrid.toggle()
++    UserDefaults.standard.set(showsGrid, forKey: "showGrid")
++    sender.state = showsGrid ? .on : .off
++    gridZoom = nil
++    CATransaction.begin()
++    CATransaction.setDisableActions(true)
++    updateGrid(camera: camera)
++    CATransaction.commit()
++  }
++
+   @objc private func toggleCenterGuide(_ sender: NSMenuItem) {
+     showsCenterGuide.toggle()
+     UserDefaults.standard.set(showsCenterGuide, forKey: Self.centerGuidePreferenceKey)
+@@ -3446,15 +3685,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     needsDisplay = true
+   }
+ 
+-  @objc private func toggleSynchronizedSelection(_ sender: NSMenuItem) {
+-    synchronizesSelectionAnimation.toggle()
+-    UserDefaults.standard.set(
+-      synchronizesSelectionAnimation,
+-      forKey: Self.synchronizedSelectionPreferenceKey
+-    )
+-    sender.state = synchronizesSelectionAnimation ? .on : .off
+-  }
+-
+   @objc private func toggleLightClosedCards(_ sender: NSMenuItem) {
+     usesLightClosedCards.toggle()
+     UserDefaults.standard.set(usesLightClosedCards, forKey: Self.lightClosedCardsPreferenceKey)
+@@ -3523,7 +3753,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     updateLockViewButton()
+   }
+ 
+-  @objc private func addDesktopPage(_ sender: NSMenuItem) {
++  @objc private func addDesktopPage(_ sender: Any?) {
+     transitionDesktop { [weak self] in
+       guard let self else { return }
+       // Desktops are independent arrangements, not adjacent regions of one plane.
+@@ -3533,13 +3763,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     }
+   }
+ 
+-  @objc private func selectDesktopPage(_ sender: NSMenuItem) {
+-    guard let rawID = sender.representedObject as? String,
+-      let id = UUID(uuidString: rawID)
+-    else { return }
+-    selectDesktop(id: id)
+-  }
+-
+   private func selectDesktop(id: UUID) {
+     guard desktopPages.pages.contains(where: { $0.id == id }) else { return }
+     guard id != desktopPages.selectedID || desktopTransitionStartedAt != nil else { return }
+@@ -3554,7 +3777,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     clearGroupSelection()
+     selectedWindowID = nil
+     selectedPlaceholderBundleIdentifier = nil
+-    // Assign, don't interpolate: both the layout and camera change under the opaque fade.
++    // Assign, don't interpolate: Core Animation crossfades the old and new scenes.
+     camera = target
+     applySelectedDesktopLayout(around: target.center)
+     updateDesktopTabs()
+@@ -3563,16 +3786,16 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     updateLockViewButton()
+   }
+ 
+-  private func transitionDesktop(_ change: @escaping () -> Void) {
++  private func transitionDesktop(direction: Int? = nil, _ change: @escaping () -> Void) {
+     if desktopTransitionStartedAt != nil {
+-      pendingDesktopChange = change
++      pendingDesktopChanges.append((direction, change))
+       return
+     }
+     window?.makeFirstResponder(self)
+     dismissSearch()
+-    dismissSettings()
+     stopKeyboardZoom(completingTap: false)
+     stopKeyboardTapZoom()
++    stopNativeCameraTravel()
+     animationDisplayLink?.invalidate()
+     animationDisplayLink = nil
+     cameraAnimation = nil
+@@ -3583,15 +3806,34 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     synchronizeManifestedPlacements()
+     persistDesktopPages()
+ 
+-    desktopFadeView.frame = bounds
+-    desktopFadeView.autoresizingMask = [.width, .height]
+-    desktopFadeView.wantsLayer = true
+-    desktopFadeView.layer?.backgroundColor = background.color.cgColor
+-    desktopFadeView.alphaValue = 0
+-    addSubview(desktopFadeView, positioned: .above, relativeTo: nil)
+-    // The tab strip stays stationary and usable while the canvas fades underneath it.
+-    addSubview(desktopTabsScrollView, positioned: .above, relativeTo: desktopFadeView)
+-    desktopTransitionChange = change
++    CATransaction.begin()
++    CATransaction.setDisableActions(true)
++    let previousIndex = desktopPages.pages.firstIndex(where: { $0.id == desktopPages.selectedID }) ?? 0
++    change()
++    let nextIndex = desktopPages.pages.firstIndex(where: { $0.id == desktopPages.selectedID }) ?? previousIndex
++    synchronizeScene()
++    if nextIndex != previousIndex {
++      let forward = direction.map { $0 > 0 } ?? (nextIndex > previousIndex)
++      let offset: CGFloat = forward ? -40 : 40
++      for layer in [cameraLayer, gridLayer] {
++        let slide = CABasicAnimation(keyPath: "position")
++        slide.fromValue = NSValue(point: CGPoint(x: layer.position.x + offset, y: layer.position.y))
++        slide.toValue = NSValue(point: layer.position)
++        slide.duration = Self.desktopTransitionDuration
++        slide.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
++        layer.add(slide, forKey: "desktopSlide")
++      }
++    }
++    hudView.needsDisplay = true
++    hudView.displayIfNeeded()
++    for layer in [sceneView.layer, hudView.layer].compactMap({ $0 }) {
++      let fade = CATransition()
++      fade.type = .fade
++      fade.duration = Self.desktopTransitionDuration
++      fade.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
++      layer.add(fade, forKey: "desktopCrossfade")
++    }
++    CATransaction.commit()
+     desktopTransitionStartedAt = CACurrentMediaTime()
+     let link = displayLink(target: self, selector: #selector(stepDesktopTransition(_:)))
+     desktopTransitionDisplayLink = link
+@@ -3606,60 +3848,41 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     advanceDesktopTransition(to: (CACurrentMediaTime() - startedAt) / Self.desktopTransitionDuration)
+   }
+ 
+-  var desktopTransitionOpacity: CGFloat {
+-    desktopTransitionStartedAt == nil ? 0 : desktopFadeView.alphaValue
+-  }
+-
+-  // Also exercised at exact frame boundaries by the desktop interaction regression tests.
++  // Core Animation draws the fade; this clock only gates input and pending switches.
+   func advanceDesktopTransition(to progress: CGFloat) {
+     guard desktopTransitionStartedAt != nil else { return }
+-    let progress = min(1, max(0, progress))
+-    desktopFadeView.alphaValue = CanvasMath.easedTransition(1 - abs(2 * progress - 1))
+-    if progress >= 0.5, let change = desktopTransitionChange {
+-      desktopTransitionChange = nil
+-      desktopFadeView.alphaValue = 1
+-      change()
+-    }
+     if progress >= 1 {
+-      let pending = pendingDesktopChange
+-      pendingDesktopChange = nil
+-      finishDesktopTransition()
+-      if let pending { transitionDesktop(pending) }
++      finishDesktopTransition(completingQueuedChanges: false)
++      if !pendingDesktopChanges.isEmpty {
++        let pending = pendingDesktopChanges.removeFirst()
++        transitionDesktop(direction: pending.direction, pending.change)
++      }
+     }
+   }
+ 
+-  private func finishDesktopTransition() {
++  private func finishDesktopTransition(completingQueuedChanges: Bool = true) {
+     guard desktopTransitionStartedAt != nil else { return }
+-    let change = desktopTransitionChange
+-    let pending = pendingDesktopChange
+-    desktopTransitionChange = nil
+-    pendingDesktopChange = nil
+     desktopTransitionStartedAt = nil
+     desktopTransitionDisplayLink?.invalidate()
+     desktopTransitionDisplayLink = nil
+-    change?()
+-    pending?()
+-    desktopFadeView.removeFromSuperview()
+-    needsDisplay = true
+-  }
+-
+-  private func rebuildDesktopPagesMenu() {
+-    desktopPagesMenu.removeAllItems()
+-    for page in desktopPages.pages {
+-      let item = NSMenuItem(
+-        title: page.displayTitle,
+-        action: #selector(selectDesktopPage(_:)),
+-        keyEquivalent: ""
+-      )
+-      item.target = self
+-      item.representedObject = page.id.uuidString
+-      item.state = page.id == desktopPages.selectedID ? .on : .off
+-      desktopPagesMenu.addItem(item)
++    if completingQueuedChanges {
++      let pending = pendingDesktopChanges
++      pendingDesktopChanges.removeAll()
++      for pending in pending { pending.change() }
+     }
++    for layer in [sceneView.layer, hudView.layer].compactMap({ $0 }) {
++      layer.removeAnimation(forKey: "desktopCrossfade")
++    }
++    for layer in [cameraLayer, gridLayer] {
++      layer.removeAnimation(forKey: "desktopSlide")
++    }
++    needsDisplay = true
+   }
+ 
+   private func updateLockViewButton() {
+     let locked = desktopPages.isSelectedPageLocked
++    guard displayedLockState != locked else { return }
++    displayedLockState = locked
+     lockViewButton.image = Self.lockViewImage(locked: locked)
+     lockViewButton.toolTip = locked ? "Unlock desktop view" : "Lock current desktop view"
+     lockViewButton.setAccessibilityLabel(lockViewButton.toolTip ?? "Lock desktop view")
+@@ -3668,6 +3891,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func scheduleDesktopPagesPersistence() {
++    guard !cameraMaintenancePending else { return }
+     NSObject.cancelPreviousPerformRequests(
+       withTarget: self,
+       selector: #selector(persistDesktopPages),
+@@ -3974,6 +4198,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   @objc private func showSettings(_ sender: NSButton) {
+     if dismissSettings() { return }
+ 
++    guard let host = settingsWorkspace else { return }
+     let paletteView = CanvasPaletteView(selectedID: background.id)
+     paletteView.onSelect = { [weak self, weak paletteView] selectedBackground in
+       guard let self else { return }
+@@ -3986,26 +4211,37 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       paletteView?.select(background: selectedBackground)
+     }
+ 
+-    let controller = NSViewController()
+-    controller.view = paletteView
+-    settingsPopover.contentViewController = controller
+-    settingsPopover.contentSize = paletteView.frame.size
+-    settingsPopover.behavior = .transient
+-    settingsPopover.animates = true
+-    settingsPopover.appearance = NSAppearance(named: .aqua)
+-    settingsPopover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .maxY)
+-  }
+-
+-  private static func colorSettingsImage() -> NSImage? {
+-    let svg = """
+-      <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 32 32">
+-        <circle cx="16" cy="10.5" r="8.25" fill="#79AEF0" fill-opacity=".78"/>
+-        <circle cx="11.25" cy="18.75" r="8.25" fill="#BD8ADD" fill-opacity=".78"/>
+-        <circle cx="20.75" cy="18.75" r="8.25" fill="#F08DA4" fill-opacity=".78"/>
+-      </svg>
+-      """
+-    guard let image = NSImage(data: Data(svg.utf8)) else { return nil }
+-    image.size = CGSize(width: 30, height: 30)
++    updateNavigatorPanel()
++    let panel = CanvasSettingsPanel(palette: paletteView, groups: [
++      ("Appearance", [
++        ("Expand previews", "rectangle.expand.vertical", expandLandscapePreviewsMenuItem),
++        ("Grid dots", "circle.grid.3x3", gridMenuItem),
++        ("Center guide", "plus", centerGuideMenuItem),
++        ("Light closed cards", "rectangle", lightClosedCardsMenuItem),
++      ]),
++      ("Navigation", [
++        ("Use ⌘Tab for OpenPlane", "command", commandTabShortcutMenuItem),
++      ]),
++      ("Privacy", [
++        ("Private browser previews", "eye", privateBrowserPreviewsMenuItem),
++      ]),
++      ("Advanced", [
++        ("Debug information", "waveform.path", debugInformationMenuItem),
++      ]),
++    ])
++    panel.onClose = { [weak self] in self?.dismissSettings() }
++    host.showSettings(panel)
++  }
++
++  private static func settingsImage() -> NSImage? {
++    guard let symbol = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Settings") else { return nil }
++    // Bake the light color into the icon so AppKit appearance cannot turn it black.
++    let image = NSImage(size: CGSize(width: 22, height: 22), flipped: false) { rect in
++      symbol.draw(in: rect)
++      NSColor.white.withAlphaComponent(0.9).setFill()
++      rect.fill(using: .sourceIn)
++      return true
++    }
+     image.isTemplate = false
+     return image
+   }
+@@ -4194,12 +4430,250 @@ private final class CanvasPaletteView: NSView {
+   }
+ 
+   private func updateSelection() {
+-    for button in swatches {
+-      let isSelected = button.identifier?.rawValue == selectedID
+-      button.layer?.borderColor = isSelected
+-        ? selectedBorderColor
+-        : NSColor.black.withAlphaComponent(0.14).cgColor
+-      button.layer?.borderWidth = isSelected ? 3 : 1
++    needsDisplay = true
++  }
++
++  override func draw(_ dirtyRect: NSRect) {
++    super.draw(dirtyRect)
++    guard let button = swatches.first(where: { $0.identifier?.rawValue == selectedID }) else { return }
++    NSColor(cgColor: selectedBorderColor)?.setStroke()
++    let ring = NSBezierPath(roundedRect: button.frame.insetBy(dx: -3, dy: -3), xRadius: 13, yRadius: 13)
++    ring.lineWidth = 2
++    ring.stroke()
++  }
++
++}
++
++// The canvas keeps its world coordinates; only its viewport gives space to settings.
++@MainActor
++final class CanvasWorkspaceView: NSView {
++  let canvas: CanvasView
++  private var settings: NSView?
++  var isSettingsVisible: Bool { settings != nil }
++
++  init(canvas: CanvasView) {
++    self.canvas = canvas
++    super.init(frame: canvas.frame)
++    wantsLayer = true
++    layer?.masksToBounds = true
++    addSubview(canvas)
++  }
++
++  required init?(coder: NSCoder) { nil }
++
++  private var transitionGeneration = 0
++  private var isAnimatingSettings = false
++  private var panelWidth: CGFloat { min(440, bounds.width * 0.45) }
++
++  func showSettings(_ panel: NSView) {
++    subviews.filter { $0 !== canvas }.forEach { $0.removeFromSuperview() }
++    settings = panel
++    panel.frame = CGRect(x: bounds.width, y: 0, width: panelWidth, height: bounds.height)
++    addSubview(panel)
++    animateSettings(panel, opening: true)
++  }
++
++  func hideSettings() {
++    guard let panel = settings else { return }
++    settings = nil
++    animateSettings(panel, opening: false)
++    window?.makeFirstResponder(canvas)
++  }
++
++  private func animateSettings(_ panel: NSView, opening: Bool) {
++    transitionGeneration += 1
++    let generation = transitionGeneration
++    isAnimatingSettings = true
++    let width = opening ? panelWidth : 0
++    NSAnimationContext.runAnimationGroup { context in
++      context.duration = window == nil || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 0.18
++      context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
++      canvas.animator().frame = CGRect(x: 0, y: 0, width: bounds.width - width, height: bounds.height)
++      panel.animator().frame = CGRect(x: bounds.width - width, y: 0, width: panelWidth, height: bounds.height)
++    } completionHandler: { [weak self, weak panel] in
++      guard let self else { return }
++      if !opening, let panel, self.settings !== panel { panel.removeFromSuperview() }
++      guard self.transitionGeneration == generation else { return }
++      self.isAnimatingSettings = false
++      self.needsLayout = true
+     }
+   }
++
++  override func layout() {
++    super.layout()
++    guard !isAnimatingSettings else { return }
++    let width: CGFloat = settings == nil ? 0 : panelWidth
++    canvas.frame = CGRect(x: 0, y: 0, width: bounds.width - width, height: bounds.height)
++    settings?.frame = CGRect(x: bounds.width - width, y: 0, width: width, height: bounds.height)
++  }
++
++}
++
++@MainActor
++private final class SettingsDocumentView: NSView {
++  override var isFlipped: Bool { true }
++}
++
++@MainActor
++final class SettingsSwitch: NSButton {
++  override init(frame frameRect: NSRect) {
++    super.init(frame: frameRect)
++    setButtonType(.switch)
++    title = ""
++    isBordered = false
++  }
++
++  required init?(coder: NSCoder) { nil }
++
++  override var state: NSControl.StateValue {
++    didSet { needsDisplay = true }
++  }
++
++  override func draw(_ dirtyRect: NSRect) {
++    let track = CGRect(x: bounds.midX - 19, y: bounds.midY - 11, width: 38, height: 22)
++    let active = state == .on
++    (active ? NSColor.systemBlue : NSColor(white: 0.76, alpha: 1))
++      .withAlphaComponent(isEnabled ? (isHighlighted ? 0.75 : 1) : 0.4).setFill()
++    NSBezierPath(roundedRect: track, xRadius: 11, yRadius: 11).fill()
++    let thumb = CGRect(x: active ? track.maxX - 20 : track.minX + 2,
++      y: track.minY + 2, width: 18, height: 18)
++    NSColor.white.setFill()
++    NSBezierPath(ovalIn: thumb).fill()
++  }
++}
++
++@MainActor
++private final class SettingsToggleRow: NSView {
++  private let item: NSMenuItem
++  private let control = SettingsSwitch()
++  private let rowButton = NSButton()
++
++  init(title: String, symbol: String, item: NSMenuItem, width: CGFloat) {
++    self.item = item
++    super.init(frame: CGRect(x: 24, y: 0, width: width, height: 52))
++    rowButton.frame = bounds
++    rowButton.autoresizingMask = [.width, .height]
++    rowButton.title = ""
++    rowButton.isBordered = false
++    rowButton.setAccessibilityElement(false)
++    rowButton.target = self
++    rowButton.action = #selector(toggle(_:))
++    addSubview(rowButton)
++    let icon = NSImageView(frame: CGRect(x: 2, y: 13, width: 26, height: 26))
++    icon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
++    icon.imageScaling = .scaleProportionallyUpOrDown
++    icon.contentTintColor = NSColor(srgbRed: 0.43, green: 0.48, blue: 0.55, alpha: 1)
++    addSubview(icon)
++    let label = NSTextField(labelWithString: title)
++    label.font = .systemFont(ofSize: 16, weight: .medium)
++    label.textColor = NSColor(srgbRed: 0.12, green: 0.17, blue: 0.23, alpha: 1)
++    label.frame = CGRect(x: 42, y: 16, width: width - 88, height: 22)
++    label.autoresizingMask = [.width]
++    addSubview(label)
++    control.frame = CGRect(x: width - 38, y: 12, width: 38, height: 28)
++    control.autoresizingMask = [.minXMargin]
++    control.state = item.state
++    control.target = self
++    control.action = #selector(toggle(_:))
++    control.identifier = NSUserInterfaceItemIdentifier(title)
++    control.setAccessibilityLabel(title)
++    if title == "Expand previews" {
++      let explanation = "Enlarge smaller previews proportionally to the largest window dimensions. Actual windows stay unchanged."
++      toolTip = explanation
++      control.toolTip = explanation
++      rowButton.toolTip = explanation
++    }
++    addSubview(control)
++  }
++
++  required init?(coder: NSCoder) { nil }
++
++  override func hitTest(_ point: NSPoint) -> NSView? {
++    guard let hit = super.hitTest(point) else { return nil }
++    return hit === control ? control : rowButton
++  }
++
++  @objc private func toggle(_ sender: Any?) {
++    if let action = item.action { NSApp.sendAction(action, to: item.target, from: item) }
++    control.state = item.state
++  }
++
++}
++
++@MainActor
++private final class CanvasSettingsPanel: NSView {
++  var onClose: (() -> Void)?
++  private let scroll = NSScrollView()
++  private let closeButton = NSButton()
++  override var isFlipped: Bool { true }
++
++  init(palette: NSView, groups: [(String, [(String, String, NSMenuItem)])]) {
++    super.init(frame: CGRect(x: 0, y: 0, width: 440, height: 900))
++    appearance = NSAppearance(named: .aqua)
++    wantsLayer = true
++    layer?.backgroundColor = NSColor.white.cgColor
++    let title = NSTextField(labelWithString: "Settings")
++    title.font = .systemFont(ofSize: 28, weight: .semibold)
++    title.textColor = NSColor(srgbRed: 0.12, green: 0.17, blue: 0.23, alpha: 1)
++    title.frame = CGRect(x: 24, y: 38, width: 270, height: 34)
++    addSubview(title)
++    closeButton.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: "Close settings")
++    closeButton.isBordered = false
++    closeButton.contentTintColor = .secondaryLabelColor
++    closeButton.target = self
++    closeButton.action = #selector(close(_:))
++    closeButton.setAccessibilityLabel("Close settings")
++    addSubview(closeButton)
++    scroll.drawsBackground = false
++    scroll.hasVerticalScroller = true
++    scroll.autohidesScrollers = true
++    let document = SettingsDocumentView(frame: .zero)
++    var y: CGFloat = 10
++    func section(_ text: String) {
++      let label = NSTextField(labelWithString: text)
++      label.font = .systemFont(ofSize: 14, weight: .medium)
++      label.textColor = .secondaryLabelColor
++      label.frame = CGRect(x: 24, y: y, width: 310, height: 20)
++      document.addSubview(label)
++      y += 30
++    }
++    section("Background")
++    palette.frame.origin = CGPoint(x: 4, y: y)
++    document.addSubview(palette)
++    y += palette.frame.height + 12
++    for (heading, rows) in groups {
++      section(heading)
++      for (title, symbol, item) in rows {
++        let row = SettingsToggleRow(title: title, symbol: symbol, item: item, width: 392)
++        row.frame.origin.y = y
++        document.addSubview(row)
++        y += row.frame.height
++      }
++      y += 20
++    }
++    document.frame = CGRect(x: 0, y: 0, width: 440, height: y + 12)
++    scroll.documentView = document
++    addSubview(scroll)
++  }
++
++  required init?(coder: NSCoder) { nil }
++
++  override func resetCursorRects() {
++    super.resetCursorRects()
++    addCursorRect(bounds, cursor: .arrow)
++  }
++
++  override func layout() {
++    super.layout()
++    closeButton.frame = CGRect(x: bounds.width - 54, y: 38, width: 30, height: 30)
++    scroll.frame = CGRect(x: 0, y: 92, width: bounds.width, height: max(0, bounds.height - 92))
++    if let document = scroll.documentView {
++      document.frame.size.width = scroll.contentSize.width
++      for row in document.subviews where row is SettingsToggleRow {
++        row.frame.size.width = max(0, document.bounds.width - 48)
++      }
++    }
++  }
++
++  @objc private func close(_ sender: NSButton) { onClose?() }
+ }
+diff --git a/OpenPlane/WindowService.swift b/OpenPlane/WindowService.swift
+index 24c4c2e..be84f23 100644
+--- a/OpenPlane/WindowService.swift
++++ b/OpenPlane/WindowService.swift
+@@ -82,7 +82,6 @@ private struct AccessibilityWindowRequest: Sendable {
+ 
+ private struct AccessibilityInventoryResult: @unchecked Sendable {
+   let elements: [CGWindowID: AXUIElement]
+-  let eligibleProcessIDs: Set<pid_t>
+ }
+ 
+ private actor AccessibilityInventory {
+@@ -102,7 +101,6 @@ private actor AccessibilityInventory {
+     retryAfterByWindowID = retryAfterByWindowID.filter { requestsByID[$0.key] != nil }
+ 
+     var elements = matchesByWindowID.mapValues(\.element)
+-    var eligibleProcessIDs = Set(matchesByWindowID.values.map(\.processID))
+     let unresolved = requests.filter { matchesByWindowID[$0.id] == nil }
+     let now = Date()
+ 
+@@ -119,7 +117,6 @@ private actor AccessibilityInventory {
+         }
+         continue
+       }
+-      eligibleProcessIDs.insert(processID)
+ 
+       var used = matchesByWindowID.values.compactMap {
+         $0.processID == processID ? $0.element : nil
+@@ -144,8 +141,7 @@ private actor AccessibilityInventory {
+     }
+ 
+     return AccessibilityInventoryResult(
+-      elements: elements,
+-      eligibleProcessIDs: eligibleProcessIDs
++      elements: elements
+     )
+   }
+ 
+@@ -213,7 +209,8 @@ private enum AccessibilityWindowMatching {
+     }
+ 
+     let geometryMatches = scores.sorted { $0.geometry < $1.geometry }
+-    guard let best = geometryMatches.first,
++    // An unrelated helper surface must not claim the only standard AX window.
++    guard let best = geometryMatches.first, best.geometry <= 8,
+       geometryMatches.count == 1 || geometryMatches[1].geometry - best.geometry > 2
+     else { return nil }
+     return best.element
+@@ -320,7 +317,7 @@ final class WindowService {
+ 
+     return windows.compactMap { window in
+       guard let application = window.owningApplication,
+-        accessibility.eligibleProcessIDs.contains(application.processID)
++        accessibility.elements[window.windowID] != nil
+       else { return nil }
+       let title = window.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+       let resolvedTitle = title?.isEmpty == false ? title! : application.applicationName
+diff --git a/OpenPlaneTests/CanvasMathTests.swift b/OpenPlaneTests/CanvasMathTests.swift
+index f9ec401..725d080 100644
+--- a/OpenPlaneTests/CanvasMathTests.swift
++++ b/OpenPlaneTests/CanvasMathTests.swift
+@@ -474,7 +474,7 @@ final class CanvasMathTests: XCTestCase {
+     XCTAssertEqual(camera.zoom, 0.515, accuracy: 0.001)
+   }
+ 
+-  func testSelectionMovesTitleBeforeShowingBorder() {
++  func testSelectionHighlightsImmediately() {
+     let start = CanvasMath.selectionAnimationPhases(progress: 0)
+     let titleReady = CanvasMath.selectionAnimationPhases(progress: 0.55)
+     let end = CanvasMath.selectionAnimationPhases(progress: 1)
+@@ -482,12 +482,11 @@ final class CanvasMathTests: XCTestCase {
+     XCTAssertEqual(start.title, 0, accuracy: 0.001)
+     XCTAssertEqual(start.border, 0, accuracy: 0.001)
+     XCTAssertEqual(titleReady.title, 1, accuracy: 0.001)
+-    XCTAssertEqual(titleReady.border, 0, accuracy: 0.001)
++    XCTAssertEqual(titleReady.border, 0.55, accuracy: 0.001)
+     XCTAssertEqual(end.title, 1, accuracy: 0.001)
+     XCTAssertEqual(end.border, 1, accuracy: 0.001)
+     let synchronized = CanvasMath.selectionAnimationPhases(
+-      progress: 0.25,
+-      synchronized: true
++      progress: 0.25
+     )
+     XCTAssertEqual(synchronized.border, 0.25, accuracy: 0.001)
+     XCTAssertEqual(
+@@ -512,25 +511,7 @@ final class CanvasMathTests: XCTestCase {
+     XCTAssertEqual(CanvasMath.easedTransition(0), 0, accuracy: 0.001)
+     XCTAssertEqual(CanvasMath.easedTransition(0.5), 0.5, accuracy: 0.001)
+     XCTAssertEqual(CanvasMath.easedTransition(1), 1, accuracy: 0.001)
+-    XCTAssertEqual(
+-      CanvasMath.selectionHandoffPhase(progress: 0.5, incoming: false),
+-      1,
+-      accuracy: 0.001
+-    )
+-    XCTAssertEqual(
+-      CanvasMath.selectionHandoffPhase(progress: 0.5, incoming: true),
+-      0,
+-      accuracy: 0.001
+-    )
+-    XCTAssertEqual(
+-      CanvasMath.selectionHandoffPhase(
+-        progress: 0.5,
+-        incoming: true,
+-        synchronized: true
+-      ),
+-      CanvasMath.easedTransition(0.5),
+-      accuracy: 0.001
+-    )
++
+   }
+ 
+   func testAppNavigationHistoryMovesBothDirectionsAndDropsForwardBranch() {
+diff --git a/OpenPlaneTests/CanvasSelectionTests.swift b/OpenPlaneTests/CanvasSelectionTests.swift
+index a58f338..162074c 100644
+--- a/OpenPlaneTests/CanvasSelectionTests.swift
++++ b/OpenPlaneTests/CanvasSelectionTests.swift
+@@ -57,6 +57,133 @@ final class CanvasSelectionTests: XCTestCase {
+     }
+   }
+ 
++  func testCameraMaintenanceCoalescesMovementAndPersistsFinalCamera() throws {
++    try withCanvas { canvas, _ in
++      let initial = UserDefaults.standard.data(forKey: "desktopPages")
++      for step in 1...100 {
++        canvas.camera.center.x = CGFloat(step) * 31
++      }
++      XCTAssertEqual(canvas.cameraMaintenanceStarts, 1)
++      XCTAssertEqual(canvas.cameraMaintenanceRuns, 0)
++      XCTAssertEqual(UserDefaults.standard.data(forKey: "desktopPages"), initial)
++      RunLoop.main.run(until: Date().addingTimeInterval(0.75))
++      XCTAssertEqual(canvas.cameraMaintenanceRuns, 1)
++      let data = try XCTUnwrap(UserDefaults.standard.data(forKey: "desktopPages"))
++      let saved = try JSONDecoder().decode(DesktopPages.self, from: data)
++      XCTAssertEqual(saved.selectedPage.camera, canvas.camera)
++      canvas.camera.center.x += 1
++      XCTAssertEqual(canvas.cameraMaintenanceStarts, 2)
++    }
++  }
++
++  func testArrowSelectionDoesNotRefreshUnrelatedCardsOrInvalidateWholeCanvas() throws {
++    try withCanvas { canvas, _ in
++      canvas.synchronizeScene()
++      canvas.needsDisplay = false
++      let fullSizeViews = canvas.subviews.filter { $0.frame == canvas.bounds }
++      for view in fullSizeViews { view.needsDisplay = false }
++      let contentCount = canvas.sceneContentUpdates
++      let arrow = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
++        timestamp: 0, windowNumber: 0, context: nil, characters: "", charactersIgnoringModifiers: "",
++        isARepeat: false, keyCode: 124)!
++      XCTAssertTrue(canvas.handleNavigationKey(arrow))  // Select the nearest card first.
++      let count = canvas.sceneCardUpdates
++      XCTAssertTrue(canvas.handleNavigationKey(arrow))  // Then its right-hand neighbour.
++      XCTAssertEqual(canvas.sceneCardUpdates - count, 2)
++      XCTAssertEqual(canvas.sceneContentUpdates, contentCount)
++      XCTAssertFalse(canvas.needsDisplay)
++      XCTAssertTrue(fullSizeViews.allSatisfy { !$0.needsDisplay })
++    }
++  }
++
++  func testNativeCameraTravelCompletesAndInterruptsWithoutFrameCallbacks() throws {
++    try withCanvas { canvas, _ in
++      canvas.synchronizeScene()
++      let target = CameraState(center: CGPoint(x: 2800, y: 700), zoom: canvas.camera.zoom)
++      var completions = 0
++      canvas.animateCamera(to: target, duration: 0.05) { completions += 1 }
++      XCTAssertTrue(canvas.nativeCameraTravel)
++      XCTAssertNotNil(canvas.cameraLayer.animation(forKey: "cameraTravel"))
++      XCTAssertNotEqual(canvas.camera, target)
++      RunLoop.main.run(until: Date().addingTimeInterval(0.1))
++      XCTAssertEqual(canvas.camera, target)
++      XCTAssertFalse(canvas.nativeCameraTravel)
++      XCTAssertEqual(completions, 1)
++      XCTAssertEqual(canvas.cameraFrameCallbacks, 0)
++
++      canvas.animateCamera(to: CameraState(center: .zero, zoom: target.zoom), duration: 0.2) {
++        XCTFail("Interrupted animation must not complete")
++      }
++      RunLoop.main.run(until: Date().addingTimeInterval(0.025))
++      let interrupted = canvas.camera
++      canvas.animateCamera(to: target, duration: 0.05) { completions += 1 }
++      XCTAssertEqual(canvas.camera.center.x, interrupted.center.x, accuracy: 40)
++      RunLoop.main.run(until: Date().addingTimeInterval(0.25))
++      XCTAssertEqual(canvas.camera, target)
++      XCTAssertEqual(completions, 2)
++      XCTAssertEqual(canvas.cameraFrameCallbacks, 0)
++
++      canvas.animateCamera(to: CameraState(center: .zero, zoom: target.zoom), duration: 0.05) {
++        XCTFail("Direct camera assignment must cancel the animation")
++      }
++      canvas.camera = target
++      RunLoop.main.run(until: Date().addingTimeInterval(0.1))
++      XCTAssertEqual(canvas.camera, target)
++      XCTAssertFalse(canvas.nativeCameraTravel)
++    }
++  }
++
++  func testSavingOrResizingDuringNativeTravelKeepsTheCurrentCamera() throws {
++    try withCanvas { canvas, _ in
++      canvas.synchronizeScene()
++      let target = CameraState(center: CGPoint(x: 2800, y: 700), zoom: canvas.camera.zoom)
++      canvas.animateCamera(to: target, duration: 0.2) { XCTFail("Save cancelled this flight") }
++      RunLoop.main.run(until: Date().addingTimeInterval(0.025))
++      canvas.persistState()
++      XCTAssertFalse(canvas.nativeCameraTravel)
++      let saved = try JSONDecoder().decode(DesktopPages.self,
++        from: XCTUnwrap(UserDefaults.standard.data(forKey: "desktopPages")))
++      XCTAssertEqual(saved.selectedPage.camera, canvas.camera)
++      XCTAssertNotEqual(canvas.camera, target)
++
++      canvas.animateCamera(to: target, duration: 0.05) { XCTFail("Resize cancelled this flight") }
++      canvas.setFrameSize(CGSize(width: 1200, height: 900))
++      canvas.layoutSubtreeIfNeeded()
++      XCTAssertFalse(canvas.nativeCameraTravel)
++      let position = canvas.camera.center.applying(canvas.cameraLayer.affineTransform())
++      XCTAssertEqual(position.x, canvas.bounds.midX, accuracy: 0.001)
++      XCTAssertEqual(position.y, canvas.bounds.midY, accuracy: 0.001)
++      RunLoop.main.run(until: Date().addingTimeInterval(0.25))
++    }
++  }
++
++  func testRapidCameraReversalsPreserveNonBinaryZoom() throws {
++    try withCanvas { canvas, _ in
++      let window = NSWindow(contentRect: viewport, styleMask: [.borderless],
++        backing: .buffered, defer: false)
++      window.isReleasedWhenClosed = false
++      window.contentView = canvas
++      window.orderFront(nil)
++      defer { window.close() }
++      let zoom: CGFloat = 0.1655411772
++      canvas.camera = CameraState(center: .zero, zoom: zoom)
++      canvas.synchronizeScene()
++      let contentUpdates = canvas.sceneContentUpdates
++      for index in 0..<6 {
++        let target = CameraState(center: CGPoint(x: index.isMultiple(of: 2) ? 2800 : 0, y: 700),
++          zoom: zoom)
++        canvas.animateCamera(to: target, duration: 0.18) {}
++        RunLoop.main.run(until: Date().addingTimeInterval(0.04))
++        XCTAssertNotNil(canvas.cameraLayer.presentation())
++        XCTAssertTrue(canvas.nativeCameraTravel)
++        XCTAssertEqual(canvas.camera.zoom, zoom)
++      }
++      RunLoop.main.run(until: Date().addingTimeInterval(0.2))
++      XCTAssertEqual(canvas.cameraFrameCallbacks, 0)
++      XCTAssertEqual(canvas.sceneContentUpdates, contentUpdates)
++    }
++  }
++
+   func testZoomPreservesWorldCoordinatesAndLayerIdentity() throws {
+     try withCanvas { canvas, _ in
+       canvas.synchronizeScene()
+@@ -71,6 +198,56 @@ final class CanvasSelectionTests: XCTestCase {
+     }
+   }
+ 
++  func testGridToggleRestoresDotsAtCurrentZoom() throws {
++    let defaults = UserDefaults.standard
++    let previous = defaults.object(forKey: "showGrid")
++    defaults.removeObject(forKey: "showGrid")
++    defer { defaults.set(previous, forKey: "showGrid") }
++    try withCanvas { canvas, _ in
++      canvas.camera.zoom = 0.3
++      let grid = try XCTUnwrap(canvas.subviews.flatMap { $0.layer?.sublayers ?? [] }
++        .first { $0 is CAReplicatorLayer })
++      let tile = try XCTUnwrap(grid.sublayers?.first?.sublayers?.first)
++      XCTAssertFalse(grid.isHidden, "Dots remain enabled by default")
++      let original = try XCTUnwrap(tile.contents as AnyObject?)
++      let item = NSMenuItem()
++      canvas.perform(NSSelectorFromString("toggleGrid:"), with: item)
++      XCTAssertTrue(grid.isHidden)
++      canvas.camera.zoom = 0.7
++      XCTAssertTrue(grid.isHidden)
++      XCTAssertTrue(tile.contents as AnyObject? === original, "Disabled dots must skip raster work")
++      canvas.perform(NSSelectorFromString("toggleGrid:"), with: item)
++      XCTAssertFalse(grid.isHidden)
++      XCTAssertFalse(tile.contents as AnyObject? === original, "Re-enabling must refresh the tile")
++      XCTAssertEqual(canvas.camera.zoom, 0.7)
++      canvas.camera.zoom = 0.06
++      XCTAssertTrue(grid.isHidden, "Existing low-zoom fade threshold is preserved")
++    }
++  }
++
++  func testDebugOverlaySurvivesRepeatedZoomRedraws() throws {
++    let defaults = UserDefaults.standard
++    let previous = defaults.object(forKey: "showDebugInformation")
++    defaults.set(true, forKey: "showDebugInformation")
++    defer { defaults.set(previous, forKey: "showDebugInformation") }
++    try withCanvas { canvas, _ in
++      let hud = try XCTUnwrap(canvas.subviews.filter { $0.frame == canvas.bounds }.last)
++      let rect = CGRect(x: 0, y: canvas.bounds.maxY - 60, width: 180, height: 60)
++      let bitmap = try XCTUnwrap(hud.bitmapImageRepForCachingDisplay(in: rect))
++      var firstImage: Data?
++      for step in 0..<1_200 {
++        autoreleasepool {
++          canvas.camera.zoom = 0.06 + CGFloat(step % 120) / 100
++          hud.cacheDisplay(in: rect, to: bitmap)
++          if step == 0 { firstImage = bitmap.representation(using: .png, properties: [:]) }
++        }
++      }
++      XCTAssertNotNil(firstImage)
++      XCTAssertNotEqual(firstImage, bitmap.representation(using: .png, properties: [:]),
++        "The debug label must still update across zoom values, not freeze to avoid the crash")
++    }
++  }
++
+   private func key(_ code: UInt16 = 36, repeated: Bool = false) -> NSEvent {
+     NSEvent.keyEvent(
+       with: .keyDown, location: .zero, modifierFlags: [.shift], timestamp: 0,
+@@ -485,22 +662,236 @@ final class DesktopTabTests: XCTestCase {
+         ([], [1, 2, 0]), ([.shift], [2, 1, 0]),
+       ] {
+         for index in destinations {
+-          let original = canvas.camera
+           XCTAssertTrue(canvas.handleNavigationKey(tabKey(modifiers: modifiers)))
+           canvas.advanceDesktopTransition(to: 0.25)
+-          XCTAssertEqual(canvas.desktopTransitionOpacity, 0.5, accuracy: 0.001)
+-          XCTAssertEqual(canvas.camera, original)
++          XCTAssertEqual(canvas.camera, pages[index].camera)
+           canvas.advanceDesktopTransition(to: 0.5)
+           XCTAssertEqual(canvas.camera, pages[index].camera)
+           canvas.advanceDesktopTransition(to: 1)
+           XCTAssertEqual(try savedPages().selectedID, pages[index].id)
+-          XCTAssertEqual(canvas.desktopTransitionOpacity, 0)
++          XCTAssertFalse(canvas.defersBackgroundWork)
+         }
+       }
+       XCTAssertEqual(try savedPages().pages, pages)
+     }
+   }
+ 
++  func testRapidTabPressesVisitEveryRequestedDesktopInOrder() throws {
++    try withCanvas(count: 4) { canvas, pages in
++      for _ in 0..<3 { XCTAssertTrue(canvas.handleNavigationKey(tabKey())) }
++      XCTAssertEqual(canvas.camera, pages[1].camera)
++      canvas.advanceDesktopTransition(to: 1)
++      XCTAssertEqual(canvas.camera, pages[2].camera)
++      canvas.advanceDesktopTransition(to: 1)
++      XCTAssertEqual(canvas.camera, pages[3].camera)
++      canvas.advanceDesktopTransition(to: 1)
++      XCTAssertFalse(canvas.defersBackgroundWork)
++      for _ in 0..<3 { XCTAssertTrue(canvas.handleNavigationKey(tabKey(modifiers: .shift))) }
++      for index in [2, 1, 0] {
++        XCTAssertEqual(canvas.camera, pages[index].camera)
++        canvas.advanceDesktopTransition(to: 1)
++      }
++      XCTAssertEqual(try savedPages().pages, pages)
++    }
++  }
++
++  func testPlusAddsDesktopAndTabOnlyVisitsExistingPages() throws {
++    try withCanvas { canvas, _ in
++      let plus = try XCTUnwrap(descendants(of: canvas).compactMap { $0 as? NSButton }.first {
++        $0.toolTip == "New desktop (+)"
++      })
++      XCTAssertGreaterThan(plus.frame.minX, try tab(2, in: canvas).frame.maxX)
++      let originalCamera = canvas.camera
++      plus.performClick(nil)
++      canvas.advanceDesktopTransition(to: 1)
++      XCTAssertEqual(try savedPages().pages.count, 4)
++      XCTAssertEqual(canvas.camera, originalCamera)
++      let key = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.shift],
++        timestamp: 0, windowNumber: 0, context: nil, characters: "+",
++        charactersIgnoringModifiers: "=", isARepeat: false, keyCode: 24)!
++      XCTAssertTrue(canvas.handleNavigationKey(key))
++      canvas.advanceDesktopTransition(to: 1)
++      let pages = try savedPages()
++      XCTAssertEqual(pages.pages.count, 5)
++      for _ in 0..<5 {
++        XCTAssertTrue(canvas.handleNavigationKey(tabKey()))
++        canvas.advanceDesktopTransition(to: 1)
++      }
++      XCTAssertEqual(try savedPages().pages.count, 5)
++      XCTAssertEqual(try savedPages().selectedID, pages.selectedID)
++      let settings = descendants(of: canvas).compactMap { $0 as? NSButton }.filter {
++        $0.toolTip == "Settings"
++      }
++      XCTAssertEqual(settings.count, 1)
++      let search = try XCTUnwrap(descendants(of: canvas).compactMap { $0 as? NSButton }.first { $0.toolTip == "Search apps" })
++      XCTAssertGreaterThan(settings[0].frame.minY, search.frame.maxY)
++    }
++  }
++
++  func testSettingsPointerDoesNotReachCanvas() throws {
++    try withCanvas { canvas, _ in
++      let host = CanvasWorkspaceView(canvas: canvas)
++      host.frame = CGRect(x: 0, y: 0, width: 1200, height: 900)
++      host.layoutSubtreeIfNeeded()
++      let settings = try XCTUnwrap(descendants(of: canvas).compactMap { $0 as? NSButton }.first { $0.toolTip == "Settings" })
++      settings.performClick(nil)
++      defer { canvas.dismissSettings(); NSCursor.arrow.set() }
++      host.layoutSubtreeIfNeeded()
++      let point = CGPoint(x: canvas.frame.maxX + 80, y: 400)
++      XCTAssertNil(canvas.hitTest(point))
++      let move = try XCTUnwrap(NSEvent.mouseEvent(with: .mouseMoved, location: point,
++        modifierFlags: [], timestamp: 0, windowNumber: 0, context: nil,
++        eventNumber: 0, clickCount: 0, pressure: 0))
++      NSCursor.openHand.set()
++      canvas.mouseMoved(with: move)
++      XCTAssertEqual(NSCursor.current, NSCursor.arrow)
++      XCTAssertNil(canvas.menu(for: move))
++      let originalCamera = canvas.camera
++      canvas.mouseDown(with: move)
++      XCTAssertEqual(canvas.camera, originalCamera)
++      XCTAssertFalse(canvas.defersBackgroundWork)
++      XCTAssertTrue(host.isSettingsVisible)
++    }
++  }
++
++  func testKeyboardNavigationKeepsSettingsOpen() throws {
++    try withCanvas { canvas, pages in
++      let host = CanvasWorkspaceView(canvas: canvas)
++      host.frame = CGRect(x: 0, y: 0, width: 1200, height: 900)
++      host.layoutSubtreeIfNeeded()
++      let settings = try XCTUnwrap(descendants(of: canvas).compactMap { $0 as? NSButton }.first { $0.toolTip == "Settings" })
++      settings.performClick(nil)
++      defer { canvas.dismissSearch(); canvas.dismissSettings() }
++      func key(_ code: UInt16, _ text: String = "", _ modifiers: NSEvent.ModifierFlags = []) -> NSEvent {
++        NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: modifiers,
++          timestamp: 0, windowNumber: 0, context: nil, characters: text,
++          charactersIgnoringModifiers: text, isARepeat: false, keyCode: code)!
++      }
++      for code: UInt16 in [123, 124, 125, 126, 36, 76, 51] {
++        XCTAssertTrue(canvas.handleNavigationKey(key(code)))
++        XCTAssertTrue(host.isSettingsVisible)
++      }
++      XCTAssertTrue(canvas.handleNavigationKey(key(36, "", [.shift])))
++      for code: UInt16 in [125, 126] {
++        XCTAssertTrue(canvas.handleNavigationKey(key(code, "", [.shift])))
++        XCTAssertTrue(canvas.handleNavigationKeyUp(key(code, "", [.shift])))
++      }
++      XCTAssertTrue(canvas.handleNavigationKey(tabKey()))
++      canvas.advanceDesktopTransition(to: 1)
++      XCTAssertEqual(try savedPages().selectedID, pages[1].id)
++      XCTAssertTrue(host.isSettingsVisible)
++      XCTAssertTrue(canvas.handleNavigationKey(tabKey(modifiers: [.shift])))
++      canvas.advanceDesktopTransition(to: 1)
++      XCTAssertEqual(try savedPages().selectedID, pages[0].id)
++      XCTAssertTrue(canvas.handleNavigationKey(key(24, "+", [.shift])))
++      canvas.advanceDesktopTransition(to: 1)
++      XCTAssertEqual(try savedPages().pages.count, 4)
++      XCTAssertTrue(host.isSettingsVisible)
++      XCTAssertTrue(canvas.handleNavigationKey(key(0, "a")))
++      XCTAssertTrue(host.isSettingsVisible)
++      XCTAssertFalse(canvas.handleNavigationKey(key(24, "+")), "Search editor owns text input")
++      XCTAssertEqual(try savedPages().pages.count, 4)
++    }
++  }
++
++  func testSettingsReserveViewportAndRestoreCameraAndPlacements() throws {
++    try withCanvas { canvas, pages in
++      let host = CanvasWorkspaceView(canvas: canvas)
++      host.frame = CGRect(x: 0, y: 0, width: 1200, height: 900)
++      host.layoutSubtreeIfNeeded()
++      let original = canvas.camera
++      let button = try XCTUnwrap(descendants(of: canvas).compactMap { $0 as? NSButton }.first {
++        $0.toolTip == "Settings"
++      })
++      let defaults = UserDefaults.standard
++      let previousGrid = defaults.object(forKey: "showGrid")
++      defer { defaults.set(previousGrid, forKey: "showGrid") }
++      button.performClick(nil)
++      XCTAssertTrue(host.isSettingsVisible)
++      XCTAssertEqual(canvas.frame.width, 760)
++      XCTAssertEqual(canvas.camera, original)
++      let grid = try XCTUnwrap(descendants(of: host).compactMap { $0 as? SettingsSwitch }.first {
++        $0.identifier?.rawValue == "Grid dots"
++      })
++      let oldState = grid.state
++      let row = try XCTUnwrap(grid.superview)
++      for x: CGFloat in [10, 100] {
++        let point = row.convert(CGPoint(x: x, y: 26), to: row.superview)
++        let hit = try XCTUnwrap(row.hitTest(point) as? NSButton)
++        XCTAssertFalse(hit === grid)
++        XCTAssertTrue(NSApp.sendAction(try XCTUnwrap(hit.action), to: hit.target, from: hit))
++      }
++      XCTAssertEqual(grid.state, oldState, "Icon and text clicks each toggle once")
++      XCTAssertTrue(NSApp.sendAction(try XCTUnwrap(grid.action), to: grid.target, from: grid))
++      XCTAssertNotEqual(grid.state, oldState)
++      XCTAssertEqual(defaults.bool(forKey: "showGrid"), grid.state == .on)
++      XCTAssertTrue(NSApp.sendAction(try XCTUnwrap(grid.action), to: grid.target, from: grid))
++      XCTAssertEqual(grid.state, oldState)
++      XCTAssertTrue(canvas.dismissSettings())
++      XCTAssertFalse(canvas.dismissSettings())
++      XCTAssertEqual(canvas.frame.width, 1200)
++      XCTAssertEqual(canvas.camera, original)
++      XCTAssertEqual(try savedPages().pages, pages)
++    }
++  }
++
++  func testDesktopSlideDirectionFollowsTabOrderAndKeepsCameraExact() throws {
++    try withCanvas(count: 4) { canvas, pages in
++      for index in [2, 0, 3, 1] {
++        let previous = try savedPages().selectedID
++        let previousIndex = try XCTUnwrap(pages.firstIndex { $0.id == previous })
++        try tab(index, in: canvas).performClick(nil)
++        let slide = try XCTUnwrap(canvas.cameraLayer.animation(forKey: "desktopSlide") as? CABasicAnimation)
++        let from = try XCTUnwrap(slide.fromValue as? NSValue).pointValue
++        let to = try XCTUnwrap(slide.toValue as? NSValue).pointValue
++        XCTAssertEqual(from.x - to.x, index > previousIndex ? -40 : 40)
++        XCTAssertEqual(from.y, to.y)
++        XCTAssertEqual(slide.duration, CanvasView.desktopTransitionDuration)
++        XCTAssertEqual(canvas.camera, pages[index].camera)
++        canvas.advanceDesktopTransition(to: 1)
++        XCTAssertNil(canvas.cameraLayer.animation(forKey: "desktopSlide"))
++        XCTAssertEqual(canvas.camera, pages[index].camera)
++      }
++      XCTAssertEqual(try savedPages().pages, pages)
++    }
++  }
++
++  func testQueuedTabWrapSlidesForwardAndPreservesEveryDesktop() throws {
++    try withCanvas(count: 3) { canvas, pages in
++      for _ in 0..<7 {
++        XCTAssertTrue(canvas.handleNavigationKey(tabKey()))
++      }
++      for index in [1, 2, 0, 1, 2, 0, 1] {
++        let slide = try XCTUnwrap(canvas.cameraLayer.animation(forKey: "desktopSlide") as? CABasicAnimation)
++        let from = try XCTUnwrap(slide.fromValue as? NSValue).pointValue
++        let to = try XCTUnwrap(slide.toValue as? NSValue).pointValue
++        XCTAssertEqual(from.x - to.x, -40)
++        XCTAssertEqual(from.y, to.y)
++        XCTAssertEqual(slide.duration, 0.18)
++        XCTAssertEqual(canvas.camera, pages[index].camera)
++        XCTAssertEqual(try savedPages().selectedID, pages[index].id)
++        canvas.advanceDesktopTransition(to: 1)
++      }
++      XCTAssertFalse(canvas.defersBackgroundWork)
++      XCTAssertEqual(try savedPages().pages, pages)
++    }
++  }
++
++  func testQueuedTabsPreserveDirectionAndIgnoreAutoRepeat() throws {
++    try withCanvas(count: 4) { canvas, pages in
++      XCTAssertTrue(canvas.handleNavigationKey(tabKey()))
++      XCTAssertTrue(canvas.handleNavigationKey(tabKey(modifiers: .shift)))
++      XCTAssertTrue(canvas.handleNavigationKey(tabKey(repeated: true)))
++      XCTAssertTrue(canvas.handleNavigationKey(tabKey()))
++      for index in [1, 0, 1] {
++        XCTAssertEqual(canvas.camera, pages[index].camera)
++        canvas.advanceDesktopTransition(to: 1)
++      }
++      XCTAssertFalse(canvas.defersBackgroundWork)
++      XCTAssertEqual(try savedPages().selectedID, pages[1].id)
++    }
++  }
++
+   func testTabKeyLeavesTextEditingAndModifiedShortcutsAloneAndIgnoresRepeat() throws {
+     try withCanvas { canvas, pages in
+       for modifiers: NSEvent.ModifierFlags in [.command, .control, .option, [.command, .shift]] {
+@@ -538,23 +929,20 @@ final class DesktopTabTests: XCTestCase {
+     }
+   }
+ 
+-  func testTabClickFadesBeforeChangingCameraAndRestoresEachDesktopExactly() throws {
++  func testTabClickCrossfadesScenesAndRestoresEachDesktopExactly() throws {
+     try withCanvas { canvas, pages in
+       let original = canvas.camera
++      let originalSubviews = canvas.subviews
+       try tab(1, in: canvas).performClick(nil)
+-      XCTAssertEqual(canvas.camera, original)
+-      canvas.advanceDesktopTransition(to: 0.25)
+-      XCTAssertEqual(canvas.desktopTransitionOpacity, 0.5, accuracy: 0.001)
+-      XCTAssertEqual(canvas.camera, original, "The outgoing desktop must not travel during fade-out")
+-      canvas.advanceDesktopTransition(to: 0.5)
+-      XCTAssertEqual(canvas.desktopTransitionOpacity, 1)
+-      XCTAssertEqual(canvas.camera, pages[1].camera)
+-      canvas.advanceDesktopTransition(to: 0.75)
+-      XCTAssertEqual(canvas.desktopTransitionOpacity, 0.5, accuracy: 0.001)
+-      XCTAssertEqual(canvas.camera, pages[1].camera, "The incoming desktop must not travel during fade-in")
++      XCTAssertEqual(canvas.camera, pages[1].camera, "Incoming scene is ready when fading begins")
++      XCTAssertEqual(canvas.subviews, originalSubviews, "Crossfade must not insert a solid-color cover")
++      for progress in [0.25, 0.5, 0.75] {
++        canvas.advanceDesktopTransition(to: progress)
++        XCTAssertEqual(canvas.camera, pages[1].camera, "Crossfade must not move the incoming camera")
++      }
+       canvas.advanceDesktopTransition(to: 1)
+-      XCTAssertEqual(canvas.desktopTransitionOpacity, 0)
+-      XCTAssertTrue(try tab(1, in: canvas).isHidden, "The editable active title replaces its tab button")
++      XCTAssertEqual(canvas.subviews, originalSubviews)
++      XCTAssertTrue(try tab(1, in: canvas).isHidden)
+ 
+       try tab(0, in: canvas).performClick(nil)
+       canvas.advanceDesktopTransition(to: 1)
+@@ -575,7 +963,7 @@ final class DesktopTabTests: XCTestCase {
+       canvas.advanceDesktopTransition(to: 1)
+       XCTAssertEqual(canvas.camera, pages[2].camera)
+       XCTAssertEqual(try savedPages().selectedID, pages[2].id)
+-      XCTAssertEqual(canvas.desktopTransitionOpacity, 0)
++      XCTAssertFalse(canvas.defersBackgroundWork)
+       XCTAssertFalse(canvas.defersBackgroundWork)
+     }
+   }
+@@ -605,7 +993,7 @@ final class DesktopTabTests: XCTestCase {
+       XCTAssertTrue(try tab(0, in: canvas).isHidden)
+       canvas.perform(NSSelectorFromString("addDesktopPage:"), with: NSMenuItem())
+       canvas.advanceDesktopTransition(to: 0.25)
+-      XCTAssertEqual(try savedPages().pages.count, 1)
++      XCTAssertEqual(try savedPages().pages.count, 2)
+       canvas.advanceDesktopTransition(to: 1)
+       XCTAssertEqual(try savedPages().pages.count, 2)
+       XCTAssertEqual(canvas.camera, original, "New desktops must not introduce a directional camera offset")

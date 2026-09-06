@@ -1,0 +1,119 @@
+--- 
++++ 
+@@ -316,7 +316,6 @@
+   private static let expandLandscapePreviewsPreferenceKey = "expandLandscapePreviews"
+   private static let debugInformationPreferenceKey = "showDebugInformation"
+   private static let centerGuidePreferenceKey = "showCenterGuide"
+-  private static let synchronizedSelectionPreferenceKey = "synchronizeSelectionAnimation"
+   private static let lightClosedCardsPreferenceKey = "useLightClosedCards"
+   private static let desktopPagesPreferenceKey = "desktopPages"
+   private static let navigatorPanelSize = CGSize(width: 268, height: 244)
+@@ -562,10 +561,7 @@
+     let progress = time >= startedAt + Self.selectionTransitionDuration
+       ? 1 : max(0, (time - startedAt) / Self.selectionTransitionDuration)
+     let incoming = windowID == selectionTargetWindowID
+-    let phase = selectionStaysWithinApplication
+-      ? CanvasMath.easedTransition(progress)
+-      : CanvasMath.selectionHandoffPhase(progress: progress, incoming: incoming,
+-          synchronized: synchronizesSelectionAnimation)
++    let phase = CanvasMath.easedTransition(progress)
+     return start + ((incoming ? 1 : 0) - start) * phase
+   }
+   private var selectionStartProgress: [CGWindowID: CGFloat] = [:]
+@@ -603,7 +599,6 @@
+   private let debugInformationMenuItem = NSMenuItem()
+   private let gridMenuItem = NSMenuItem()
+   private let centerGuideMenuItem = NSMenuItem()
+-  private let synchronizedSelectionMenuItem = NSMenuItem()
+   private let lightClosedCardsMenuItem = NSMenuItem()
+   private let commandTabShortcutMenuItem = NSMenuItem()
+   private let privateBrowserPreviewsMenuItem = NSMenuItem()
+@@ -616,9 +611,6 @@
+   private var showsGrid = UserDefaults.standard.object(forKey: "showGrid") as? Bool ?? true
+   private var showsCenterGuide = UserDefaults.standard.bool(
+     forKey: CanvasView.centerGuidePreferenceKey)
+-  private var synchronizesSelectionAnimation =
+-    UserDefaults.standard.object(forKey: CanvasView.synchronizedSelectionPreferenceKey) == nil
+-    || UserDefaults.standard.bool(forKey: CanvasView.synchronizedSelectionPreferenceKey)
+   private var usesLightClosedCards = UserDefaults.standard.bool(
+     forKey: CanvasView.lightClosedCardsPreferenceKey)
+   private var usesCommandTabShortcut = UserDefaults.standard.bool(
+@@ -652,6 +644,7 @@
+ 
+   override init(frame frameRect: NSRect) {
+     let defaults = UserDefaults.standard
++    defaults.removeObject(forKey: "synchronizeSelectionAnimation")
+     desktopPages = Self.loadDesktopPages(from: defaults)
+     cameraState = desktopPages.selectedPage.camera ?? cameraState
+     if defaults.object(forKey: Self.navigatorPanelXPreferenceKey) != nil,
+@@ -1191,8 +1184,7 @@
+       selected = node.id == selectedWindowID
+       let sameApp = selectedPID == node.processID
+       let phases = CanvasMath.selectionAnimationPhases(
+-        progress: selectionProgress(for: node.id) ?? (selected ? 1 : 0),
+-        synchronized: synchronizesSelectionAnimation)
++        progress: selectionProgress(for: node.id) ?? (selected ? 1 : 0))
+       if selectionStaysWithinApplication && sameApp {
+         borderProgress = selectionProgress(for: node.id) ?? (selected ? 1 : 0)
+         borderWidth = CanvasMath.sameApplicationSelectionMetrics(primaryProgress: borderProgress).borderWidth
+@@ -1201,8 +1193,7 @@
+         borderProgress = phases.border
+         if !selected && (grouped || sameApp) && borderProgress == 0 {
+           let appPhase = CanvasMath.selectionAnimationPhases(
+-            progress: selectedWindowID.flatMap { selectionProgress(for: $0) } ?? 1,
+-            synchronized: synchronizesSelectionAnimation).border
++            progress: selectedWindowID.flatMap { selectionProgress(for: $0) } ?? 1).border
+           secondary = grouped || appPhase > 0
+         }
+       }
+@@ -2692,7 +2683,7 @@
+           : selectionProgress(for: node.id) ?? (isSelected ? 1 : 0)
+         progress =
+           CanvasMath.selectionAnimationPhases(
+-            progress: selection, synchronized: synchronizesSelectionAnimation
++            progress: selection
+           ).title
+       }
+       return (
+@@ -3282,9 +3273,6 @@
+     centerGuideMenuItem.title = "Show Center Guide"
+     centerGuideMenuItem.target = self
+     centerGuideMenuItem.action = #selector(toggleCenterGuide(_:))
+-    synchronizedSelectionMenuItem.title = "Animate Selection from Start"
+-    synchronizedSelectionMenuItem.target = self
+-    synchronizedSelectionMenuItem.action = #selector(toggleSynchronizedSelection(_:))
+     lightClosedCardsMenuItem.title = "Use Light Closed Cards"
+     lightClosedCardsMenuItem.target = self
+     lightClosedCardsMenuItem.action = #selector(toggleLightClosedCards(_:))
+@@ -3462,7 +3450,6 @@
+     debugInformationMenuItem.state = showsDebugInformation ? .on : .off
+     gridMenuItem.state = showsGrid ? .on : .off
+     centerGuideMenuItem.state = showsCenterGuide ? .on : .off
+-    synchronizedSelectionMenuItem.state = synchronizesSelectionAnimation ? .on : .off
+     lightClosedCardsMenuItem.state = usesLightClosedCards ? .on : .off
+     privateBrowserPreviewsMenuItem.state = showsPrivateBrowserPreviews ? .on : .off
+     commandTabShortcutMenuItem.state = usesCommandTabShortcut ? .on : .off
+@@ -3696,15 +3683,6 @@
+     UserDefaults.standard.set(showsCenterGuide, forKey: Self.centerGuidePreferenceKey)
+     sender.state = showsCenterGuide ? .on : .off
+     needsDisplay = true
+-  }
+-
+-  @objc private func toggleSynchronizedSelection(_ sender: NSMenuItem) {
+-    synchronizesSelectionAnimation.toggle()
+-    UserDefaults.standard.set(
+-      synchronizesSelectionAnimation,
+-      forKey: Self.synchronizedSelectionPreferenceKey
+-    )
+-    sender.state = synchronizesSelectionAnimation ? .on : .off
+   }
+ 
+   @objc private func toggleLightClosedCards(_ sender: NSMenuItem) {
+@@ -4242,7 +4220,6 @@
+         ("Light closed cards", "rectangle", lightClosedCardsMenuItem),
+       ]),
+       ("Navigation", [
+-        ("Animate selection from start", "arrow.right", synchronizedSelectionMenuItem),
+         ("Use ⌘Tab for OpenPlane", "command", commandTabShortcutMenuItem),
+       ]),
+       ("Privacy", [

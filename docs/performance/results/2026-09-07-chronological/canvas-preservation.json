@@ -1,0 +1,28 @@
+{
+  "selected_desktop_preserved": true,
+  "desktop_count_before": 4,
+  "desktop_count_after": 4,
+  "note": "Window session IDs refresh on restart; compare saved spatial geometry independently of live identity metadata.",
+  "pages": [
+    {
+      "camera_equal": true,
+      "placement_geometry_equal": true,
+      "locked_camera_equal": true
+    },
+    {
+      "camera_equal": true,
+      "placement_geometry_equal": true,
+      "locked_camera_equal": true
+    },
+    {
+      "camera_equal": true,
+      "placement_geometry_equal": true,
+      "locked_camera_equal": true
+    },
+    {
+      "camera_equal": true,
+      "placement_geometry_equal": true,
+      "locked_camera_equal": true
+    }
+  ]
+}

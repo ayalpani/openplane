@@ -1,0 +1,50 @@
+--- CanvasView-before.swift
++++ CanvasView.swift
+@@ -4505,9 +4505,37 @@
+ }
+ 
+ @MainActor
++final class SettingsSwitch: NSButton {
++  override init(frame frameRect: NSRect) {
++    super.init(frame: frameRect)
++    setButtonType(.switch)
++    title = ""
++    isBordered = false
++  }
++
++  required init?(coder: NSCoder) { nil }
++
++  override var state: NSControl.StateValue {
++    didSet { needsDisplay = true }
++  }
++
++  override func draw(_ dirtyRect: NSRect) {
++    let track = CGRect(x: bounds.midX - 19, y: bounds.midY - 11, width: 38, height: 22)
++    let active = state == .on
++    (active ? NSColor.systemBlue : NSColor(white: 0.76, alpha: 1))
++      .withAlphaComponent(isEnabled ? (isHighlighted ? 0.75 : 1) : 0.4).setFill()
++    NSBezierPath(roundedRect: track, xRadius: 11, yRadius: 11).fill()
++    let thumb = CGRect(x: active ? track.maxX - 20 : track.minX + 2,
++      y: track.minY + 2, width: 18, height: 18)
++    NSColor.white.setFill()
++    NSBezierPath(ovalIn: thumb).fill()
++  }
++}
++
++@MainActor
+ private final class SettingsToggleRow: NSView {
+   private let item: NSMenuItem
+-  private let control = NSSwitch()
++  private let control = SettingsSwitch()
+ 
+   init(title: String, symbol: String, item: NSMenuItem, width: CGFloat) {
+     self.item = item
+@@ -4537,7 +4565,7 @@
+ 
+   required init?(coder: NSCoder) { nil }
+ 
+-  @objc private func toggle(_ sender: NSSwitch) {
++  @objc private func toggle(_ sender: SettingsSwitch) {
+     if let action = item.action { NSApp.sendAction(action, to: item.target, from: item) }
+     sender.state = item.state
+   }

@@ -1,0 +1,419 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project OpenPlane.xcodeproj -scheme OpenPlane -configuration Release -derivedDataPath /tmp/openplane-crossfade/build build
+
+2026-09-06 01:49:27.506 xcodebuild[17805:1536373] [MT] IDERunDestination: Supported platforms for the buildables in the current scheme is empty.
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00006020-0016685611C0C01E, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00006020-0016685611C0C01E, name:My Mac }
+{ platform:macOS, name:Any Mac }
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'OpenPlane' in project 'OpenPlane' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 1f564e6feaae9e4ae8a0259c05c3d5bb
+Build description path: /tmp/openplane-crossfade/build/Build/Intermediates.noindex/XCBuildData/1f564e6feaae9e4ae8a0259c05c3d5bb.xcbuilddata
+CreateBuildDirectory /tmp/openplane-crossfade/build/Build/Products
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-crossfade/build/Build/Products
+
+CreateBuildDirectory /tmp/openplane-crossfade/build/Build/Intermediates.noindex
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-crossfade/build/Build/Intermediates.noindex
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk /tmp/openplane-crossfade/build/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -o /tmp/openplane-crossfade/build/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache
+
+CreateBuildDirectory /tmp/openplane-crossfade/build/Build/Intermediates.noindex/ExplicitPrecompiledModules
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-crossfade/build/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+CreateBuildDirectory /tmp/openplane-crossfade/build/Build/Intermediates.noindex/EagerLinkingTBDs/Release
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-crossfade/build/Build/Intermediates.noindex/EagerLinkingTBDs/Release
+
+CreateBuildDirectory /tmp/openplane-crossfade/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-crossfade/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+CreateBuildDirectory /tmp/openplane-crossfade/build/Build/Products/Release
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-crossfade/build/Build/Products/Release
+
+WriteAuxiliaryFile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane-acf40ef4130912d87a120b6a244ec8a7-VFS/all-product-headers.yaml
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    write-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane-acf40ef4130912d87a120b6a244ec8a7-VFS/all-product-headers.yaml
+
+WriteAuxiliaryFile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-project-headers.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-project-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-generated-files.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-generated-files.hmap
+
+WriteAuxiliaryFile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.hmap
+
+WriteAuxiliaryFile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-all-target-headers.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-all-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-all-non-framework-target-headers.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-own-target-headers.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-own-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/Entitlements.plist (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/Entitlements.plist
+
+WriteAuxiliaryFile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_const_extract_protocols.json (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_const_extract_protocols.json
+
+WriteAuxiliaryFile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-OutputFileMap.json (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-OutputFileMap.json
+
+WriteAuxiliaryFile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.LinkFileList (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.LinkFileList
+
+MkDir /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/Resources (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/Resources
+
+WriteAuxiliaryFile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.DependencyStaticMetadataFileList (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.DependencyMetadataFileList (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.DependencyMetadataFileList
+
+WriteAuxiliaryFile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList
+
+WriteAuxiliaryFile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftConstValuesFileList (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftConstValuesFileList
+
+MkDir /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/MacOS (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/MacOS
+
+MkDir /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents
+
+MkDir /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app
+
+ProcessProductPackaging "" /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.app.xcent (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Entitlements:
+    
+    {
+    "com.apple.security.get-task-allow" = 1;
+}
+    
+    builtin-productPackagingUtility -entitlements -format xml -o /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.app.xcent
+
+ProcessProductPackagingDER /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.app.xcent /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.app.xcent.der (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /usr/bin/derq query -f xml -i /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.app.xcent -o /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.app.xcent.der --raw
+
+GenerateAssetSymbols /Users/ayalpani/dev/_products/openplane/OpenPlane/Assets.xcassets (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/ayalpani/dev/_products/openplane/OpenPlane/Assets.xcassets --compile /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/Resources --output-format human-readable-text --notices --warnings --export-dependency-info /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_dependencies --output-partial-info-plist /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_generated_info.plist --app-icon AppIcon --enable-on-demand-resources NO --development-region en --target-device mac --minimum-deployment-target 26.0 --platform macosx --bundle-identifier com.yalpani.openplane.poc --generate-swift-asset-symbol-extensions NO --generate-swift-asset-symbols /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.swift --generate-objc-asset-symbols /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.h --generate-asset-symbol-index /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/* com.apple.actool.compilation-results */
+/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.h
+/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.swift
+
+
+MkDir /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/thinned (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/thinned
+
+MkDir /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/unthinned (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/unthinned
+
+CompileAssetCatalogVariant thinned /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/Resources /Users/ayalpani/dev/_products/openplane/OpenPlane/Assets.xcassets (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/ayalpani/dev/_products/openplane/OpenPlane/Assets.xcassets --compile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/thinned --output-format human-readable-text --notices --warnings --export-dependency-info /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_dependencies_thinned --output-partial-info-plist /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_generated_info.plist_thinned --app-icon AppIcon --enable-on-demand-resources NO --development-region en --target-device mac --minimum-deployment-target 26.0 --platform macosx
+/* com.apple.actool.compilation-results */
+/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_generated_info.plist_thinned
+/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/thinned/AppIcon.icns
+/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/thinned/Assets.car
+
+
+LinkAssetCatalog /Users/ayalpani/dev/_products/openplane/OpenPlane/Assets.xcassets (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-linkAssetCatalog --thinned /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/thinned --thinned-dependencies /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_dependencies_thinned --thinned-info-plist-content /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_generated_info.plist_thinned --unthinned /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/unthinned --unthinned-dependencies /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_dependencies_unthinned --unthinned-info-plist-content /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_generated_info.plist_unthinned --output /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/Resources --plist-output /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_generated_info.plist
+note: Emplaced /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/Resources/Assets.car (in target 'OpenPlane' from project 'OpenPlane')
+note: Emplaced /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/Resources/AppIcon.icns (in target 'OpenPlane' from project 'OpenPlane')
+
+ProcessInfoPlistFile /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/Info.plist /Users/ayalpani/dev/_products/openplane/OpenPlane/Info.plist (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-infoPlistUtility /Users/ayalpani/dev/_products/openplane/OpenPlane/Info.plist -producttype com.apple.product-type.application -genpkginfo /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/PkgInfo -expandbuildsettings -platform macosx -additionalcontentfile /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_generated_info.plist -o /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/Info.plist
+
+SwiftDriver OpenPlane normal arm64 com.apple.xcode.tools.swift.compiler (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OpenPlane -O -whole-module-optimization @/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/openplane-crossfade/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -swift-version 6 -I /tmp/openplane-crossfade/build/Build/Products/Release -F /tmp/openplane-crossfade/build/Build/Products/Release -emit-localized-strings -emit-localized-strings-path /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64 -c -num-threads 12 -Xcc -ivfsstatcache -Xcc /tmp/openplane-crossfade/build/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/openplane-crossfade/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/openplane-crossfade/build/ModuleCache.noindex -sdk-module-cache-path /tmp/openplane-crossfade/build/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/openplane-crossfade/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-generated-files.hmap -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-own-target-headers.hmap -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-project-headers.hmap -Xcc -I/tmp/openplane-crossfade/build/Build/Products/Release/include -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources-normal/arm64 -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/arm64 -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources -emit-objc-header -emit-objc-header-path /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-Swift.h -working-directory /Users/ayalpani/dev/_products/openplane -no-emit-module-separately-wmo
+
+SwiftDriver\ Compilation OpenPlane normal arm64 com.apple.xcode.tools.swift.compiler (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OpenPlane -O -whole-module-optimization @/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/openplane-crossfade/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -swift-version 6 -I /tmp/openplane-crossfade/build/Build/Products/Release -F /tmp/openplane-crossfade/build/Build/Products/Release -emit-localized-strings -emit-localized-strings-path /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64 -c -num-threads 12 -Xcc -ivfsstatcache -Xcc /tmp/openplane-crossfade/build/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/openplane-crossfade/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/openplane-crossfade/build/ModuleCache.noindex -sdk-module-cache-path /tmp/openplane-crossfade/build/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/openplane-crossfade/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-generated-files.hmap -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-own-target-headers.hmap -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-project-headers.hmap -Xcc -I/tmp/openplane-crossfade/build/Build/Products/Release/include -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources-normal/arm64 -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/arm64 -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources -emit-objc-header -emit-objc-header-path /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-Swift.h -working-directory /Users/ayalpani/dev/_products/openplane -no-emit-module-separately-wmo
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_stdarg-MH9325PNTZABQECC0V19XLCU.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/_AvailabilityInternal-5DFPIAZEGO52GHK0SXO4AUWLH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/SwiftShims-2VGB4X4ZQQSHGISYOYXI4DRX4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_stddef-7T9NZ6E8OB3T15NSUZ7549FN4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_float-1QYA5UMEPI0NLPGV9I5ITKUFZ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/DeveloperToolsSupport-8VGJ2KUZV4XLVOAAS7BZLT85Y.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_stdbool-9ICDNXTKEAKPL5Z8BPLL078V9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/ptrauth-453R2XRZIQ6PF0SN7OAWKF091.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/_SwiftConcurrencyShims-7F7ROF6PN5MRX86VM277QPK7Z.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/ptrcheck-923YCCKQ8OMS77YVMUEQXR3KD.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/_DarwinFoundation1-1RA4H9RWFA9KW9HELFBPXRBI4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_limits-2VH0SIYGDR5HMEGUGBU9XC0GB.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/_DarwinFoundation2-E135I8TMHINYH2JJEK2L1XWRS.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_stdint-7TMC4613DIEXY12BJ6ANZVAVS.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_tgmath-AVKBEGGEXH9OO6QVDR9P1G345.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/sys_types-4RQQBPSAHZ7U8IHZQD0D0EO1R.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_stdatomic-CE16ONHGINXW0QKWNPT2IKWYO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/libDER-3NOW7M6PUFKMBSS4VMF6GOTE0.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/OpenGL-5E5JKFIIW1H0JWQJGI56NUM9U.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/_DarwinFoundation3-4PUSAY6LF0RJ7CT1NWEWEWM2Y.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_intrinsics-9RE53JMGIW5K0H6ZSFZ0BXEFE.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_inttypes-3RPAGWODSN99UYGYXPBIAO771.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/Darwin-8UIRKFHA0AADYFGJVTQXYUZVB.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/simd-BU5LX5IE2B4DRVIKERHZULIEH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/CUPS-9P2LAWC2IYTOBCWLTB0FD9DMR.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/libkern-AXNRJTIANZ6HQW86DS3YUEHTO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/launch-90UT4Y5TV8UL65KKRL8BIFKXD.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/MachO-5GJFV43V9PS08VQCN916BPHHC.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/ObjectiveC-B5GY6CYZAVU5JC1JOMPOVEVGJ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/Spatial-5PEMUG8DEDBYS94BW6TPYCLES.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/os_object-612J2VN2O0P6CRU1KB47YKY50.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/os_workgroup-4FL8KZ4YH7FMR7E5ZUWCY3XT4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/Dispatch-BXNY5I23GMAJ7ZS2AJ6JK2T0N.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreFoundation-4CKBJQ9RLS7MBSQMLUBYFO0J7.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/XPC-A5TBQ38G1ROWBNONBYFKSEQDP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/os-8EOCQMAXUK6EQYEG62MNTZ1GY.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreAudioTypes-4L8YW29XPH14PVRR6GDH8F2F6.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/Security-7Q053TM7IR0WP7YHPWQQJF4ZY.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/IOKit-EPCICXTRTHXQJDUONZA9WO4MS.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/ColorSync-EHG7IM6KD3CXW2HLN3EE7YK58.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/CFNetwork-EMAM3VL0K051OYDMGWX150JGH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreGraphics-8Z2ZWIV21TFPZ74JYDE2BC866.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/DiskArbitration-7BV5ZG5G24XZTUA134ICYD10N.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreServices-4W39B7X4E0QFRPAP1PVVY3X02.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreText-GTEFP6EBY34MSB3SEIQMCBMQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/ImageIO-86PM7M24AJO4C8CUMVSH6WC5R.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/Foundation-3H3NUMDCLR60VFX1BJZQTE0DO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/UniformTypeIdentifiers-BJRUH5F05K4HB3RGSAVBC9ZQQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreAudio-3P5SMO19XO2BGWXQKB3OEU28G.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/ServiceManagement-A1TIB0QOCHMFPPAL0FZMAFBV5.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/OSLog-E2YYXR2Z0MS2B0YIX1DND8JQQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/Symbols-C4915JMKQAC619ER97Y08DIQA.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreMIDI-37GU3NK6Q5X9TISI205UGPIQU.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/DataDetection-EXK82XBJUTV5F1V2NA99HQI6F.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreTransferable-B707GLP1LI7CQA38B1G5UNLPX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/ApplicationServices-MC3OGWSQKQFM7SOQO8S0KXJQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/Accessibility-12ADLHHQSYJ41UWBV0QKVN0AA.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreData-D44LFSOJ1H0LUS47HK9BU4JQH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/IOSurface-BN4RN9V6G2U7VULEAKMUVQ13Y.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/Metal-9S40YP8PB9S66FWAWGVQF2XA.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/Carbon-4VZKQZOC9SQWU90UBIATCPURP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreVideo-3GBFMYDRACYT4UJ1SL30UJYH0.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/AudioToolbox-DEN1HMKE6D9UIJ2WI8HAHWCRP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreImage-DOD9QP3VQ7IRE5HQI4M1RTFG3.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/QuartzCore-92MUDFQ530HXW96ZVL22BIGXP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreMedia-EN6FK31ZE0A3JJKB87LO6LGS7.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/SwiftUICore-9PXEQ0JF6UOPFQN8A7B5KG83M.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/MediaToolbox-AFWY9YQBUMZD91OPKPISHDNJR.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/AVFAudio-6I0ENPKGC9QNXPG8L1RHNJ7ZX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/AppKit-BXJP9Y5RFBPH7CW5IE8S1SA9X.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/AVFoundation-78J0XXDWOGSF2AFOLCFM742YE.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-crossfade/build/ModuleCache.noindex/ScreenCaptureKit-BZ85ZUW6IS7WX926JLK23KCR3.pcm
+
+SwiftCompile normal arm64 Compiling\ OpenPlaneApp.swift,\ AppDelegate.swift,\ CanvasModel.swift,\ CanvasView.swift,\ WindowService.swift,\ PermissionView.swift,\ GeneratedAssetSymbols.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/OpenPlaneApp.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/AppDelegate.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasModel.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasView.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/WindowService.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/PermissionView.swift /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.swift /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Foundation.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/DataDetection.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreTransferable.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Synchronization.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/AVFAudio.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/_Builtin_float.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Spatial.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Observation.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/XPC.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreData.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/ScreenCaptureKit.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Dispatch.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreFoundation.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Combine.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/_Concurrency.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreVideo.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/SwiftUICore.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreAudio.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/QuartzCore.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Accessibility.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/UniformTypeIdentifiers.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Darwin.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Metal.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/os.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Swift.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/AVFoundation.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/OSLog.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/DeveloperToolsSupport.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/_DarwinFoundation1.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Symbols.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/AppKit.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreGraphics.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/AudioToolbox.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/IOKit.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreMedia.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/simd.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/_StringProcessing.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreText.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/System.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/_DarwinFoundation3.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/ObjectiveC.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/_DarwinFoundation2.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreMIDI.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreImage.swiftmodule/arm64e-apple-macos.swiftmodule /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_stdatomic-CE16ONHGINXW0QKWNPT2IKWYO.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_stddef-7T9NZ6E8OB3T15NSUZ7549FN4.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/SwiftShims-2VGB4X4ZQQSHGISYOYXI4DRX4.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_limits-2VH0SIYGDR5HMEGUGBU9XC0GB.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreGraphics-8Z2ZWIV21TFPZ74JYDE2BC866.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/_SwiftConcurrencyShims-7F7ROF6PN5MRX86VM277QPK7Z.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/_DarwinFoundation1-1RA4H9RWFA9KW9HELFBPXRBI4.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/DataDetection-EXK82XBJUTV5F1V2NA99HQI6F.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_float-1QYA5UMEPI0NLPGV9I5ITKUFZ.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreTransferable-B707GLP1LI7CQA38B1G5UNLPX.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/AudioToolbox-DEN1HMKE6D9UIJ2WI8HAHWCRP.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_stdbool-9ICDNXTKEAKPL5Z8BPLL078V9.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/os_object-612J2VN2O0P6CRU1KB47YKY50.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/QuartzCore-92MUDFQ530HXW96ZVL22BIGXP.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/os_workgroup-4FL8KZ4YH7FMR7E5ZUWCY3XT4.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/Metal-9S40YP8PB9S66FWAWGVQF2XA.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_inttypes-3RPAGWODSN99UYGYXPBIAO771.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreMedia-EN6FK31ZE0A3JJKB87LO6LGS7.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/ptrcheck-923YCCKQ8OMS77YVMUEQXR3KD.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreText-GTEFP6EBY34MSB3SEIQMCBMQ.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreServices-4W39B7X4E0QFRPAP1PVVY3X02.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/SwiftUICore-9PXEQ0JF6UOPFQN8A7B5KG83M.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/DeveloperToolsSupport-8VGJ2KUZV4XLVOAAS7BZLT85Y.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/_DarwinFoundation3-4PUSAY6LF0RJ7CT1NWEWEWM2Y.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/AVFoundation-78J0XXDWOGSF2AFOLCFM742YE.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/IOKit-EPCICXTRTHXQJDUONZA9WO4MS.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/_DarwinFoundation2-E135I8TMHINYH2JJEK2L1XWRS.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/ObjectiveC-B5GY6CYZAVU5JC1JOMPOVEVGJ.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreVideo-3GBFMYDRACYT4UJ1SL30UJYH0.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/CFNetwork-EMAM3VL0K051OYDMGWX150JGH.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreImage-DOD9QP3VQ7IRE5HQI4M1RTFG3.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_stdint-7TMC4613DIEXY12BJ6ANZVAVS.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_stdarg-MH9325PNTZABQECC0V19XLCU.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/Spatial-5PEMUG8DEDBYS94BW6TPYCLES.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreFoundation-4CKBJQ9RLS7MBSQMLUBYFO0J7.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/ScreenCaptureKit-BZ85ZUW6IS7WX926JLK23KCR3.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/XPC-A5TBQ38G1ROWBNONBYFKSEQDP.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/ServiceManagement-A1TIB0QOCHMFPPAL0FZMAFBV5.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/MachO-5GJFV43V9PS08VQCN916BPHHC.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreMIDI-37GU3NK6Q5X9TISI205UGPIQU.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/Foundation-3H3NUMDCLR60VFX1BJZQTE0DO.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/Dispatch-BXNY5I23GMAJ7ZS2AJ6JK2T0N.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/sys_types-4RQQBPSAHZ7U8IHZQD0D0EO1R.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreAudio-3P5SMO19XO2BGWXQKB3OEU28G.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/libDER-3NOW7M6PUFKMBSS4VMF6GOTE0.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/simd-BU5LX5IE2B4DRVIKERHZULIEH.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/MediaToolbox-AFWY9YQBUMZD91OPKPISHDNJR.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/CUPS-9P2LAWC2IYTOBCWLTB0FD9DMR.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/os-8EOCQMAXUK6EQYEG62MNTZ1GY.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/AppKit-BXJP9Y5RFBPH7CW5IE8S1SA9X.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/Security-7Q053TM7IR0WP7YHPWQQJF4ZY.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/UniformTypeIdentifiers-BJRUH5F05K4HB3RGSAVBC9ZQQ.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/OpenGL-5E5JKFIIW1H0JWQJGI56NUM9U.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/Darwin-8UIRKFHA0AADYFGJVTQXYUZVB.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/OSLog-E2YYXR2Z0MS2B0YIX1DND8JQQ.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/launch-90UT4Y5TV8UL65KKRL8BIFKXD.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/DiskArbitration-7BV5ZG5G24XZTUA134ICYD10N.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/ImageIO-86PM7M24AJO4C8CUMVSH6WC5R.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/ptrauth-453R2XRZIQ6PF0SN7OAWKF091.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_tgmath-AVKBEGGEXH9OO6QVDR9P1G345.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/Carbon-4VZKQZOC9SQWU90UBIATCPURP.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/AVFAudio-6I0ENPKGC9QNXPG8L1RHNJ7ZX.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/_AvailabilityInternal-5DFPIAZEGO52GHK0SXO4AUWLH.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/ApplicationServices-MC3OGWSQKQFM7SOQO8S0KXJQ.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/_Builtin_intrinsics-9RE53JMGIW5K0H6ZSFZ0BXEFE.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/libkern-AXNRJTIANZ6HQW86DS3YUEHTO.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/IOSurface-BN4RN9V6G2U7VULEAKMUVQ13Y.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreData-D44LFSOJ1H0LUS47HK9BU4JQH.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/Symbols-C4915JMKQAC619ER97Y08DIQA.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/ColorSync-EHG7IM6KD3CXW2HLN3EE7YK58.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/Accessibility-12ADLHHQSYJ41UWBV0QKVN0AA.pcm /tmp/openplane-crossfade/build/ModuleCache.noindex/CoreAudioTypes-4L8YW29XPH14PVRR6GDH8F2F6.pcm /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-dependencies-1.json (in target 'OpenPlane' from project 'OpenPlane')
+
+CompileSwift normal arm64 (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling OpenPlaneApp.swift, AppDelegate.swift, CanvasModel.swift, CanvasView.swift, WindowService.swift, PermissionView.swift, GeneratedAssetSymbols.swift (in target 'OpenPlane' from project 'OpenPlane')
+
+SwiftDriver\ Compilation\ Requirements OpenPlane normal arm64 com.apple.xcode.tools.swift.compiler (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OpenPlane -O -whole-module-optimization @/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/openplane-crossfade/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -swift-version 6 -I /tmp/openplane-crossfade/build/Build/Products/Release -F /tmp/openplane-crossfade/build/Build/Products/Release -emit-localized-strings -emit-localized-strings-path /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64 -c -num-threads 12 -Xcc -ivfsstatcache -Xcc /tmp/openplane-crossfade/build/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/openplane-crossfade/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/openplane-crossfade/build/ModuleCache.noindex -sdk-module-cache-path /tmp/openplane-crossfade/build/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/openplane-crossfade/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-generated-files.hmap -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-own-target-headers.hmap -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-project-headers.hmap -Xcc -I/tmp/openplane-crossfade/build/Build/Products/Release/include -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources-normal/arm64 -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/arm64 -Xcc -I/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources -emit-objc-header -emit-objc-header-path /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-Swift.h -working-directory /Users/ayalpani/dev/_products/openplane -no-emit-module-separately-wmo
+
+SwiftMergeGeneratedHeaders /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/OpenPlane-Swift.h /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-Swift.h (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-swiftHeaderTool -arch arm64 /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-Swift.h -o /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/OpenPlane-Swift.h
+
+Copy /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.swiftmodule/arm64-apple-macos.swiftmodule /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -strip-unsigned-binaries -strip-deterministic -strip-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip -resolve-src-symlinks -rename /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.swiftmodule/arm64-apple-macos.swiftmodule
+
+Copy /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.swiftmodule/arm64-apple-macos.swiftdoc /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftdoc (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -strip-unsigned-binaries -strip-deterministic -strip-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip -resolve-src-symlinks -rename /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftdoc /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.swiftmodule/arm64-apple-macos.swiftdoc
+
+Copy /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.swiftmodule/arm64-apple-macos.abi.json /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.abi.json (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -strip-unsigned-binaries -strip-deterministic -strip-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip -resolve-src-symlinks -rename /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.abi.json /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.swiftmodule/arm64-apple-macos.abi.json
+
+Copy /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftsourceinfo (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -strip-unsigned-binaries -strip-deterministic -strip-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip -resolve-src-symlinks -rename /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftsourceinfo /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+Ld /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/MacOS/OpenPlane normal (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos26.0 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -Os -L/tmp/openplane-crossfade/build/Build/Intermediates.noindex/EagerLinkingTBDs/Release -L/tmp/openplane-crossfade/build/Build/Products/Release -F/tmp/openplane-crossfade/build/Build/Intermediates.noindex/EagerLinkingTBDs/Release -F/tmp/openplane-crossfade/build/Build/Products/Release -filelist /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.LinkFileList -Xlinker -rpath -Xlinker @executable_path/../Frameworks -Xlinker -object_path_lto -Xlinker /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_lto.o -Xlinker -debug_variant -Xlinker -dependency_info -Xlinker /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_dependency_info.dat -fobjc-link-runtime -fprofile-instr-generate -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule @/tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-linker-args.resp -Xlinker -no_adhoc_codesign -o /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/MacOS/OpenPlane
+
+CopySwiftLibs /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-swiftStdLibTool --copy --verbose --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --scan-executable /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/MacOS/OpenPlane --scan-folder /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/Frameworks --scan-folder /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/PlugIns --scan-folder /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/Library/SystemExtensions --scan-folder /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/Extensions --platform macosx --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name OpenPlane --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk --xcode-version 17F113 --platform-family macOS --deployment-target 26.0 --bundle-identifier com.yalpani.openplane.poc --output /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/Resources --target-triple arm64-apple-macos26.0 --binary-file /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/MacOS/OpenPlane --dependency-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_dependency_info.dat --stringsdata-file /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList --metadata-file-list /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.DependencyMetadataFileList --static-metadata-file-list /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-09-06 01:49:47.130 appintentsmetadataprocessor[18127:1538015] Starting appintentsmetadataprocessor export
+2026-09-06 01:49:47.132 appintentsmetadataprocessor[18127:1538015] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+GenerateDSYMFile /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app.dSYM /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/MacOS/OpenPlane (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/dsymutil /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app/Contents/MacOS/OpenPlane -o /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app.dSYM
+
+CodeSign /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --entitlements /tmp/openplane-crossfade/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.app.xcent --timestamp\=none --generate-entitlement-der /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app
+
+RegisterExecutionPolicyException /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-RegisterExecutionPolicyException /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app
+
+Validate /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-validationUtility /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app -no-validate-extension -infoplist-subpath Contents/Info.plist
+
+Touch /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /usr/bin/touch -c /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app
+
+RegisterWithLaunchServices /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /tmp/openplane-crossfade/build/Build/Products/Release/OpenPlane.app
+
+** BUILD SUCCEEDED **
+

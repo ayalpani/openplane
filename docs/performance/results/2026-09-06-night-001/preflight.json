@@ -1,0 +1,14 @@
+{
+  "started_at": 1788656541.436333,
+  "status": "preflight",
+  "checks": {
+    "unlocked": true,
+    "live_lock_available": true,
+    "screen_capture": true,
+    "accessibility": true,
+    "signature_verified": true
+  },
+  "commit": "09707146f1e93862bfb9e7b734681f28cd1e7020",
+  "tracked_diff_sha256": "f54405985b1499f2923d308f85ee2d5914c5f0539c91a8708e6e11ecba1375c5",
+  "installed_binary_sha256": "c4ed64eac3544e0a7c8d3c97a14eaf6a3d7b8f2a3ec0ff7bf866fe6dae4547bc"
+}

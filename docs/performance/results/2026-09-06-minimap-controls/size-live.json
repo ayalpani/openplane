@@ -1,0 +1,22 @@
+{
+  "status": "PASS",
+  "positions": {
+    "Settings": [
+      1655,
+      780
+    ],
+    "Search apps": [
+      1443,
+      976
+    ],
+    "Fit all windows": [
+      1615,
+      976
+    ],
+    "Lock current desktop view": [
+      1655,
+      976
+    ]
+  },
+  "settings_open_close": true
+}

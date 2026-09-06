@@ -1,0 +1,326 @@
+{
+  "samples": [
+    {
+      "pair": 1,
+      "variant": "A",
+      "stage": "first",
+      "pid": 93078,
+      "build_hash": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "action": {
+        "seconds": 7.176645334009663,
+        "cpu_seconds": 1.872596125,
+        "cpu_percent": 26.09291720361165
+      },
+      "settling": {
+        "seconds": 1.00144975000876,
+        "cpu_seconds": 0.018599499999999658,
+        "cpu_percent": 1.857257441008594
+      },
+      "end_camera": {
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ],
+        "zoom": 0.06
+      },
+      "end_state_correct": true
+    },
+    {
+      "pair": 1,
+      "variant": "A",
+      "stage": "warmup1",
+      "pid": 93078,
+      "build_hash": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "action": {
+        "seconds": 7.3756828749901615,
+        "cpu_seconds": 1.8746154166666664,
+        "cpu_percent": 25.416160760154252
+      },
+      "settling": {
+        "seconds": 1.002722499993979,
+        "cpu_seconds": 0.02434225000000012,
+        "cpu_percent": 2.4276158159556895
+      },
+      "end_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ]
+      },
+      "end_state_correct": true
+    },
+    {
+      "pair": 1,
+      "variant": "A",
+      "stage": "warmup2",
+      "pid": 93078,
+      "build_hash": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "action": {
+        "seconds": 7.135036040999694,
+        "cpu_seconds": 1.918189083333333,
+        "cpu_percent": 26.884084008979645
+      },
+      "settling": {
+        "seconds": 1.0039620419993298,
+        "cpu_seconds": 0.022916791666666825,
+        "cpu_percent": 2.282635269858352
+      },
+      "end_camera": {
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ],
+        "zoom": 0.06
+      },
+      "end_state_correct": true
+    },
+    {
+      "pair": 1,
+      "variant": "A",
+      "stage": "measured",
+      "pid": 93078,
+      "build_hash": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "idle_before": {
+        "seconds": 5.005072291998658,
+        "cpu_seconds": 0.12058416666666627,
+        "cpu_percent": 2.4092392603287216
+      },
+      "action": {
+        "seconds": 7.061955666998983,
+        "cpu_seconds": 1.8778509166666657,
+        "cpu_percent": 26.591089001620265
+      },
+      "settling": {
+        "seconds": 1.0048986670008162,
+        "cpu_seconds": 0.011452291666667946,
+        "cpu_percent": 1.1396464183645538
+      },
+      "idle_after": {
+        "seconds": 5.0050609579921,
+        "cpu_seconds": 0.13221379166666658,
+        "cpu_percent": 2.6416020259562893
+      },
+      "additional_cpu_pp": 24.181849741291543,
+      "end_camera": {
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ],
+        "zoom": 0.06
+      },
+      "end_state_correct": true
+    },
+    {
+      "pair": 1,
+      "variant": "B",
+      "stage": "first",
+      "pid": 93193,
+      "build_hash": "c2d7f7dce2e109060dc68928f4fddebc83290c0e8db98fb846556a96b5b01fdc",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "action": {
+        "seconds": 7.112502874995698,
+        "cpu_seconds": 1.8695789999999997,
+        "cpu_percent": 26.285810112957325
+      },
+      "settling": {
+        "seconds": 1.0011247920047026,
+        "cpu_seconds": 0.008109333333333524,
+        "cpu_percent": 0.8100222268090062
+      },
+      "end_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ]
+      },
+      "end_state_correct": true
+    },
+    {
+      "pair": 1,
+      "variant": "B",
+      "stage": "warmup1",
+      "pid": 93193,
+      "build_hash": "c2d7f7dce2e109060dc68928f4fddebc83290c0e8db98fb846556a96b5b01fdc",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "action": {
+        "seconds": 7.170008291010163,
+        "cpu_seconds": 1.8095152499999996,
+        "cpu_percent": 25.23728253241757
+      },
+      "settling": {
+        "seconds": 1.0048886250006035,
+        "cpu_seconds": 0.004186000000000689,
+        "cpu_percent": 0.4165635768837741
+      },
+      "end_camera": {
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ],
+        "zoom": 0.06
+      },
+      "end_state_correct": true
+    },
+    {
+      "pair": 1,
+      "variant": "B",
+      "stage": "warmup2",
+      "pid": 93193,
+      "build_hash": "c2d7f7dce2e109060dc68928f4fddebc83290c0e8db98fb846556a96b5b01fdc",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "action": {
+        "seconds": 7.078152332993341,
+        "cpu_seconds": 1.8553875416666656,
+        "cpu_percent": 26.21287949707102
+      },
+      "settling": {
+        "seconds": 1.0050425000081304,
+        "cpu_seconds": 0.0035143750000008467,
+        "cpu_percent": 0.349674267503356
+      },
+      "end_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ]
+      },
+      "end_state_correct": true
+    },
+    {
+      "pair": 1,
+      "variant": "B",
+      "stage": "measured",
+      "pid": 93193,
+      "build_hash": "c2d7f7dce2e109060dc68928f4fddebc83290c0e8db98fb846556a96b5b01fdc",
+      "start_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ]
+      },
+      "requested_taps": 90,
+      "accepted_taps": null,
+      "completed_actions": null,
+      "idle_before": {
+        "seconds": 5.00518354200176,
+        "cpu_seconds": 0.0970424999999997,
+        "cpu_percent": 1.938839988297188
+      },
+      "action": {
+        "seconds": 8.422671249994892,
+        "cpu_seconds": 1.8345427916666663,
+        "cpu_percent": 21.781009102875515
+      },
+      "settling": {
+        "seconds": 1.0033194170100614,
+        "cpu_seconds": 0.022353708333334055,
+        "cpu_percent": 2.227975254376034
+      },
+      "idle_after": {
+        "seconds": 5.005034166999394,
+        "cpu_seconds": 0.08751420833333334,
+        "cpu_percent": 1.7485236946104536
+      },
+      "additional_cpu_pp": 19.842169114578326,
+      "end_camera": {
+        "zoom": 0.06,
+        "center": [
+          1587.5938992302272,
+          9220.562891205906
+        ]
+      },
+      "end_state_correct": true
+    }
+  ],
+  "fixture_sha256": "3a418694d99905bfe54e905eb9cd293cc6b4b2f60fcc44b90db24f3eb2d40758",
+  "started_at": 1788645215.424701,
+  "limitations": [
+    "Personal scene; live window/preview changes uncontrolled",
+    "Accepted/completed individual inputs and presented-frame latency unavailable"
+  ],
+  "original_camera": {
+    "zoom": 1,
+    "center": [
+      1587.5938992302272,
+      9220.562891205906
+    ]
+  },
+  "builds": {
+    "A": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+    "B": "c2d7f7dce2e109060dc68928f4fddebc83290c0e8db98fb846556a96b5b01fdc"
+  },
+  "error": "Command '['osascript', '-e', 'tell application \"System Events\"\\nrepeat 45 times\\nif not frontmost of process \"OpenPlane\" then error \"Focus lost\"\\nkey code 126 using shift down\\ndelay 0.05\\nend repeat\\nend tell']' returned non-zero exit status 1.",
+  "restored": true,
+  "finished_at": 1788645336.8396108
+}

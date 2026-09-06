@@ -1,0 +1,998 @@
+--- before/OpenPlane/CanvasView.swift
++++ after/OpenPlane/CanvasView.swift
+@@ -1,5 +1,6 @@
+ @preconcurrency import AppKit
+ @preconcurrency import QuartzCore
++@preconcurrency import ApplicationServices
+ 
+ private func drawOpenPlaneLaunchMessage(in bounds: CGRect) {
+   let title = "OpenPlane"
+@@ -328,6 +329,21 @@
+   private static let previewFadeDuration: TimeInterval = 0.25
+   static let selectionTransitionDuration: TimeInterval = 0.18
+ 
++  private(set) var isChronological = UserDefaults.standard.bool(forKey: "chronologicalMode")
++  var onModeChange: (() -> Void)?
++  var recentWindows = RecentWindowOrder()
++  private var freeFrames: [CGWindowID: CGRect] = [:]
++  private var chronologicalCamera = CameraState(center: .zero, zoom: 0.45)
++  private let modeControl = NSSegmentedControl(labels: ["Canvas", "Chronological"], trackingMode: .selectOne, target: nil, action: nil)
++  private static let allAppsID = "openplane:all-apps"
++  private var catalog: [InstalledApp] = []
++  private var catalogTask: Task<Void, Never>?
++  private(set) var showingAllApps = false
++  private var catalogReturnCamera: CameraState?
++  private var catalogReturnSelection: CGWindowID?
++  private let catalogBackButton = NSButton(title: "← Back to windows", target: nil, action: nil)
++  private var displayedNodes: [WindowNode] { showingAllApps ? [] : nodes }
++
+   weak var delegate: CanvasViewDelegate?
+   var nodes: [WindowNode] = [] {
+     didSet {
+@@ -354,8 +370,12 @@
+           groupSelectionIDs.insert("app:\(oldNode.bundleIdentifier)")
+         }
+       }
+-      refreshPlaceholders()
+-      if let bundleIdentifier = selectedPlaceholderBundleIdentifier,
++      if isChronological {
++        for node in nodes where freeFrames[node.id] == nil { freeFrames[node.id] = node.worldFrame }
++        freeFrames = freeFrames.filter { nodeIDs.contains($0.key) }
++        arrangeRecentWindows(reorder: recentWindows.visible.isEmpty)
++      } else { refreshPlaceholders() }
++      if !showingAllApps, let bundleIdentifier = selectedPlaceholderBundleIdentifier,
+         let node = nodes.first(where: { $0.bundleIdentifier == bundleIdentifier })
+       {
+         launchingPlaceholderBundles.remove(bundleIdentifier)
+@@ -393,7 +413,7 @@
+       stopNativeCameraTravel()
+       cameraState = newValue
+       guard newValue != oldValue else { return }
+-      desktopPages.updateSelectedCamera(newValue)
++      rememberCamera(newValue)
+       scheduleCameraMaintenance()
+       if oldValue.zoom != newValue.zoom {
+         synchronizeScene()
+@@ -655,6 +675,9 @@
+         y: defaults.double(forKey: Self.navigatorPanelYPreferenceKey)
+       )
+     }
++    if let data = defaults.data(forKey: "chronologicalCamera"),
++      let saved = try? JSONDecoder().decode(CameraState.self, from: data) { chronologicalCamera = saved }
++    if isChronological { cameraState = chronologicalCamera }
+     super.init(frame: frameRect)
+     if defaults.object(forKey: Self.expandLandscapePreviewsPreferenceKey) != nil {
+       expandsLandscapePreviews = defaults.bool(
+@@ -678,6 +701,14 @@
+     configureLockViewButton()
+     configureSearch()
+     configureSettingsButton()
++    modeControl.target = self
++    modeControl.action = #selector(changeMode(_:))
++    modeControl.selectedSegment = isChronological ? 1 : 0
++    modeControl.setAccessibilityLabel("View mode")
++    catalogBackButton.target = self
++    catalogBackButton.action = #selector(backFromCatalog(_:))
++    catalogBackButton.isHidden = true
++    addSubview(catalogBackButton)
+     refreshPlaceholders()
+     updateNavigatorPanel()
+   }
+@@ -697,7 +728,13 @@
+ 
+   override func layout() {
+     super.layout()
+-    if nativeCameraTravel, nativeCameraBounds != bounds { stopNativeCameraTravel() }
++    if nativeCameraTravel, nativeCameraBounds != bounds {
++      let destination = cameraAnimation?.target
++      stopNativeCameraTravel()
++      if isChronological, let destination { camera = destination }
++    }
++    catalogBackButton.frame = CGRect(x: bounds.midX - 100, y: bounds.maxY - 64, width: 200, height: 32)
++    updateModeControls()
+     sceneView.frame = bounds
+     hudView.frame = bounds
+     updateSceneCamera()
+@@ -940,7 +977,7 @@
+   }
+ 
+   private func synchronizeMiniMap(_ projection: MiniMapProjection) {
+-    let targets = appPlaceholders.map(NavigationTarget.placeholder) + nodes.map(NavigationTarget.window)
++    let targets = appPlaceholders.map(NavigationTarget.placeholder) + displayedNodes.map(NavigationTarget.window)
+     let keys = Set(targets.map(\.key))
+     for key in Array(miniMapCards.keys) where !keys.contains(key) {
+       miniMapCards.removeValue(forKey: key)?.removeFromSuperlayer()
+@@ -990,7 +1027,7 @@
+     sceneView.layer?.backgroundColor = background.color.withAlphaComponent(
+       CanvasMath.focusCanvasBackgroundOpacity(progress: focusTransitionProgress)).cgColor
+     gridLayer.opacity = Float(backdrop)
+-    centerGuideLayer.isHidden = !showsCenterGuide
++    centerGuideLayer.isHidden = !showsCenterGuide && !isChronological
+     centerGuideLayer.opacity = Float(backdrop)
+     let guide = CGMutablePath()
+     guide.move(to: CGPoint(x: bounds.midX, y: bounds.minY))
+@@ -1000,7 +1037,7 @@
+     centerGuideLayer.path = guide
+     centerGuideLayer.strokeColor = NSColor.white.withAlphaComponent(0.5).cgColor
+     centerGuideLayer.lineWidth = 1
+-    let targets = appPlaceholders.map(NavigationTarget.placeholder) + nodes.map(NavigationTarget.window)
++    let targets = appPlaceholders.map(NavigationTarget.placeholder) + displayedNodes.map(NavigationTarget.window)
+     let keys = Set(targets.map(\.key))
+     for key in Array(cardLayers.keys) where !keys.contains(key) {
+       cardLayers.removeValue(forKey: key)?.removeFromSuperlayer()
+@@ -1083,7 +1120,9 @@
+       card.surface.backgroundColor = (usesLightClosedCards ? NSColor.white : NSColor.black)
+         .withAlphaComponent(hovered ? 0.14 : 0.1).cgColor
+       statusText = placeholder.errorMessage
+-        ?? (placeholder.isLaunching ? "Opening…" : placeholder.isAvailable ? "Closed" : "App unavailable")
++        ?? (placeholder.isLaunching ? "Opening…" : placeholder.bundleIdentifier == Self.allAppsID
++          ? "Browse installed apps" : showingAllApps ? placeholder.applicationName
++          : placeholder.isAvailable ? "Closed" : "App unavailable")
+       if placeholder.errorMessage != nil || !placeholder.isAvailable {
+         statusColor = NSColor.systemRed.withAlphaComponent(0.86)
+       }
+@@ -1273,7 +1312,7 @@
+   }
+ 
+   func visibleWindowIDs() -> [CGWindowID] {
+-    nodes.compactMap { node in
++    displayedNodes.compactMap { node in
+       CanvasMath.viewRect(for: node.worldFrame, camera: camera, bounds: bounds)
+         .intersects(bounds.insetBy(dx: -120, dy: -120)) ? node.id : nil
+     }
+@@ -1334,7 +1373,7 @@
+   }
+ 
+   func initialCamera(fitting fallback: CameraState) -> CameraState {
+-    desktopPages.selectedPage.camera ?? fallback
++    isChronological ? chronologicalCamera : desktopPages.selectedPage.camera ?? fallback
+   }
+ 
+   func applyPreviewSizePreference(fitAll: Bool) {
+@@ -1351,6 +1390,7 @@
+       changed = true
+     }
+     guard changed else { return }
++    if isChronological { arrangeRecentWindows(reorder: false) }
+     needsDisplay = true
+     schedulePreviewToolTipUpdate()
+     synchronizeManifestedPlacements()
+@@ -1460,16 +1500,21 @@
+   func handleNavigationKey(_ event: NSEvent) -> Bool {
+     guard desktopTitleField.currentEditor() == nil else { return false }
+     let modifiers = event.modifierFlags.intersection([.shift, .command, .control, .option])
++    if modifiers == [.command], event.keyCode == 13, isChronological, !isSearching {
++      closeSelectedWindow(nil)
++      return true
++    }
+     guard modifiers.isEmpty || modifiers == [.shift] else { return false }
+ 
+     if isSearching { return false }
+ 
+-    if event.characters == "+" {
++    if event.characters == "+", !isChronological {
+       if !event.isARepeat { addDesktopPage(nil) }
+       return true
+     }
+ 
+     if event.keyCode == 48 {
++      if isChronological { stepRecent(by: modifiers == [.shift] ? -1 : 1, wrapping: false); return true }
+       guard !event.isARepeat, desktopPages.pages.count > 1 else { return true }
+       let offset = modifiers == [.shift] ? -1 : 1
+       transitionDesktop(direction: offset) { [weak self] in
+@@ -1680,6 +1725,7 @@
+   func dismissSearch() -> Bool {
+     guard isSearching else { return false }
+     endSearch()
++    if showingAllApps { refreshRecentPlaceholders() }
+     return true
+   }
+ 
+@@ -1788,7 +1834,7 @@
+     nativeCameraTravel = true
+     nativeCameraBounds = bounds
+     cameraState = animation.target
+-    desktopPages.updateSelectedCamera(animation.target)
++    rememberCamera(animation.target)
+     scheduleCameraMaintenance()
+     let startTransform = cameraTransform(animation.start, in: bounds)
+     let endTransform = cameraTransform(animation.target, in: bounds)
+@@ -1841,7 +1887,7 @@
+     for layer in [cameraLayer, gridLayer, miniMapContent, miniMapViewport] {
+       layer.removeAnimation(forKey: "cameraTravel")
+     }
+-    desktopPages.updateSelectedCamera(cameraState)
++    rememberCamera(cameraState)
+     updateSceneCamera()
+   }
+ 
+@@ -2203,7 +2249,7 @@
+   }
+ 
+   private func hitNode(at point: CGPoint) -> WindowNode? {
+-    nodes.reversed().first { node in
++    displayedNodes.reversed().first { node in
+       let rect = CanvasMath.viewRect(for: node.worldFrame, camera: camera, bounds: bounds)
+       return rect.insetBy(dx: -20, dy: -30).contains(point)
+     }
+@@ -2229,6 +2275,17 @@
+     guard bounds.contains(point) else { return nil }
+     let bundleIdentifier = hitNode(at: point)?.bundleIdentifier
+       ?? hitPlaceholder(at: point)?.bundleIdentifier
++    if isChronological, let node = hitNode(at: point) {
++      selectedWindowID = node.id
++      let menu = NSMenu()
++      for (title, action) in [("Close Window", #selector(closeSelectedWindow(_:))),
++                               ("Quit App", #selector(quitFromMenu(_:)))] {
++        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
++        item.target = self
++        menu.addItem(item)
++      }
++      return menu
++    }
+     guard let bundleIdentifier,
+       desktopPages.selectedAppPlacement(for: bundleIdentifier) != nil
+     else { return nil }
+@@ -2419,6 +2476,10 @@
+     CATransaction.begin()
+     CATransaction.setDisableActions(true)
+     defer { CATransaction.commit() }
++    if isChronological, direction == .up || direction == .down {
++      stepRecent(by: direction == .up ? -1 : 1, wrapping: false)
++      return
++    }
+     let targets = navigationTargets
+     guard !targets.isEmpty else { return }
+ 
+@@ -2464,7 +2525,12 @@
+   }
+ 
+   private var navigationTargets: [NavigationTarget] {
+-    nodes.map(NavigationTarget.window) + appPlaceholders.map(NavigationTarget.placeholder)
++    if isChronological {
++      let byID = Dictionary(uniqueKeysWithValues: displayedNodes.map { ($0.id, $0) })
++      return recentWindows.visible.compactMap { byID[$0].map(NavigationTarget.window) }
++        + appPlaceholders.map(NavigationTarget.placeholder)
++    }
++    return nodes.map(NavigationTarget.window) + appPlaceholders.map(NavigationTarget.placeholder)
+   }
+ 
+   private var selectedNavigationTarget: NavigationTarget? {
+@@ -2848,7 +2914,7 @@
+     previewToolTipTags.removeAll(keepingCapacity: true)
+     previewToolTipWindowIDs.removeAll(keepingCapacity: true)
+ 
+-    for node in nodes {
++    for node in displayedNodes {
+       guard node.previewState != .current, node.previewState != .redacted else { continue }
+       let rect = CanvasMath.viewRect(for: node.worldFrame, camera: camera, bounds: bounds)
+       guard rect.intersects(bounds) else { continue }
+@@ -3538,8 +3604,13 @@
+ 
+   private func updateSearchResults(centerSelection: Bool) {
+     guard isSearching else { return }
++    if showingAllApps { refreshRecentPlaceholders() }
+     let query = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+     guard !query.isEmpty else {
++      if showingAllApps, let first = appPlaceholders.first {
++        selectPlaceholder(first.bundleIdentifier)
++        if centerSelection { centerCamera(on: .placeholder(first)) }
++      }
+       updateSearchNavigationButtons()
+       needsDisplay = true
+       return
+@@ -3557,7 +3628,7 @@
+     let changed = selectedNavigationTarget?.key != result.key
+     selectNavigationTarget(result)
+     updateSearchNavigationButtons()
+-    if centerSelection, changed {
++    if centerSelection, changed || showingAllApps {
+       centerCamera(on: result)
+     }
+   }
+@@ -3731,7 +3802,7 @@
+   }
+ 
+   @objc private func fitAllWindows(_ sender: NSButton) {
+-    if let lockedCamera = desktopPages.selectedPage.lockedCamera {
++    if !isChronological, let lockedCamera = desktopPages.selectedPage.lockedCamera {
+       animateCamera(to: lockedCamera) {}
+       return
+     }
+@@ -3748,12 +3819,14 @@
+   }
+ 
+   @objc private func toggleLockedView(_ sender: NSButton) {
++    guard !isChronological else { return }
+     desktopPages.toggleSelectedPageLock(at: camera)
+     persistDesktopPages()
+     updateLockViewButton()
+   }
+ 
+   @objc private func addDesktopPage(_ sender: Any?) {
++    guard !isChronological else { return }
+     transitionDesktop { [weak self] in
+       guard let self else { return }
+       // Desktops are independent arrangements, not adjacent regions of one plane.
+@@ -3764,6 +3837,7 @@
+   }
+ 
+   private func selectDesktop(id: UUID) {
++    guard !isChronological else { return }
+     guard desktopPages.pages.contains(where: { $0.id == id }) else { return }
+     guard id != desktopPages.selectedID || desktopTransitionStartedAt != nil else { return }
+     transitionDesktop { [weak self] in
+@@ -3886,7 +3960,7 @@
+     lockViewButton.image = Self.lockViewImage(locked: locked)
+     lockViewButton.toolTip = locked ? "Unlock desktop view" : "Lock current desktop view"
+     lockViewButton.setAccessibilityLabel(lockViewButton.toolTip ?? "Lock desktop view")
+-    fitAllButton.toolTip = locked ? "Return to locked view" : "Fit all windows"
++    fitAllButton.toolTip = locked && !isChronological ? "Return to locked view" : "Fit all windows"
+     fitAllButton.setAccessibilityLabel(fitAllButton.toolTip ?? "Fit all windows")
+   }
+ 
+@@ -3913,6 +3987,7 @@
+   }
+ 
+   private func synchronizeManifestedPlacements() {
++    guard !isChronological else { return }
+     let snapshots = currentWindowSnapshots()
+     let placements = desktopPages.selectedAppPlacements
+     guard !snapshots.isEmpty, !placements.isEmpty else { return }
+@@ -3934,6 +4009,7 @@
+   }
+ 
+   private func manifestMovedItems(originalFrames: [String: CGRect], primaryTarget: NavigationTarget?) {
++    guard !isChronological else { return }
+     // Save closed homes before refreshing placeholders as part of window persistence.
+     for placeholder in appPlaceholders
+     where originalFrames[NavigationTarget.placeholder(placeholder).key] != nil {
+@@ -4030,6 +4106,7 @@
+   }
+ 
+   private func refreshPlaceholders() {
++    if isChronological { refreshRecentPlaceholders(); return }
+     for placeholder in appPlaceholders
+     where groupSelectionIDs.contains(NavigationTarget.placeholder(placeholder).key) {
+       if let node = nodes.first(where: { $0.bundleIdentifier == placeholder.bundleIdentifier }) {
+@@ -4086,6 +4163,7 @@
+   }
+ 
+   private func activatePlaceholder(_ bundleIdentifier: String) {
++    if bundleIdentifier == Self.allAppsID { openCatalog(); return }
+     guard let placeholder = appPlaceholders.first(where: {
+       $0.bundleIdentifier == bundleIdentifier
+     }) else { return }
+@@ -4163,10 +4241,13 @@
+   }
+ 
+   private var canvasItemFrames: [CGRect] {
+-    nodes.map(\.worldFrame) + appPlaceholders.map(\.worldFrame)
++    displayedNodes.map(\.worldFrame) + appPlaceholders.map(\.worldFrame)
+   }
+ 
+   @objc private func persistDesktopPages() {
++    if let data = try? JSONEncoder().encode(chronologicalCamera) {
++      UserDefaults.standard.set(data, forKey: "chronologicalCamera")
++    }
+     guard let data = try? JSONEncoder().encode(desktopPages) else { return }
+     UserDefaults.standard.set(data, forKey: Self.desktopPagesPreferenceKey)
+   }
+@@ -4178,7 +4259,14 @@
+     return DesktopPages(pages: decoded.pages, selectedID: decoded.selectedID)
+   }
+ 
+-  private func focusSelectedWindow() {
++  func revealCatalogWindowForFocus(_ id: CGWindowID) {
++    guard showingAllApps else { return }
++    _ = closeCatalog()
++    selectedWindowID = id
++    if let target = selectedNavigationTarget { camera = CanvasMath.cameraCentered(on: target.worldFrame, preserving: camera) }
++  }
++
++  func focusSelectedWindow() {
+     if let selectedWindowID,
+       let node = nodes.first(where: { $0.id == selectedWindowID })
+     {
+@@ -4194,6 +4282,198 @@
+     else { return }
+     delegate?.canvasView(self, didRequestQuit: node)
+   }
++
++  private func rememberCamera(_ value: CameraState) {
++    if isChronological {
++      if !showingAllApps, focusTransitionWindowID == nil { chronologicalCamera = value }
++    } else { desktopPages.updateSelectedCamera(value) }
++  }
++
++  @objc private func changeMode(_ sender: NSSegmentedControl) {
++    setChronological(sender.selectedSegment == 1)
++  }
++
++  func setChronological(_ enabled: Bool) {
++    guard enabled != isChronological else { return }
++    onModeChange?()
++    dismissSearch()
++    if showingAllApps { _ = closeCatalog() }
++    finishDesktopTransition()
++    cancelLayoutAnimation()
++    clearGroupSelection()
++    interaction = nil
++    if enabled {
++      synchronizeManifestedPlacements()
++      persistDesktopPages()
++      freeFrames = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0.worldFrame) })
++      isChronological = true
++      camera = chronologicalCamera
++      arrangeRecentWindows(reorder: true, selectFirst: true)
++    } else {
++      chronologicalCamera = camera
++      isChronological = false
++      for node in nodes { if let frame = freeFrames[node.id] { node.worldFrame = frame } }
++      camera = desktopPages.selectedPage.camera ?? CameraState()
++      refreshPlaceholders()
++    }
++    modeControl.selectedSegment = enabled ? 1 : 0
++    UserDefaults.standard.set(enabled, forKey: "chronologicalMode")
++    updateModeControls()
++    displayedLockState = nil
++    updateLockViewButton()
++    persistDesktopPages()
++    needsDisplay = true
++  }
++
++  private func updateModeControls() {
++    desktopTabsScrollView.isHidden = isChronological
++    desktopTitleField.isHidden = isChronological
++    addDesktopButton.isHidden = isChronological
++    lockViewButton.isHidden = isChronological
++  }
++
++  func cancelLayoutAnimation() {
++    stopKeyboardZoom(completingTap: false)
++    stopKeyboardTapZoom()
++    stopNativeCameraTravel()
++    animationDisplayLink?.invalidate()
++    animationDisplayLink = nil
++    cameraAnimation = nil
++    isPresentingFinalAnimationFrame = false
++    endFocusTransition()
++  }
++
++  func restoreChronologicalCamera() {
++    let saved = chronologicalCamera
++    cancelLayoutAnimation()
++    camera = saved
++  }
++
++  func prepareChronologicalOverview() {
++    guard isChronological else { return }
++    if showingAllApps { _ = closeCatalog() }
++    restoreChronologicalCamera()
++    arrangeRecentWindows(reorder: true, selectFirst: true)
++    updateModeControls()
++  }
++
++  private func arrangeRecentWindows(reorder: Bool, selectFirst: Bool = false) {
++    let previousIndex = selectedWindowID.flatMap { recentWindows.visible.firstIndex(of: $0) } ?? 0
++    let selectedBefore = selectedNavigationTarget
++    let oldCenter = selectedBefore?.center
++    let oldCamera = camera
++    recentWindows.reconcile(nodes.map(\.id), reorder: reorder)
++    let byID = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0) })
++    let ordered = recentWindows.visible.compactMap { byID[$0] }
++    let frames = RecentWindowOrder.frames(sizes: ordered.map { $0.worldFrame.size })
++    for (node, frame) in zip(ordered, frames) { node.worldFrame = frame }
++    refreshRecentPlaceholders()
++    guard !showingAllApps else { return }
++    cancelLayoutAnimation()
++    if selectFirst {
++      selectedWindowID = ordered.first?.id
++      if ordered.isEmpty { selectPlaceholder(Self.allAppsID) }
++    } else if selectedWindowID != nil && byID[selectedWindowID!] == nil {
++      selectedWindowID = ordered.isEmpty ? nil : ordered[min(previousIndex, ordered.count - 1)].id
++      if ordered.isEmpty { selectPlaceholder(Self.allAppsID) }
++    }
++    if let selected = selectedNavigationTarget {
++      if selectFirst || selected.key != selectedBefore?.key {
++        camera = CanvasMath.cameraCentered(on: selected.worldFrame, preserving: oldCamera)
++      } else if let oldCenter {
++        camera = CameraState(center: CGPoint(x: oldCamera.center.x + selected.center.x - oldCenter.x,
++          y: oldCamera.center.y + selected.center.y - oldCenter.y), zoom: oldCamera.zoom)
++      }
++    }
++    fitGroupSelectionToItems()
++    needsDisplay = true
++  }
++
++  func stepRecent(by offset: Int, wrapping: Bool, windowsOnly: Bool = false) {
++    let targets = windowsOnly ? navigationTargets.filter {
++      if case .window = $0 { return true }; return false
++    } : navigationTargets
++    guard !targets.isEmpty else { return }
++    let index = targets.firstIndex { $0.key == selectedNavigationTarget?.key }
++    var next = (index ?? (offset > 0 ? -1 : targets.count)) + offset
++    if wrapping { next = (next % targets.count + targets.count) % targets.count }
++    guard targets.indices.contains(next) else { return }
++    selectNavigationTarget(targets[next])
++    centerCamera(on: targets[next])
++  }
++
++  private func refreshRecentPlaceholders() {
++    let query = isSearching ? searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) : ""
++    let matchingApps = catalog.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) }
++    let entries: [(String, String, URL?)] = showingAllApps
++      ? matchingApps.map { ($0.id, $0.name, Optional($0.url)) }
++      : [(Self.allAppsID, "All apps", nil)]
++    let size = showingAllApps ? CGSize(width: 640, height: 180) : CGSize(width: 800, height: 260)
++    let start = showingAllApps ? CGFloat(0) : (nodes.map { $0.worldFrame.minY }.min() ?? 100) - 100
++    appPlaceholders = entries.enumerated().map { index, entry in
++      let icon = appIconsByBundle[entry.0] ?? entry.2.map { NSWorkspace.shared.icon(forFile: $0.path) }
++        ?? NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: entry.1)
++      if let icon { appIconsByBundle[entry.0] = icon }
++      return AppPlaceholder(bundleIdentifier: entry.0, applicationName: entry.1,
++        worldFrame: CGRect(x: -size.width / 2, y: start - size.height - CGFloat(index) * (size.height + 100),
++          width: size.width, height: size.height), icon: icon,
++        isAvailable: true, isLaunching: launchingPlaceholderBundles.contains(entry.0),
++        errorMessage: placeholderErrors[entry.0])
++    }
++    needsDisplay = true
++  }
++
++  private func openCatalog() {
++    guard !showingAllApps else { return }
++    cancelLayoutAnimation()
++    clearGroupSelection()
++    catalogReturnCamera = camera
++    catalogReturnSelection = selectedWindowID
++    showingAllApps = true
++    selectedWindowID = nil
++    selectedPlaceholderBundleIdentifier = nil
++    catalogBackButton.isHidden = false
++    refreshRecentPlaceholders()
++    camera = CameraState(center: CGPoint(x: 0, y: -90), zoom: 0.7)
++    if let first = catalog.first { selectPlaceholder(first.id) }
++    catalogTask?.cancel()
++    catalogTask = Task { [weak self] in
++      let apps = await Task.detached(priority: .userInitiated) { InstalledApp.catalog() }.value
++      guard let self, !Task.isCancelled else { return }
++      self.catalog = apps
++      guard self.showingAllApps else { return }
++      self.refreshRecentPlaceholders()
++      if let first = apps.first { self.selectPlaceholder(first.id) }
++    }
++  }
++
++  @objc private func backFromCatalog(_ sender: NSButton) { _ = closeCatalog() }
++
++  @discardableResult func closeCatalog() -> Bool {
++    guard showingAllApps else { return false }
++    dismissSearch()
++    cancelLayoutAnimation()
++    catalogTask?.cancel()
++    showingAllApps = false
++    catalogBackButton.isHidden = true
++    selectedWindowID = catalogReturnSelection.flatMap { id in nodes.contains { $0.id == id } ? id : nil }
++    refreshRecentPlaceholders()
++    if selectedWindowID == nil { selectPlaceholder(Self.allAppsID) }
++    camera = catalogReturnCamera ?? chronologicalCamera
++    return true
++  }
++
++  @objc private func closeSelectedWindow(_ sender: Any?) {
++    guard let id = selectedWindowID, let node = nodes.first(where: { $0.id == id }),
++      let element = node.accessibilityElement else { statusMessage = "Window close unavailable"; return }
++    var value: CFTypeRef?
++    guard AXUIElementCopyAttributeValue(element, kAXCloseButtonAttribute as CFString, &value) == .success,
++      let value, CFGetTypeID(value) == AXUIElementGetTypeID(),
++      AXUIElementPerformAction(value as! AXUIElement, kAXPressAction as CFString) == .success
++    else { statusMessage = "Window close unavailable"; return }
++  }
++
++  @objc private func quitFromMenu(_ sender: Any?) { quitSelectedApplication() }
+ 
+   @objc private func showSettings(_ sender: NSButton) {
+     if dismissSettings() { return }
+@@ -4212,7 +4492,7 @@
+     }
+ 
+     updateNavigatorPanel()
+-    let panel = CanvasSettingsPanel(palette: paletteView, groups: [
++    let panel = CanvasSettingsPanel(modeControl: modeControl, palette: paletteView, groups: [
+       ("Appearance", [
+         ("Expand previews", "rectangle.expand.vertical", expandLandscapePreviewsMenuItem),
+         ("Grid dots", "circle.grid.3x3", gridMenuItem),
+@@ -4607,7 +4887,7 @@
+   private let closeButton = NSButton()
+   override var isFlipped: Bool { true }
+ 
+-  init(palette: NSView, groups: [(String, [(String, String, NSMenuItem)])]) {
++  init(modeControl: NSView, palette: NSView, groups: [(String, [(String, String, NSMenuItem)])]) {
+     super.init(frame: CGRect(x: 0, y: 0, width: 440, height: 900))
+     appearance = NSAppearance(named: .aqua)
+     wantsLayer = true
+@@ -4637,6 +4917,10 @@
+       document.addSubview(label)
+       y += 30
+     }
++    section("View mode")
++    modeControl.frame = CGRect(x: 24, y: y, width: 350, height: 30)
++    document.addSubview(modeControl)
++    y += 52
+     section("Background")
+     palette.frame.origin = CGPoint(x: 4, y: y)
+     document.addSubview(palette)
+--- before/OpenPlane/CanvasModel.swift
++++ after/OpenPlane/CanvasModel.swift
+@@ -1489,3 +1489,74 @@
+     )
+   }
+ }
++
++// Window identities are session-local; preview selection never changes this history.
++struct RecentWindowOrder {
++  private(set) var history: [CGWindowID] = []
++  private(set) var visible: [CGWindowID] = []
++  private var previousInventory: Set<CGWindowID> = []
++
++  mutating func used(_ id: CGWindowID) {
++    guard history.first != id else { return }
++    history.removeAll { $0 == id }
++    history.insert(id, at: 0)
++  }
++
++  mutating func updateInventory(_ ids: [CGWindowID]) {
++    let available = Set(ids)
++    // Focus can arrive before asynchronous discovery exposes a new window.
++    history.removeAll { previousInventory.contains($0) && !available.contains($0) }
++    previousInventory = available
++    var seen = Set(history)
++    history += ids.filter { seen.insert($0).inserted }
++  }
++
++  mutating func reconcile(_ ids: [CGWindowID], reorder: Bool) {
++    updateInventory(ids)
++    let available = Set(ids)
++    if reorder { visible = history.filter { available.contains($0) } }
++    else {
++      visible.removeAll { !available.contains($0) }
++      var shown = Set(visible)
++      visible += history.filter { available.contains($0) && shown.insert($0).inserted }
++    }
++  }
++
++  static func frames(sizes: [CGSize]) -> [CGRect] {
++    var top: CGFloat = 0
++    return sizes.map { size in
++      let frame = CGRect(x: -size.width / 2, y: top - size.height, width: size.width, height: size.height)
++      top = frame.minY - 100
++      return frame
++    }
++  }
++}
++
++struct InstalledApp: Sendable {
++  let id: String
++  let name: String
++  let url: URL
++
++  static func catalog() -> [InstalledApp] {
++    var apps: [String: InstalledApp] = [:]
++    for root in ["/Applications", "/System/Applications", NSHomeDirectory() + "/Applications"] {
++      guard let iterator = FileManager.default.enumerator(at: URL(fileURLWithPath: root),
++        includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles]) else { continue }
++      for case let url as URL in iterator {
++        guard url.pathExtension.lowercased() == "app" else { continue }
++        iterator.skipDescendants()
++        guard let bundle = Bundle(url: url), let id = bundle.bundleIdentifier,
++          id != Bundle.main.bundleIdentifier, apps[id] == nil,
++          bundle.object(forInfoDictionaryKey: "LSBackgroundOnly") as? Bool != true else { continue }
++        let name = bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
++          ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
++          ?? url.deletingPathExtension().lastPathComponent
++        apps[id] = InstalledApp(id: id, name: name, url: url)
++      }
++    }
++    return apps.values.sorted {
++      let comparison = $0.name.localizedStandardCompare($1.name)
++      return comparison == .orderedSame ? $0.id < $1.id : comparison == .orderedAscending
++    }
++  }
++}
+--- before/OpenPlane/AppDelegate.swift
++++ after/OpenPlane/AppDelegate.swift
+@@ -23,6 +23,14 @@
+     return Unmanaged.passUnretained(event)
+   }
+ 
++  if type == .flagsChanged {
++    MainActor.assumeIsolated { appDelegate.commandModifiersChanged(event.flags) }
++    return Unmanaged.passUnretained(event)
++  }
++  if type == .keyDown, event.getIntegerValueField(.keyboardEventKeycode) == 53 {
++    let cancelled = MainActor.assumeIsolated { appDelegate.cancelCommandCycleForEscape() }
++    if cancelled { return nil }
++  }
+   guard ShortcutMatcher.isCommandTab(
+     keyCode: event.getIntegerValueField(.keyboardEventKeycode),
+     flags: event.flags
+@@ -31,7 +39,7 @@
+   if type == .keyDown,
+     event.getIntegerValueField(.keyboardEventAutorepeat) == 0
+   {
+-    MainActor.assumeIsolated { appDelegate.handleShortcut() }
++    MainActor.assumeIsolated { appDelegate.handleCommandTab(backward: event.flags.contains(.maskShift)) }
+   }
+   return nil
+ }
+@@ -53,6 +61,13 @@
+   private var requestedLaunchAnchors: [String: CGPoint] = [:]
+   private var lastFocusedByBundle: [String: CGWindowID] = [:]
+   private var appHistory = AppNavigationHistory()
++  private let windowFocusObserver = WindowFocusObserver()
++  private var commandCycleActive = false
++  private var commandCycleOrigin: CGWindowID?
++  private var chronologicalOverviewReady = false
++  private var overviewGeneration = 0
++  private var pendingCommandSteps: [Int] = []
++  private var commandCycleReleased = false
+   private var inventoryTracker = WindowInventoryTracker()
+   private var didInitialLayout = false
+   private var isReturning = false
+@@ -72,7 +87,14 @@
+     buildMenu()
+     buildOverlayWindow()
+     configurePermissionView()
++    windowFocusObserver.onFocus = { [weak self] id in self?.canvasView.recentWindows.used(id) }
++    canvasView.onModeChange = { [weak self] in
++      _ = self?.cancelCommandCycle()
++      self?.chronologicalOverviewReady = true
++      self?.overviewGeneration += 1
++    }
+     observeWorkspace()
++    windowFocusObserver.observeFrontmost()
+     installShortcut()
+ 
+     if UserDefaults.standard.bool(forKey: "didCompleteOnboarding")
+@@ -95,6 +117,7 @@
+     if let globalKeyMonitor { NSEvent.removeMonitor(globalKeyMonitor) }
+     if let localKeyMonitor { NSEvent.removeMonitor(localKeyMonitor) }
+     removeCommandTabEventTap()
++    windowFocusObserver.stop()
+     NSWorkspace.shared.notificationCenter.removeObserver(self)
+   }
+ 
+@@ -386,6 +409,36 @@
+       return
+     }
+     permissionTimer?.invalidate()
++    if canvasView.isChronological {
++      windowFocusObserver.recordFrontmost()
++      if commandCycleActive && !pendingCommandSteps.isEmpty && !chronologicalOverviewReady { return }
++      configureWindowForCanvas()
++      overlayWindow.contentView = workspaceView
++      canvasView.closeCatalog()
++      canvasView.restoreChronologicalCamera()
++      canvasView.endFocusTransition()
++      stateMachine.returnToOverview()
++      overlayWindow.alphaValue = 1
++      overlayWindow.makeKeyAndOrderFront(nil)
++      NSApp.activate(ignoringOtherApps: true)
++      chronologicalOverviewReady = false
++      overviewGeneration += 1
++      let generation = overviewGeneration
++      Task { [weak self] in
++        guard let self else { return }
++        await self.reconcileWindows()
++        guard self.isShowingCanvas, self.canvasView.isChronological, self.overviewGeneration == generation else { return }
++        self.canvasView.prepareChronologicalOverview()
++        self.chronologicalOverviewReady = true
++        for step in self.pendingCommandSteps {
++          self.canvasView.stepRecent(by: step, wrapping: true, windowsOnly: true)
++        }
++        self.pendingCommandSteps.removeAll()
++        self.startCanvasLoops()
++        if self.commandCycleReleased { self.finishCommandCycle() }
++      }
++      return
++    }
+     configureWindowForCanvas()
+     overlayWindow.contentView = workspaceView
+ 
+@@ -403,6 +456,8 @@
+ 
+   private func dismissCanvas() {
+     guard isShowingCanvas, !isDismissing else { return }
++    _ = cancelCommandCycle()
++    overviewGeneration += 1
+     canvasView.dismissSettings()
+     isDismissing = true
+     stopCanvasLoops()
+@@ -470,6 +525,7 @@
+ 
+   private func focus(_ node: WindowNode, recordInHistory: Bool = true) {
+     canvasView.dismissSettings()
++    canvasView.revealCatalogWindowForFocus(node.id)
+     guard stateMachine.beginFocus(on: node.id) else { return }
+     activatedFocusWindowID = nil
+     canvasView.selectedWindowID = node.id
+@@ -949,6 +1005,7 @@
+   }
+ 
+   @objc private func workspaceDidActivate(_ notification: Notification) {
++    windowFocusObserver.observeFrontmost()
+     guard isShowingCanvas, let application = workspaceApplication(from: notification),
+       shouldFollow(application)
+     else { return }
+@@ -999,8 +1056,15 @@
+   }
+ 
+   private func publishNodes() {
+-    let nodes = nodesByID.values.sorted { $0.id < $1.id }
+-    canvasView.nodes = nodes
++    let order = (CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
++      as? [[String: Any]] ?? []).compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value }
++    let ranks = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($0.element, $0.offset) })
++    let nodes = nodesByID.values.sorted {
++      let a = ranks[$0.id] ?? Int.max, b = ranks[$1.id] ?? Int.max
++      return a == b ? $0.id < $1.id : a < b
++    }
++    canvasView.recentWindows.updateInventory(nodes.map(\.id))
++    canvasView.nodes = nodes.sorted { $0.id < $1.id }
+     updateHistoryNavigation()
+     guard !canvasView.hasCanvasSelection else { return }
+     canvasView.selectedWindowID = windowService.frontmostWindowID(among: nodes) ?? nodes.first?.id
+@@ -1082,6 +1146,7 @@
+         let dismissed = MainActor.assumeIsolated {
+           guard self?.isShowingCanvas == true else { return false }
+           if self?.canvasView.dismissSearch() == true { return true }
++          if self?.canvasView.closeCatalog() == true { return true }
+           if self?.canvasView.dismissSettings() == true { return true }
+           if self?.canvasView.dismissDesktopTitleEditing() == true { return true }
+           self?.dismissCanvas()
+@@ -1105,11 +1170,13 @@
+   }
+ 
+   private func configureCommandTabEventTap(enabled: Bool) -> Bool {
++    if !enabled { _ = cancelCommandCycle() }
+     removeCommandTabEventTap()
+     guard enabled else { return true }
+ 
+     let eventMask = CGEventMask(1 << CGEventType.keyDown.rawValue)
+       | CGEventMask(1 << CGEventType.keyUp.rawValue)
++      | CGEventMask(1 << CGEventType.flagsChanged.rawValue)
+     guard
+       let eventTap = CGEvent.tapCreate(
+         tap: .cgSessionEventTap,
+@@ -1160,4 +1227,49 @@
+       break
+     }
+   }
++  fileprivate func handleCommandTab(backward: Bool) {
++    guard canvasView.isChronological else { handleShortcut(); return }
++    let step = backward ? -1 : 1
++    if !commandCycleActive {
++      commandCycleActive = true
++      commandCycleReleased = false
++      windowFocusObserver.recordFrontmost()
++      commandCycleOrigin = canvasView.recentWindows.history.first
++      chronologicalOverviewReady = false
++      showCanvas()
++    }
++    if chronologicalOverviewReady { canvasView.stepRecent(by: step, wrapping: true, windowsOnly: true) }
++    else { pendingCommandSteps.append(step) }
++  }
++
++  fileprivate func commandModifiersChanged(_ flags: CGEventFlags) {
++    guard commandCycleActive, !flags.contains(.maskCommand) else { return }
++    commandCycleReleased = true
++    if chronologicalOverviewReady { finishCommandCycle() }
++  }
++
++  private func finishCommandCycle() {
++    guard commandCycleActive else { return }
++    commandCycleActive = false
++    commandCycleReleased = false
++    pendingCommandSteps.removeAll()
++    guard canvasView.selectedWindowID != nil else { return }
++    canvasView.focusSelectedWindow()
++  }
++
++  fileprivate func cancelCommandCycleForEscape() -> Bool {
++    guard cancelCommandCycle() else { return false }
++    dismissCanvas()
++    return true
++  }
++
++  @discardableResult fileprivate func cancelCommandCycle() -> Bool {
++    guard commandCycleActive else { return false }
++    commandCycleActive = false
++    commandCycleReleased = false
++    pendingCommandSteps.removeAll()
++    if let id = commandCycleOrigin, nodesByID[id] != nil { canvasView.selectedWindowID = id }
++    return true
++  }
++
+ }
+--- before/OpenPlane/WindowService.swift
++++ after/OpenPlane/WindowService.swift
+@@ -466,3 +466,79 @@
+   }
+ 
+ }
++
++// Observe the active application's focus rather than polling screen captures in the background.
++@MainActor
++final class WindowFocusObserver {
++  var onFocus: ((CGWindowID) -> Void)?
++  private var observer: AXObserver?
++  private var observedPID: pid_t?
++
++  func observeFrontmost() {
++    guard AXIsProcessTrusted() else { return }
++    guard let app = NSWorkspace.shared.frontmostApplication,
++      app.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
++    if observedPID != app.processIdentifier {
++      stop()
++      observedPID = app.processIdentifier
++      var created: AXObserver?
++      let result = AXObserverCreate(app.processIdentifier, { _, _, _, context in
++        guard let context else { return }
++        MainActor.assumeIsolated {
++          Unmanaged<WindowFocusObserver>.fromOpaque(context).takeUnretainedValue().recordFrontmost()
++        }
++      }, &created)
++      if result == .success, let created {
++        observer = created
++        let element = AXUIElementCreateApplication(app.processIdentifier)
++        AXUIElementSetMessagingTimeout(element, 0.2)
++        for notification in [kAXFocusedWindowChangedNotification, kAXMainWindowChangedNotification] {
++          AXObserverAddNotification(created, element, notification as CFString,
++            Unmanaged.passUnretained(self).toOpaque())
++        }
++        CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(created), .commonModes)
++      }
++    }
++    recordFrontmost()
++  }
++
++  func recordFrontmost() {
++    guard AXIsProcessTrusted() else { return }
++    guard let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier,
++      pid != ProcessInfo.processInfo.processIdentifier,
++      let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
++        as? [[String: Any]] else { return }
++    let candidates = windows.filter {
++      ($0[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == pid
++        && ($0[kCGWindowLayer as String] as? NSNumber)?.intValue == 0
++    }
++    let application = AXUIElementCreateApplication(pid)
++    AXUIElementSetMessagingTimeout(application, 0.2)
++    var focused: CFTypeRef?
++    if AXUIElementCopyAttributeValue(application, kAXFocusedWindowAttribute as CFString, &focused) == .success,
++      let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() {
++      let element = focused as! AXUIElement
++      if let point = AccessibilityWindowMatching.point(of: element),
++        let size = AccessibilityWindowMatching.size(of: element),
++        let match = candidates.first(where: { info in
++          guard let raw = info[kCGWindowBounds as String] as? NSDictionary,
++            let frame = CGRect(dictionaryRepresentation: raw) else { return false }
++          return abs(frame.minX - point.x) < 2 && abs(frame.minY - point.y) < 2
++            && abs(frame.width - size.width) < 2 && abs(frame.height - size.height) < 2
++        }), let id = (match[kCGWindowNumber as String] as? NSNumber)?.uint32Value {
++        onFocus?(id)
++        return
++      }
++    }
++    // Some apps expose activation but no focused-window attribute; use their frontmost window.
++    if let info = candidates.first, let id = (info[kCGWindowNumber as String] as? NSNumber)?.uint32Value {
++      onFocus?(id)
++    }
++  }
++
++  func stop() {
++    if let observer { CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes) }
++    observer = nil
++    observedPID = nil
++  }
++}

@@ -1,0 +1,10 @@
+{
+  "signed_release_verified": true,
+  "installed_binary_sha256": "983ab32cb686bd4b935d978875cfd2960282c4e58a557452cef14ada827429a2",
+  "targeted_tests_passed": 10,
+  "live_actions_before": 2,
+  "live_actions_after": 2,
+  "preferences_restored": true,
+  "visual_review": "before fade and after slide/fade in both directions reviewed using video contact sheets",
+  "overnight": "NOT RUN: scheduled overnight, 2026-09-07 03:00 Europe/Berlin"
+}

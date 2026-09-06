@@ -1,0 +1,45 @@
+{
+  "mode": "sample",
+  "samples": [],
+  "binary_sha256": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+  "fixture_sha256": "cc2af87613e7e775157e4341f1bf8e06e639b96f3cf220f45e9fbd1007c29e7d",
+  "original_camera": {
+    "zoom": 1,
+    "center": [
+      1587.5938992302272,
+      9241.562891205906
+    ]
+  },
+  "started_at": 1788643219.600822,
+  "accepted_actions": null,
+  "succeeded_actions": null,
+  "limitations": [
+    "Personal live scene; not frozen fixture",
+    "Input calls counted, accepted and completed action counts unavailable",
+    "No presented pixel observer",
+    "No A/B candidate"
+  ],
+  "pid": 90443,
+  "desktop": "Desktop 2",
+  "search_open": "false",
+  "reset_camera": {
+    "center": [
+      1587.5938992302272,
+      9241.562891205906
+    ],
+    "zoom": 0.06
+  },
+  "route_start_monotonic": 72587.610492666,
+  "route_end_monotonic": 72610.675817791,
+  "requested_taps": 270,
+  "end_camera": {
+    "center": [
+      1587.5938992302272,
+      9241.562891205906
+    ],
+    "zoom": 0.06
+  },
+  "trace_exit_code": 0,
+  "restored": true,
+  "finished_at": 1788643251.7209759
+}

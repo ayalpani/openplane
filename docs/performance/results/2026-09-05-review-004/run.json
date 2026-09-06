@@ -1,0 +1,1409 @@
+{
+  "id": "2026-09-05-review-004",
+  "title": "OpenPlane performance review",
+  "category": "Performance",
+  "brief": "Measure the current live app, expose coverage gaps and propose the next decisions. Preserve full product behavior.",
+  "created_at": "2026-09-05T20:08:12.756195+00:00",
+  "status": "review",
+  "scope": "Single-build live pilot; no A/B claim and no full 14-case certification.",
+  "cases": [
+    {
+      "id": "P01",
+      "title": "Arrow navigation",
+      "status": "partial",
+      "reason": "CPU measured on two desktops, five trials each, two warm-up bursts per desktop. No per-trial camera/selection reset, fixed target oracle, cold/A-B comparison or frame/latency observer.",
+      "samples": [
+        {
+          "trial": 1,
+          "variant": "100 arrows · 80 ms requested",
+          "desktop": "Desktop 2",
+          "at": "2026-09-05T20:08:37.076256+00:00",
+          "idle_before": {
+            "seconds": 5.003784458007431,
+            "cpu_seconds": 0.0674143749999998,
+            "cpu_percent": 1.347267764344211,
+            "pid": 80512
+          },
+          "action": {
+            "seconds": 9.777905750001082,
+            "cpu_seconds": 0.7404982499999999,
+            "cpu_percent": 7.573178438541587,
+            "pid": 80512
+          },
+          "settling": {
+            "seconds": 1.0014196249976521,
+            "cpu_seconds": 0.018479375000000076,
+            "cpu_percent": 1.8453178406647863,
+            "pid": 80512
+          },
+          "idle_after": {
+            "seconds": 5.005054292007117,
+            "cpu_seconds": 0.0565609583333333,
+            "cpu_percent": 1.130076819019906,
+            "pid": 80512
+          },
+          "additional_cpu_pp": 6.225910674197376
+        },
+        {
+          "trial": 2,
+          "variant": "100 arrows · 80 ms requested",
+          "desktop": "Desktop 2",
+          "at": "2026-09-05T20:08:58.466442+00:00",
+          "idle_before": {
+            "seconds": 5.005026416998589,
+            "cpu_seconds": 0.06657629166666679,
+            "cpu_percent": 1.3301886167983747,
+            "pid": 80512
+          },
+          "action": {
+            "seconds": 9.79107049999584,
+            "cpu_seconds": 0.8217455,
+            "cpu_percent": 8.392805464942256,
+            "pid": 80512
+          },
+          "settling": {
+            "seconds": 1.0001525830011815,
+            "cpu_seconds": 0.0047155833333327735,
+            "cpu_percent": 0.4714863925244897,
+            "pid": 80512
+          },
+          "idle_after": {
+            "seconds": 5.005056750000222,
+            "cpu_seconds": 0.06407645833333397,
+            "cpu_percent": 1.28023440160456,
+            "pid": 80512
+          },
+          "additional_cpu_pp": 7.062616848143882
+        },
+        {
+          "trial": 3,
+          "variant": "100 arrows · 80 ms requested",
+          "desktop": "Desktop 2",
+          "at": "2026-09-05T20:09:19.873413+00:00",
+          "idle_before": {
+            "seconds": 5.003531250011292,
+            "cpu_seconds": 0.06149920833333411,
+            "cpu_percent": 1.2291161034158689,
+            "pid": 80512
+          },
+          "action": {
+            "seconds": 9.92860495801142,
+            "cpu_seconds": 0.8610769166666659,
+            "cpu_percent": 8.672687858044553,
+            "pid": 80512
+          },
+          "settling": {
+            "seconds": 1.0050932500016643,
+            "cpu_seconds": 0.016824666666666488,
+            "cpu_percent": 1.673940867341277,
+            "pid": 80512
+          },
+          "idle_after": {
+            "seconds": 5.0022326659964165,
+            "cpu_seconds": 0.04352450000000019,
+            "cpu_percent": 0.8701014708065434,
+            "pid": 80512
+          },
+          "additional_cpu_pp": 7.4435717546286835
+        },
+        {
+          "trial": 4,
+          "variant": "100 arrows · 80 ms requested",
+          "desktop": "Desktop 2",
+          "at": "2026-09-05T20:09:41.424353+00:00",
+          "idle_before": {
+            "seconds": 5.003573250010959,
+            "cpu_seconds": 0.0531593749999999,
+            "cpu_percent": 1.0624282356590555,
+            "pid": 80512
+          },
+          "action": {
+            "seconds": 9.82804712500365,
+            "cpu_seconds": 0.8683830000000006,
+            "cpu_percent": 8.835763493550385,
+            "pid": 80512
+          },
+          "settling": {
+            "seconds": 1.0027904589951504,
+            "cpu_seconds": 0.019151916666666935,
+            "cpu_percent": 1.9098622743038638,
+            "pid": 80512
+          },
+          "idle_after": {
+            "seconds": 5.0039355420012726,
+            "cpu_seconds": 0.05267887499999979,
+            "cpu_percent": 1.0527488725190777,
+            "pid": 80512
+          },
+          "additional_cpu_pp": 7.773335257891329
+        },
+        {
+          "trial": 5,
+          "variant": "100 arrows · 80 ms requested",
+          "desktop": "Desktop 2",
+          "at": "2026-09-05T20:10:02.859913+00:00",
+          "idle_before": {
+            "seconds": 5.0004537499917205,
+            "cpu_seconds": 0.05948012500000033,
+            "cpu_percent": 1.1894945533712578,
+            "pid": 80512
+          },
+          "action": {
+            "seconds": 9.926827625007718,
+            "cpu_seconds": 0.8651944999999994,
+            "cpu_percent": 8.715719993166768,
+            "pid": 80512
+          },
+          "settling": {
+            "seconds": 1.0010413330019219,
+            "cpu_seconds": 0.012375875000000036,
+            "cpu_percent": 1.2363000999056926,
+            "pid": 80512
+          },
+          "idle_after": {
+            "seconds": 5.005085124998004,
+            "cpu_seconds": 0.056180083333333464,
+            "cpu_percent": 1.122460096687284,
+            "pid": 80512
+          },
+          "additional_cpu_pp": 7.52622543979551
+        },
+        {
+          "trial": 1,
+          "variant": "100 arrows · 80 ms requested",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:10:47.622050+00:00",
+          "idle_before": {
+            "seconds": 5.001736250007525,
+            "cpu_seconds": 0.06785216666666649,
+            "cpu_percent": 1.3565722636127486,
+            "pid": 80512
+          },
+          "action": {
+            "seconds": 10.012344999995548,
+            "cpu_seconds": 0.8779777499999994,
+            "cpu_percent": 8.768952228477842,
+            "pid": 80512
+          },
+          "settling": {
+            "seconds": 1.0033848749881145,
+            "cpu_seconds": 0.022167458333333556,
+            "cpu_percent": 2.2092677382241925,
+            "pid": 80512
+          },
+          "idle_after": {
+            "seconds": 5.003764875000343,
+            "cpu_seconds": 0.04946954166666728,
+            "cpu_percent": 0.9886464073047376,
+            "pid": 80512
+          },
+          "additional_cpu_pp": 7.412379964865093
+        },
+        {
+          "trial": 2,
+          "variant": "100 arrows · 80 ms requested",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:11:09.241969+00:00",
+          "idle_before": {
+            "seconds": 5.003754749996006,
+            "cpu_seconds": 0.05413916666666729,
+            "cpu_percent": 1.0819708273414181,
+            "pid": 80512
+          },
+          "action": {
+            "seconds": 10.046264042000985,
+            "cpu_seconds": 0.8767817083333327,
+            "cpu_percent": 8.727440416335085,
+            "pid": 80512
+          },
+          "settling": {
+            "seconds": 1.0014660000015283,
+            "cpu_seconds": 0.014318416666665001,
+            "cpu_percent": 1.4297456595274478,
+            "pid": 80512
+          },
+          "idle_after": {
+            "seconds": 5.004005916998722,
+            "cpu_seconds": 0.06178229166666682,
+            "cpu_percent": 1.2346566469234375,
+            "pid": 80512
+          },
+          "additional_cpu_pp": 7.645469588993667
+        },
+        {
+          "trial": 3,
+          "variant": "100 arrows · 80 ms requested",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:11:30.898795+00:00",
+          "idle_before": {
+            "seconds": 5.002683541999431,
+            "cpu_seconds": 0.0491327083333335,
+            "cpu_percent": 0.9821270508287346,
+            "pid": 80512
+          },
+          "action": {
+            "seconds": 9.928378458003863,
+            "cpu_seconds": 0.8405126250000006,
+            "cpu_percent": 8.465759323693113,
+            "pid": 80512
+          },
+          "settling": {
+            "seconds": 1.001653792001889,
+            "cpu_seconds": 0.013115458333333052,
+            "cpu_percent": 1.3093803905160393,
+            "pid": 80512
+          },
+          "idle_after": {
+            "seconds": 5.000747792000766,
+            "cpu_seconds": 0.054639500000000396,
+            "cpu_percent": 1.0926265885154647,
+            "pid": 80512
+          },
+          "additional_cpu_pp": 7.483632272864379
+        },
+        {
+          "trial": 4,
+          "variant": "100 arrows · 80 ms requested",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:11:52.452504+00:00",
+          "idle_before": {
+            "seconds": 5.004594625002937,
+            "cpu_seconds": 0.0530357083333346,
+            "cpu_percent": 1.0597403447697518,
+            "pid": 80512
+          },
+          "action": {
+            "seconds": 9.876507791996119,
+            "cpu_seconds": 0.8851867916666656,
+            "cpu_percent": 8.962548405864847,
+            "pid": 80512
+          },
+          "settling": {
+            "seconds": 1.002154875008273,
+            "cpu_seconds": 0.01673204166666764,
+            "cpu_percent": 1.6696063736186002,
+            "pid": 80512
+          },
+          "idle_after": {
+            "seconds": 5.004481124997255,
+            "cpu_seconds": 0.04867120833333338,
+            "cpu_percent": 0.9725525407663532,
+            "pid": 80512
+          },
+          "additional_cpu_pp": 7.9028080610950955
+        },
+        {
+          "trial": 5,
+          "variant": "100 arrows · 80 ms requested",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:12:13.923507+00:00",
+          "idle_before": {
+            "seconds": 5.005058750000899,
+            "cpu_seconds": 0.04573308333333337,
+            "cpu_percent": 0.9137371930614232,
+            "pid": 80512
+          },
+          "action": {
+            "seconds": 9.853308749996359,
+            "cpu_seconds": 0.8803374999999996,
+            "cpu_percent": 8.934435348941287,
+            "pid": 80512
+          },
+          "settling": {
+            "seconds": 1.003919249997125,
+            "cpu_seconds": 0.015490583333333419,
+            "cpu_percent": 1.543010887915316,
+            "pid": 80512
+          },
+          "idle_after": {
+            "seconds": 5.004129667009693,
+            "cpu_seconds": 0.049388791666666876,
+            "cpu_percent": 0.9869606695499566,
+            "pid": 80512
+          },
+          "additional_cpu_pp": 8.020698155879863
+        }
+      ]
+    },
+    {
+      "id": "P02",
+      "title": "Zoom",
+      "status": "partial",
+      "reason": "Keyboard-tap zoom CPU sampled. Final persisted zoom recorded. Full bounds, held-key/pinch behavior, ten-cycle runbook and image quality are not certified.",
+      "samples": [
+        {
+          "trial": 1,
+          "variant": "45 zoom-in taps + 45 zoom-out taps",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:12:35.418760+00:00",
+          "idle_before": {
+            "seconds": 5.002868166993721,
+            "cpu_seconds": 0.048775125000000585,
+            "cpu_percent": 0.9749432399956702,
+            "pid": 80512
+          },
+          "action": {
+            "seconds": 7.15878437498759,
+            "cpu_seconds": 1.9701433333333345,
+            "cpu_percent": 27.520640797855428,
+            "pid": 80512
+          },
+          "settling": {
+            "seconds": 1.00189058300748,
+            "cpu_seconds": 0.003159000000000134,
+            "cpu_percent": 0.3153038918199463,
+            "pid": 80512
+          },
+          "idle_after": {
+            "seconds": 5.00043795799138,
+            "cpu_seconds": 0.07164175000000128,
+            "cpu_percent": 1.4327095066844697,
+            "pid": 80512
+          },
+          "additional_cpu_pp": 26.545697557859757,
+          "final_camera": {
+            "zoom": 0.06,
+            "center": [
+              -6767.261903263785,
+              4040.6724948524406
+            ]
+          }
+        },
+        {
+          "trial": 2,
+          "variant": "45 zoom-in taps + 45 zoom-out taps",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:12:54.175626+00:00",
+          "idle_before": {
+            "seconds": 5.000467707999633,
+            "cpu_seconds": 0.05733529166666784,
+            "cpu_percent": 1.1465985786678348,
+            "pid": 80512
+          },
+          "action": {
+            "seconds": 7.193366833002074,
+            "cpu_seconds": 2.242168416666665,
+            "cpu_percent": 31.169944043169565,
+            "pid": 80512
+          },
+          "settling": {
+            "seconds": 1.003070958002354,
+            "cpu_seconds": 0.017547750000002083,
+            "cpu_percent": 1.7494026579085646,
+            "pid": 80512
+          },
+          "idle_after": {
+            "seconds": 5.000802209004178,
+            "cpu_seconds": 0.049859749999999536,
+            "cpu_percent": 0.9970350339036551,
+            "pid": 80512
+          },
+          "additional_cpu_pp": 30.02334546450173,
+          "final_camera": {
+            "zoom": 0.06,
+            "center": [
+              -6767.261903263785,
+              4040.6724948524406
+            ]
+          }
+        },
+        {
+          "trial": 3,
+          "variant": "45 zoom-in taps + 45 zoom-out taps",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:13:12.988572+00:00",
+          "idle_before": {
+            "seconds": 5.004098833000171,
+            "cpu_seconds": 0.058711416666668015,
+            "cpu_percent": 1.1732665286202593,
+            "pid": 80512
+          },
+          "action": {
+            "seconds": 7.179438000006485,
+            "cpu_seconds": 2.284573916666666,
+            "cpu_percent": 31.82106895643646,
+            "pid": 80512
+          },
+          "settling": {
+            "seconds": 1.0050777920114342,
+            "cpu_seconds": 0.017658583333336253,
+            "cpu_percent": 1.756936972808505,
+            "pid": 80512
+          },
+          "idle_after": {
+            "seconds": 5.0050894579908345,
+            "cpu_seconds": 0.03896591666666538,
+            "cpu_percent": 0.7785258783827462,
+            "pid": 80512
+          },
+          "additional_cpu_pp": 30.6478024278162,
+          "final_camera": {
+            "zoom": 0.06,
+            "center": [
+              -6767.261903263785,
+              4040.6724948524406
+            ]
+          }
+        },
+        {
+          "trial": 4,
+          "variant": "45 zoom-in taps + 45 zoom-out taps",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:13:31.797533+00:00",
+          "idle_before": {
+            "seconds": 5.004059792001499,
+            "cpu_seconds": 0.05597283333333536,
+            "cpu_percent": 1.1185484518550812,
+            "pid": 80512
+          },
+          "action": {
+            "seconds": 7.134392916996148,
+            "cpu_seconds": 2.237623041666666,
+            "cpu_percent": 31.363888528427033,
+            "pid": 80512
+          },
+          "settling": {
+            "seconds": 1.0037864169862587,
+            "cpu_seconds": 0.01309291666666823,
+            "cpu_percent": 1.3043528429063675,
+            "pid": 80512
+          },
+          "idle_after": {
+            "seconds": 5.005073459004052,
+            "cpu_seconds": 0.055115999999998166,
+            "cpu_percent": 1.1012026187317054,
+            "pid": 80512
+          },
+          "additional_cpu_pp": 30.245340076571953,
+          "final_camera": {
+            "zoom": 0.06,
+            "center": [
+              -6767.261903263785,
+              4040.6724948524406
+            ]
+          }
+        },
+        {
+          "trial": 5,
+          "variant": "45 zoom-in taps + 45 zoom-out taps",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:13:50.550708+00:00",
+          "idle_before": {
+            "seconds": 5.0041217079997296,
+            "cpu_seconds": 0.0680301666666665,
+            "cpu_percent": 1.3594826552262222,
+            "pid": 80512
+          },
+          "action": {
+            "seconds": 7.191601541999262,
+            "cpu_seconds": 2.2725878749999993,
+            "cpu_percent": 31.60058106289661,
+            "pid": 80512
+          },
+          "settling": {
+            "seconds": 1.0051215839921497,
+            "cpu_seconds": 0.013681458333334007,
+            "cpu_percent": 1.3611744639881163,
+            "pid": 80512
+          },
+          "idle_after": {
+            "seconds": 5.002041500003543,
+            "cpu_seconds": 0.06369554166666802,
+            "cpu_percent": 1.2733909078247934,
+            "pid": 80512
+          },
+          "additional_cpu_pp": 30.241098407670385,
+          "final_camera": {
+            "zoom": 0.06,
+            "center": [
+              -6767.261903263785,
+              4040.6724948524406
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "P03",
+      "title": "Activate and return",
+      "status": "partial",
+      "reason": "Five real Finder activations and returns verified by foreground app. Coarse script/AX timings include observer overhead; they are not first-frame or usability latency. Other apps and input paths remain untested.",
+      "samples": [
+        {
+          "trial": 1,
+          "target": "Finder",
+          "foreground_observed_seconds": 0.6750436250003986,
+          "return_observed_seconds_including_400ms_settle": 0.7916474590019789,
+          "at": "2026-09-05T20:14:12.313165+00:00"
+        },
+        {
+          "trial": 2,
+          "target": "Finder",
+          "foreground_observed_seconds": 0.6198848329950124,
+          "return_observed_seconds_including_400ms_settle": 0.7763504169997759,
+          "at": "2026-09-05T20:14:15.513817+00:00"
+        },
+        {
+          "trial": 3,
+          "target": "Finder",
+          "foreground_observed_seconds": 0.599835458007874,
+          "return_observed_seconds_including_400ms_settle": 0.7748844999878202,
+          "at": "2026-09-05T20:14:18.681534+00:00"
+        },
+        {
+          "trial": 4,
+          "target": "Finder",
+          "foreground_observed_seconds": 0.5981419579911744,
+          "return_observed_seconds_including_400ms_settle": 0.7760852919891477,
+          "at": "2026-09-05T20:14:21.860632+00:00"
+        },
+        {
+          "trial": 5,
+          "target": "Finder",
+          "foreground_observed_seconds": 0.6167252919985913,
+          "return_observed_seconds_including_400ms_settle": 0.7741914170037489,
+          "at": "2026-09-05T20:14:25.051805+00:00"
+        }
+      ]
+    },
+    {
+      "id": "P04",
+      "title": "Launch closed apps",
+      "status": "blocked",
+      "reason": "A disposable multi-app fixture and per-app ready criteria are not available. No personal apps were quit.",
+      "samples": []
+    },
+    {
+      "id": "P05",
+      "title": "OpenPlane startup",
+      "status": "partial",
+      "reason": "Five process starts to accessible canvas title. Not a presented-first-frame, full-preview or interaction-ready measurement; OS caches uncontrolled.",
+      "samples": [
+        {
+          "trial": 1,
+          "launch_to_ax_canvas_seconds": 0.6221187920018565,
+          "desktop": "Hahaha",
+          "cache_state": "fresh process; OS caches uncontrolled",
+          "at": "2026-09-05T20:14:26.459714+00:00"
+        },
+        {
+          "trial": 2,
+          "launch_to_ax_canvas_seconds": 0.5725045410072198,
+          "desktop": "Hahaha",
+          "cache_state": "fresh process; OS caches uncontrolled",
+          "at": "2026-09-05T20:14:28.823137+00:00"
+        },
+        {
+          "trial": 3,
+          "launch_to_ax_canvas_seconds": 0.6199230829952285,
+          "desktop": "Hahaha",
+          "cache_state": "fresh process; OS caches uncontrolled",
+          "at": "2026-09-05T20:14:31.224146+00:00"
+        },
+        {
+          "trial": 4,
+          "launch_to_ax_canvas_seconds": 0.6051052080001682,
+          "desktop": "Hahaha",
+          "cache_state": "fresh process; OS caches uncontrolled",
+          "at": "2026-09-05T20:14:33.628518+00:00"
+        },
+        {
+          "trial": 5,
+          "launch_to_ax_canvas_seconds": 0.6300169579917565,
+          "desktop": "Hahaha",
+          "cache_state": "fresh process; OS caches uncontrolled",
+          "at": "2026-09-05T20:14:36.037080+00:00"
+        }
+      ]
+    },
+    {
+      "id": "P06",
+      "title": "Desktop switching",
+      "status": "partial",
+      "reason": "CPU for 30 real Tab inputs per trial. Final desktop recorded; accepted-event count and transition latency not observed. Rapid and mouse variants remain untested.",
+      "samples": [
+        {
+          "trial": 1,
+          "variant": "30 desktop Tab inputs · 350 ms",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:14:37.638661+00:00",
+          "idle_before": {
+            "seconds": 5.005069792008726,
+            "cpu_seconds": 0.11869825,
+            "cpu_percent": 2.371560336471589,
+            "pid": 81518
+          },
+          "action": {
+            "seconds": 11.285195541000576,
+            "cpu_seconds": 1.4756213333333332,
+            "cpu_percent": 13.075726760535163,
+            "pid": 81518
+          },
+          "settling": {
+            "seconds": 1.0049359999975422,
+            "cpu_seconds": 0.03587558333333307,
+            "cpu_percent": 3.5699371236995003,
+            "pid": 81518
+          },
+          "idle_after": {
+            "seconds": 5.000876791993505,
+            "cpu_seconds": 0.09368441666666705,
+            "cpu_percent": 1.8733598239544214,
+            "pid": 81518
+          },
+          "additional_cpu_pp": 10.704166424063574,
+          "start_desktop": "Hahaha",
+          "end_desktop": "Hahaha"
+        },
+        {
+          "trial": 2,
+          "variant": "30 desktop Tab inputs · 350 ms",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:15:00.820573+00:00",
+          "idle_before": {
+            "seconds": 5.004551332996925,
+            "cpu_seconds": 0.04547170833333336,
+            "cpu_percent": 0.9086070919788745,
+            "pid": 81518
+          },
+          "action": {
+            "seconds": 11.264223875012249,
+            "cpu_seconds": 1.418075125,
+            "cpu_percent": 12.589195143269096,
+            "pid": 81518
+          },
+          "settling": {
+            "seconds": 1.0050760000012815,
+            "cpu_seconds": 0.013252916666666614,
+            "cpu_percent": 1.3185984608775572,
+            "pid": 81518
+          },
+          "idle_after": {
+            "seconds": 5.005053250002675,
+            "cpu_seconds": 0.05830341666666694,
+            "cpu_percent": 1.164891036206973,
+            "pid": 81518
+          },
+          "additional_cpu_pp": 11.680588051290222,
+          "start_desktop": "Hahaha",
+          "end_desktop": "Hahaha"
+        },
+        {
+          "trial": 3,
+          "variant": "30 desktop Tab inputs · 350 ms",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:15:23.984524+00:00",
+          "idle_before": {
+            "seconds": 5.001773041993147,
+            "cpu_seconds": 0.052203958333333134,
+            "cpu_percent": 1.0437090586687332,
+            "pid": 81518
+          },
+          "action": {
+            "seconds": 11.242982499999925,
+            "cpu_seconds": 1.5000916249999996,
+            "cpu_percent": 13.34247051438539,
+            "pid": 81518
+          },
+          "settling": {
+            "seconds": 1.0015899170102784,
+            "cpu_seconds": 0.02172654166666721,
+            "cpu_percent": 2.169205310245176,
+            "pid": 81518
+          },
+          "idle_after": {
+            "seconds": 5.004055375000462,
+            "cpu_seconds": 0.06299533333333329,
+            "cpu_percent": 1.2588856160155397,
+            "pid": 81518
+          },
+          "additional_cpu_pp": 12.298761455716656,
+          "start_desktop": "Hahaha",
+          "end_desktop": "Hahaha"
+        },
+        {
+          "trial": 4,
+          "variant": "30 desktop Tab inputs · 350 ms",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:15:47.109067+00:00",
+          "idle_before": {
+            "seconds": 5.0015403750003316,
+            "cpu_seconds": 0.06564999999999976,
+            "cpu_percent": 1.3125956221036286,
+            "pid": 81518
+          },
+          "action": {
+            "seconds": 11.294953832999454,
+            "cpu_seconds": 1.4922759166666664,
+            "cpu_percent": 13.211881506826682,
+            "pid": 81518
+          },
+          "settling": {
+            "seconds": 1.0050576250068843,
+            "cpu_seconds": 0.011425874999999586,
+            "cpu_percent": 1.1368378007103146,
+            "pid": 81518
+          },
+          "idle_after": {
+            "seconds": 5.005072625004686,
+            "cpu_seconds": 0.05881429166666674,
+            "cpu_percent": 1.1750936714252307,
+            "pid": 81518
+          },
+          "additional_cpu_pp": 11.899285884723053,
+          "start_desktop": "Hahaha",
+          "end_desktop": "Hahaha"
+        },
+        {
+          "trial": 5,
+          "variant": "30 desktop Tab inputs · 350 ms",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:16:10.307096+00:00",
+          "idle_before": {
+            "seconds": 5.00365095899906,
+            "cpu_seconds": 0.04854362499999976,
+            "cpu_percent": 0.9701640941339864,
+            "pid": 81518
+          },
+          "action": {
+            "seconds": 11.260171083005844,
+            "cpu_seconds": 1.4771401666666666,
+            "cpu_percent": 13.118274631688381,
+            "pid": 81518
+          },
+          "settling": {
+            "seconds": 1.0050604580028448,
+            "cpu_seconds": 0.008138958333333335,
+            "cpu_percent": 0.8097978851447658,
+            "pid": 81518
+          },
+          "idle_after": {
+            "seconds": 5.001959209010238,
+            "cpu_seconds": 0.04257654166666747,
+            "cpu_percent": 0.8511972986499483,
+            "pid": 81518
+          },
+          "additional_cpu_pp": 12.148110537554395,
+          "start_desktop": "Hahaha",
+          "end_desktop": "Hahaha"
+        }
+      ]
+    },
+    {
+      "id": "P07",
+      "title": "Pan, minimap and saved view",
+      "status": "blocked",
+      "reason": "Repeatable pointer/trackpad routes and camera end-state observer are missing.",
+      "samples": []
+    },
+    {
+      "id": "P08",
+      "title": "Move and group cards",
+      "status": "blocked",
+      "reason": "A disposable layout plus group/drag end-state observer is missing. Personal arrangements were preserved.",
+      "samples": []
+    },
+    {
+      "id": "P09",
+      "title": "Search",
+      "status": "partial",
+      "reason": "Search interaction CPU measured; query/selection visual oracle and per-keystroke latency missing. No pass claim for search correctness.",
+      "samples": [
+        {
+          "trial": 1,
+          "variant": "three search queries + result arrows + Escape",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:16:33.328096+00:00",
+          "idle_before": {
+            "seconds": 5.00507229201321,
+            "cpu_seconds": 0.04070520833333369,
+            "cpu_percent": 0.8132791288207482,
+            "pid": 81518
+          },
+          "action": {
+            "seconds": 4.186660874998779,
+            "cpu_seconds": 0.28519895833333386,
+            "cpu_percent": 6.8120864538238255,
+            "pid": 81518
+          },
+          "settling": {
+            "seconds": 1.0014830419968348,
+            "cpu_seconds": 0.013690499999999162,
+            "cpu_percent": 1.3670226480023044,
+            "pid": 81518
+          },
+          "idle_after": {
+            "seconds": 5.003254084003856,
+            "cpu_seconds": 0.06584291666666786,
+            "cpu_percent": 1.3160018572148355,
+            "pid": 81518
+          },
+          "additional_cpu_pp": 5.998807325003077
+        },
+        {
+          "trial": 2,
+          "variant": "three search queries + result arrows + Escape",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:16:49.142584+00:00",
+          "idle_before": {
+            "seconds": 5.004188666003756,
+            "cpu_seconds": 0.05638979166666758,
+            "cpu_percent": 1.1268518321412395,
+            "pid": 81518
+          },
+          "action": {
+            "seconds": 4.19284683400474,
+            "cpu_seconds": 0.26232933333333364,
+            "cpu_percent": 6.256592327814021,
+            "pid": 81518
+          },
+          "settling": {
+            "seconds": 1.003719500004081,
+            "cpu_seconds": 0.013400749999998851,
+            "cpu_percent": 1.3351090618389265,
+            "pid": 81518
+          },
+          "idle_after": {
+            "seconds": 5.003114749997621,
+            "cpu_seconds": 0.057077875000000944,
+            "cpu_percent": 1.1408468094805957,
+            "pid": 81518
+          },
+          "additional_cpu_pp": 5.129740495672781
+        },
+        {
+          "trial": 3,
+          "variant": "three search queries + result arrows + Escape",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:17:04.964469+00:00",
+          "idle_before": {
+            "seconds": 5.000148499995703,
+            "cpu_seconds": 0.06888750000000066,
+            "cpu_percent": 1.3777090820414606,
+            "pid": 81518
+          },
+          "action": {
+            "seconds": 4.114636291997158,
+            "cpu_seconds": 0.23250208333333333,
+            "cpu_percent": 5.650610815481864,
+            "pid": 81518
+          },
+          "settling": {
+            "seconds": 1.002250040997751,
+            "cpu_seconds": 0.01614729166666784,
+            "cpu_percent": 1.6111041163533435,
+            "pid": 81518
+          },
+          "idle_after": {
+            "seconds": 5.004166708007688,
+            "cpu_seconds": 0.05191095833333215,
+            "cpu_percent": 1.0373546958430466,
+            "pid": 81518
+          },
+          "additional_cpu_pp": 4.272901733440403
+        },
+        {
+          "trial": 4,
+          "variant": "three search queries + result arrows + Escape",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:17:20.685329+00:00",
+          "idle_before": {
+            "seconds": 5.005052334003267,
+            "cpu_seconds": 0.05272258333333468,
+            "cpu_percent": 1.0533872538184788,
+            "pid": 81518
+          },
+          "action": {
+            "seconds": 4.15472750000481,
+            "cpu_seconds": 0.23014608333333264,
+            "cpu_percent": 5.539378535248489,
+            "pid": 81518
+          },
+          "settling": {
+            "seconds": 1.0050881669885712,
+            "cpu_seconds": 0.014113791666666486,
+            "cpu_percent": 1.4042341886238696,
+            "pid": 81518
+          },
+          "idle_after": {
+            "seconds": 5.002910708994023,
+            "cpu_seconds": 0.05139441666666755,
+            "cpu_percent": 1.0272903047074742,
+            "pid": 81518
+          },
+          "additional_cpu_pp": 4.48599128143001
+        },
+        {
+          "trial": 5,
+          "variant": "three search queries + result arrows + Escape",
+          "desktop": "Hahaha",
+          "at": "2026-09-05T20:17:36.452538+00:00",
+          "idle_before": {
+            "seconds": 5.00507104099961,
+            "cpu_seconds": 0.051965250000000296,
+            "cpu_percent": 1.0382519963117611,
+            "pid": 81518
+          },
+          "action": {
+            "seconds": 4.217732167002396,
+            "cpu_seconds": 0.23538262499999973,
+            "cpu_percent": 5.58078644351876,
+            "pid": 81518
+          },
+          "settling": {
+            "seconds": 1.00520470799529,
+            "cpu_seconds": 0.012829750000001638,
+            "cpu_percent": 1.2763320643004543,
+            "pid": 81518
+          },
+          "idle_after": {
+            "seconds": 5.005053916989709,
+            "cpu_seconds": 0.05023816666666647,
+            "cpu_percent": 1.0037487607502584,
+            "pid": 81518
+          },
+          "additional_cpu_pp": 4.542534447206999
+        }
+      ]
+    },
+    {
+      "id": "P10",
+      "title": "Window discovery and previews",
+      "status": "blocked",
+      "reason": "A controlled changing-window source and preview-freshness observer are missing.",
+      "samples": []
+    },
+    {
+      "id": "P11",
+      "title": "Quit selected app",
+      "status": "blocked",
+      "reason": "Safe disposable app/document fixture is missing. Personal apps were not quit.",
+      "samples": []
+    },
+    {
+      "id": "P12",
+      "title": "Edit and persist desktops",
+      "status": "blocked",
+      "reason": "A disposable profile and persistence assertions are missing. Personal desktops were not edited.",
+      "samples": []
+    },
+    {
+      "id": "P13",
+      "title": "Settings and shortcuts",
+      "status": "blocked",
+      "reason": "The settings variant manifest and visual expectations are not yet implemented.",
+      "samples": []
+    },
+    {
+      "id": "P14",
+      "title": "Idle and sustained use",
+      "status": "partial",
+      "reason": "60 seconds of visible idle in five windows. No long mixed-use, background, leak/footprint or wakeup coverage.",
+      "samples": [
+        {
+          "trial": 1,
+          "idle": {
+            "seconds": 12.005067999998573,
+            "cpu_seconds": 0.1621893333333322,
+            "cpu_percent": 1.3510072024027808,
+            "pid": 81518
+          },
+          "at": "2026-09-05T20:18:04.216860+00:00"
+        },
+        {
+          "trial": 2,
+          "idle": {
+            "seconds": 12.005066833997262,
+            "cpu_seconds": 0.12805183333333403,
+            "cpu_percent": 1.0666482336500023,
+            "pid": 81518
+          },
+          "at": "2026-09-05T20:18:16.269310+00:00"
+        },
+        {
+          "trial": 3,
+          "idle": {
+            "seconds": 12.001083708004444,
+            "cpu_seconds": 0.12266666666666737,
+            "cpu_percent": 1.0221299146913836,
+            "pid": 81518
+          },
+          "at": "2026-09-05T20:18:28.322625+00:00"
+        },
+        {
+          "trial": 4,
+          "idle": {
+            "seconds": 12.002953167000669,
+            "cpu_seconds": 0.1052119583333333,
+            "cpu_percent": 0.8765506027515723,
+            "pid": 81518
+          },
+          "at": "2026-09-05T20:18:40.376999+00:00"
+        },
+        {
+          "trial": 5,
+          "idle": {
+            "seconds": 12.000876999998582,
+            "cpu_seconds": 0.11300208333333295,
+            "cpu_percent": 0.9416152113995194,
+            "pid": 81518
+          },
+          "at": "2026-09-05T20:18:52.425928+00:00"
+        }
+      ]
+    }
+  ],
+  "proposals": [
+    {
+      "id": "inspect-current-p02",
+      "title": "Investigate CPU work during zoom",
+      "kind": "Investigation",
+      "priority": "High",
+      "source": "This run · P02",
+      "summary": "Zoom has the highest observed additional CPU among the measured action subsets in this pilot.",
+      "evidence": "5 samples: median action CPU 31.36%, idle before 1.15%; median per-trial additional CPU 30.24 percentage points. Different action cadences prevent a like-for-like ranking of implementation efficiency.",
+      "evidence_path": "docs/performance/results/2026-09-05-review-004/run.json",
+      "confidence": "Measured observation; cause and improvement are unproven",
+      "benefit": "Identify whether frequently used interaction work can be removed without losing responsiveness.",
+      "cost": "A focused profile and controlled reproduction first; no product change is proposed yet.",
+      "contract": "Keep the full visible behavior and count completed actions. Do not improve averages by dropping input or extending animation duration.",
+      "next": "Profile P02 separately from timed runs; connect expensive work to code, capture response/frame timing, then propose a bounded fix with an A/B acceptance test.",
+      "depends_on": []
+    },
+    {
+      "id": "navigator-reuse",
+      "title": "Reuse the navigator’s rendered app content",
+      "kind": "Optimization",
+      "priority": "High",
+      "summary": "The earlier controlled diagnostic isolated roughly three CPU percentage points in navigator updates.",
+      "evidence": "Historical two-trial ablation: 8.16 → 5.19% and 7.78 → 4.93%. Not a result of this pilot and not an achievable-gain guarantee.",
+      "evidence_path": "docs/navigator-diagnostic-cpu.json",
+      "source": "Historical experiment",
+      "confidence": "Strong candidate; gain unproven with full behavior",
+      "benefit": "Potentially reduce CPU on every app switch.",
+      "cost": "Some cache memory and invalidation logic.",
+      "contract": "Keep current title/icon, fade, clicks, history, hover preview and accessibility correct.",
+      "next": "Implement a bounded prototype, then run P01/P03/P07/P13 A/B comparisons with unchanged functionality.",
+      "depends_on": [
+        "measurement-foundation"
+      ]
+    },
+    {
+      "id": "measurement-foundation",
+      "title": "Make latency and correctness measurable",
+      "kind": "Test infrastructure",
+      "priority": "High",
+      "summary": "CPU samples alone cannot certify responsiveness or correct pixels.",
+      "evidence": "All executed subsets still lack at least one required latency, presented-frame or correctness observer.",
+      "source": "This run · coverage audit",
+      "confidence": "Confirmed gap",
+      "benefit": "Reliable go/no-go decisions instead of CPU-only guesses.",
+      "cost": "Instrumentation and calibration work; observer overhead must be measured.",
+      "contract": "Exercise the live input path; distinguish first reaction, completed animation and app readiness.",
+      "next": "Pilot a calibrated event-to-visible-result observer for P01/P03/P05; preserve raw events and add functional assertions.",
+      "depends_on": []
+    },
+    {
+      "id": "safe-fixtures",
+      "title": "Create disposable app and desktop test scenes",
+      "kind": "Test infrastructure",
+      "priority": "High",
+      "summary": "Opening, quitting and rearranging all apps needs a repeatable scene without personal documents.",
+      "evidence": "P04/P07/P08/P10/P11/P12/P13 are not executed in this pilot; reasons are recorded per case.",
+      "source": "This run · blocked coverage",
+      "confidence": "Confirmed gap",
+      "benefit": "Unlock multi-app starts, grouping, window updates and repeatable A/B pairs.",
+      "cost": "Maintain manifests, dummy documents, state reset and per-app readiness rules.",
+      "contract": "Restore user state, never clear personal caches or discard unsaved documents.",
+      "next": "Build S/R fixtures, verify reset twice, then implement the repeated/same/different/all-app P04 route.",
+      "depends_on": []
+    }
+  ],
+  "events": [
+    {
+      "at": "2026-09-05T20:08:12.756547+00:00",
+      "message": "Preparing live pilot; seven case families have executable subsets."
+    },
+    {
+      "at": "2026-09-05T20:08:15.011180+00:00",
+      "message": "P01 · Arrow navigation"
+    },
+    {
+      "at": "2026-09-05T20:08:58.105019+00:00",
+      "message": "P01 · 100 arrows · 80 ms requested · trial 1 recorded"
+    },
+    {
+      "at": "2026-09-05T20:09:19.503082+00:00",
+      "message": "P01 · 100 arrows · 80 ms requested · trial 2 recorded"
+    },
+    {
+      "at": "2026-09-05T20:09:41.060860+00:00",
+      "message": "P01 · 100 arrows · 80 ms requested · trial 3 recorded"
+    },
+    {
+      "at": "2026-09-05T20:10:02.503979+00:00",
+      "message": "P01 · 100 arrows · 80 ms requested · trial 4 recorded"
+    },
+    {
+      "at": "2026-09-05T20:10:24.033116+00:00",
+      "message": "P01 · 100 arrows · 80 ms requested · trial 5 recorded"
+    },
+    {
+      "at": "2026-09-05T20:11:08.887473+00:00",
+      "message": "P01 · 100 arrows · 80 ms requested · trial 1 recorded"
+    },
+    {
+      "at": "2026-09-05T20:11:30.534950+00:00",
+      "message": "P01 · 100 arrows · 80 ms requested · trial 2 recorded"
+    },
+    {
+      "at": "2026-09-05T20:11:52.076208+00:00",
+      "message": "P01 · 100 arrows · 80 ms requested · trial 3 recorded"
+    },
+    {
+      "at": "2026-09-05T20:12:13.581204+00:00",
+      "message": "P01 · 100 arrows · 80 ms requested · trial 4 recorded"
+    },
+    {
+      "at": "2026-09-05T20:12:35.030653+00:00",
+      "message": "P01 · 100 arrows · 80 ms requested · trial 5 recorded"
+    },
+    {
+      "at": "2026-09-05T20:12:35.031518+00:00",
+      "message": "P01 · measured subset complete; remaining coverage is explicit"
+    },
+    {
+      "at": "2026-09-05T20:12:35.068345+00:00",
+      "message": "P02 · Zoom"
+    },
+    {
+      "at": "2026-09-05T20:12:53.823146+00:00",
+      "message": "P02 · 45 zoom-in taps + 45 zoom-out taps · trial 1 recorded"
+    },
+    {
+      "at": "2026-09-05T20:13:12.623968+00:00",
+      "message": "P02 · 45 zoom-in taps + 45 zoom-out taps · trial 2 recorded"
+    },
+    {
+      "at": "2026-09-05T20:13:31.434666+00:00",
+      "message": "P02 · 45 zoom-in taps + 45 zoom-out taps · trial 3 recorded"
+    },
+    {
+      "at": "2026-09-05T20:13:50.200132+00:00",
+      "message": "P02 · 45 zoom-in taps + 45 zoom-out taps · trial 4 recorded"
+    },
+    {
+      "at": "2026-09-05T20:14:08.999643+00:00",
+      "message": "P02 · 45 zoom-in taps + 45 zoom-out taps · trial 5 recorded"
+    },
+    {
+      "at": "2026-09-05T20:14:09.000671+00:00",
+      "message": "P02 · measured subset complete; remaining coverage is explicit"
+    },
+    {
+      "at": "2026-09-05T20:14:09.036888+00:00",
+      "message": "P03 · Activate and return"
+    },
+    {
+      "at": "2026-09-05T20:14:12.313213+00:00",
+      "message": "P03 · foreground round trip recorded"
+    },
+    {
+      "at": "2026-09-05T20:14:15.513894+00:00",
+      "message": "P03 · foreground round trip recorded"
+    },
+    {
+      "at": "2026-09-05T20:14:18.681579+00:00",
+      "message": "P03 · foreground round trip recorded"
+    },
+    {
+      "at": "2026-09-05T20:14:21.860722+00:00",
+      "message": "P03 · foreground round trip recorded"
+    },
+    {
+      "at": "2026-09-05T20:14:25.051891+00:00",
+      "message": "P03 · foreground round trip recorded"
+    },
+    {
+      "at": "2026-09-05T20:14:25.053256+00:00",
+      "message": "P03 · measured subset complete; remaining coverage is explicit"
+    },
+    {
+      "at": "2026-09-05T20:14:25.096350+00:00",
+      "message": "P05 · OpenPlane startup"
+    },
+    {
+      "at": "2026-09-05T20:14:26.459748+00:00",
+      "message": "P05 · startup observed"
+    },
+    {
+      "at": "2026-09-05T20:14:28.823169+00:00",
+      "message": "P05 · startup observed"
+    },
+    {
+      "at": "2026-09-05T20:14:31.224178+00:00",
+      "message": "P05 · startup observed"
+    },
+    {
+      "at": "2026-09-05T20:14:33.628566+00:00",
+      "message": "P05 · startup observed"
+    },
+    {
+      "at": "2026-09-05T20:14:36.037129+00:00",
+      "message": "P05 · startup observed"
+    },
+    {
+      "at": "2026-09-05T20:14:37.041475+00:00",
+      "message": "P05 · measured subset complete; remaining coverage is explicit"
+    },
+    {
+      "at": "2026-09-05T20:14:37.103200+00:00",
+      "message": "P06 · Desktop switching"
+    },
+    {
+      "at": "2026-09-05T20:15:00.312893+00:00",
+      "message": "P06 · 30 desktop Tab inputs · 350 ms · trial 1 recorded"
+    },
+    {
+      "at": "2026-09-05T20:15:23.483025+00:00",
+      "message": "P06 · 30 desktop Tab inputs · 350 ms · trial 2 recorded"
+    },
+    {
+      "at": "2026-09-05T20:15:46.613279+00:00",
+      "message": "P06 · 30 desktop Tab inputs · 350 ms · trial 3 recorded"
+    },
+    {
+      "at": "2026-09-05T20:16:09.799750+00:00",
+      "message": "P06 · 30 desktop Tab inputs · 350 ms · trial 4 recorded"
+    },
+    {
+      "at": "2026-09-05T20:16:32.946081+00:00",
+      "message": "P06 · 30 desktop Tab inputs · 350 ms · trial 5 recorded"
+    },
+    {
+      "at": "2026-09-05T20:16:32.947122+00:00",
+      "message": "P06 · measured subset complete; remaining coverage is explicit"
+    },
+    {
+      "at": "2026-09-05T20:16:32.980918+00:00",
+      "message": "P09 · Search"
+    },
+    {
+      "at": "2026-09-05T20:16:48.765383+00:00",
+      "message": "P09 · three search queries + result arrows + Escape · trial 1 recorded"
+    },
+    {
+      "at": "2026-09-05T20:17:04.587938+00:00",
+      "message": "P09 · three search queries + result arrows + Escape · trial 2 recorded"
+    },
+    {
+      "at": "2026-09-05T20:17:20.312903+00:00",
+      "message": "P09 · three search queries + result arrows + Escape · trial 3 recorded"
+    },
+    {
+      "at": "2026-09-05T20:17:36.095653+00:00",
+      "message": "P09 · three search queries + result arrows + Escape · trial 4 recorded"
+    },
+    {
+      "at": "2026-09-05T20:17:51.918302+00:00",
+      "message": "P09 · three search queries + result arrows + Escape · trial 5 recorded"
+    },
+    {
+      "at": "2026-09-05T20:17:51.919496+00:00",
+      "message": "P09 · measured subset complete; remaining coverage is explicit"
+    },
+    {
+      "at": "2026-09-05T20:17:51.957264+00:00",
+      "message": "P14 · Idle and sustained use"
+    },
+    {
+      "at": "2026-09-05T20:18:04.217065+00:00",
+      "message": "P14 · 12-second idle interval recorded"
+    },
+    {
+      "at": "2026-09-05T20:18:16.269405+00:00",
+      "message": "P14 · 12-second idle interval recorded"
+    },
+    {
+      "at": "2026-09-05T20:18:28.322734+00:00",
+      "message": "P14 · 12-second idle interval recorded"
+    },
+    {
+      "at": "2026-09-05T20:18:40.377117+00:00",
+      "message": "P14 · 12-second idle interval recorded"
+    },
+    {
+      "at": "2026-09-05T20:18:52.426039+00:00",
+      "message": "P14 · 12-second idle interval recorded"
+    },
+    {
+      "at": "2026-09-05T20:18:52.431402+00:00",
+      "message": "P14 · measured subset complete; remaining coverage is explicit"
+    },
+    {
+      "at": "2026-09-05T20:18:52.693053+00:00",
+      "message": "Report ready for human review. No proposals have been accepted automatically."
+    }
+  ],
+  "artifacts": [],
+  "environment": {
+    "binary_sha256": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+    "commit": "09707146f1e93862bfb9e7b734681f28cd1e7020",
+    "source_diff_sha256": "4091b5196da0c44eb542cbad817dffb8b58751e4e00247827d13af431e7c1031",
+    "os": "26.6.2",
+    "machine": "Mac14,10",
+    "cpu_units": "100% = one CPU core; OpenPlane process only",
+    "observer": "Mach CPU counters at phase boundaries; AX polling for coarse foreground/start availability.",
+    "limitations": [
+      "No candidate build or A/B pairs.",
+      "Live personal scene, not a frozen S/R/L fixture.",
+      "No presented-frame or first-pixel latency observer.",
+      "Background user apps remain running; no claim of isolated system load.",
+      "Trials are current-process samples; explicit cold/warm control is not complete."
+    ],
+    "fixture_sha256": "5b2d9bca2ed7d622b02179cc5f376f7b08602418bad1bf4bebe6185990191ed1",
+    "runner_sha256": "6a323f2c87279ddd56940562bea0d4c041f393dc8d44f2271290bae65550e551",
+    "analysis_note": "Findings generated after capture by the same deterministic analysis function used by subsequent pilots."
+  },
+  "restored": true,
+  "finished_at": "2026-09-05T20:18:52.692952+00:00",
+  "analysis": {
+    "method": "Median of phase CPU observations. Not an A/B test; different actions have different input cadences.",
+    "case_metrics": [
+      {
+        "case_id": "P01",
+        "title": "Arrow navigation",
+        "samples": 10,
+        "action_cpu_median": 8.721580204750927,
+        "idle_cpu_median": 1.1357326903563378,
+        "additional_cpu_median_pp": 7.504928856329945
+      },
+      {
+        "case_id": "P02",
+        "title": "Zoom",
+        "samples": 5,
+        "action_cpu_median": 31.363888528427033,
+        "idle_cpu_median": 1.1465985786678348,
+        "additional_cpu_median_pp": 30.241098407670385
+      },
+      {
+        "case_id": "P06",
+        "title": "Desktop switching",
+        "samples": 5,
+        "action_cpu_median": 13.118274631688381,
+        "idle_cpu_median": 1.0437090586687332,
+        "additional_cpu_median_pp": 11.899285884723053
+      },
+      {
+        "case_id": "P09",
+        "title": "Search",
+        "samples": 5,
+        "action_cpu_median": 5.650610815481864,
+        "idle_cpu_median": 1.0533872538184788,
+        "additional_cpu_median_pp": 4.542534447206999
+      }
+    ],
+    "fully_verified_cases": 0,
+    "measured_case_families": 7
+  }
+}

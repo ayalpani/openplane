@@ -1,0 +1,54 @@
+{
+  "variants": [
+    {
+      "variant": "before",
+      "build_sha256": "d6c1aa232028fea6d6ba8c4843a8808c7050d0321eb97349e067ddfe5c174157",
+      "events": [
+        {
+          "input": {
+            "code": 48,
+            "posted_down": 81757.779117,
+            "posted_up_before": 81757.802304625
+          },
+          "completed_state_change": true
+        },
+        {
+          "input": {
+            "code": 48,
+            "posted_down": 81758.749486083,
+            "posted_up_before": 81758.760620958
+          },
+          "completed_state_change": true
+        }
+      ],
+      "camera_and_desktop_restored": true,
+      "video": "/tmp/openplane-crossfade/before.mov"
+    },
+    {
+      "variant": "after",
+      "build_sha256": "d9b3e69d9091bfc427f02ecb85a39d2290dcf94680d6eec9fd90e2e1a1425a39",
+      "events": [
+        {
+          "input": {
+            "code": 48,
+            "posted_down": 81766.132329208,
+            "posted_up_before": 81766.143694166
+          },
+          "completed_state_change": true
+        },
+        {
+          "input": {
+            "code": 48,
+            "posted_down": 81767.092938166,
+            "posted_up_before": 81767.104088833
+          },
+          "completed_state_change": true
+        }
+      ],
+      "camera_and_desktop_restored": true,
+      "video": "/tmp/openplane-crossfade/after.mov"
+    }
+  ],
+  "fixture_sha256": "948ed3833ff08925cb5c89b865d7dbc98ec06a5e49b2e9e6d3f7376e309c46fd",
+  "restored_preferences": true
+}

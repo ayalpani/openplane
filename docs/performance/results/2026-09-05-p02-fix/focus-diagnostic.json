@@ -1,0 +1,12 @@
+[
+  {
+    "time": 1788646018.2436202,
+    "pid": 96505,
+    "name": "/Applications/OpenPlane.app/Contents/MacOS/OpenPlane"
+  },
+  {
+    "time": 1788646018.57906,
+    "pid": 11248,
+    "name": "/System/Library/CoreServices/UserNotificationCenter.app/Contents/MacOS/UserNotificationCenter"
+  }
+]

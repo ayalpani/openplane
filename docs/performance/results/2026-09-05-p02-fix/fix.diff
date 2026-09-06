@@ -1,0 +1,16 @@
+--- /tmp/openplane-p02-ab/CanvasView-before.swift	2026-09-05 23:51:35.229495310 +0200
++++ OpenPlane/CanvasView.swift	2026-09-05 23:51:35.257670119 +0200
+@@ -396,8 +396,11 @@
+       guard newValue != oldValue else { return }
+       desktopPages.updateSelectedCamera(newValue)
+       scheduleCameraMaintenance()
+-      updateSceneCamera()
+-      if oldValue.zoom != newValue.zoom { synchronizeScene() }
++      if oldValue.zoom != newValue.zoom {
++        synchronizeScene()
++      } else {
++        updateSceneCamera()
++      }
+     }
+   }
+   var statusMessage: String? {

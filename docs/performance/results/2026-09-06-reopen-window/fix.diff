@@ -1,0 +1,28 @@
+--- AppDelegate-before.swift
++++ AppDelegate.swift
+@@ -141,23 +141,8 @@
+       return
+     }
+ 
+-    if let runningApplication = NSRunningApplication.runningApplications(
+-      withBundleIdentifier: bundleIdentifier
+-    ).first(where: { !$0.isTerminated }) {
+-      if windowService.activate(runningApplication) {
+-        canvasView.completePlaceholderLaunch(for: bundleIdentifier)
+-        overlayWindow.orderOut(nil)
+-        stopCanvasLoops()
+-        canvasView.statusMessage = nil
+-      } else {
+-        canvasView.showLaunchError(
+-          for: bundleIdentifier,
+-          message: "Couldn’t activate \(applicationName)"
+-        )
+-      }
+-      return
+-    }
+-
++    // A running app can have no windows. Reopen it and wait for a real window
++    // before hiding the canvas; activation alone only changes the menu bar.
+     requestedLaunchAnchors[bundleIdentifier] = anchor
+     let configuration = NSWorkspace.OpenConfiguration()
+     configuration.activates = false

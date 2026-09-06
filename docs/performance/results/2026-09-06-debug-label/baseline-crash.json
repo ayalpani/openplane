@@ -1,0 +1,322 @@
+{
+  "pid": 1912,
+  "captureTime": "2026-09-06 00:35:39.1710 +0200",
+  "procLaunch": "2026-09-06 00:35:28.7190 +0200",
+  "exceptionReason": {
+    "arguments": [
+      "-[__NSPlaceholderDictionary initWithObjects:forKeys:count:]",
+      "0"
+    ],
+    "format_string": "*** %s: attempt to insert nil object from objects[%lu]",
+    "name": "NSInvalidArgumentException",
+    "type": "objc-exception",
+    "composed_message": "*** -[__NSPlaceholderDictionary initWithObjects:forKeys:count:]: attempt to insert nil object from objects[0]",
+    "class": "NSException"
+  },
+  "lastExceptionBacktrace": [
+    {
+      "imageOffset": 967140,
+      "symbol": "__exceptionPreprocess",
+      "symbolLocation": 164,
+      "imageIndex": 8
+    },
+    {
+      "imageOffset": 108828,
+      "symbol": "objc_exception_throw",
+      "symbolLocation": 88,
+      "imageIndex": 7
+    },
+    {
+      "imageOffset": 40256,
+      "symbol": "-[__NSPlaceholderDictionary initWithObjects:forKeys:count:]",
+      "symbolLocation": 764,
+      "imageIndex": 8
+    },
+    {
+      "imageOffset": 232916,
+      "symbol": "-[NSDictionary initWithDictionary:copyItems:]",
+      "symbolLocation": 420,
+      "imageIndex": 8
+    },
+    {
+      "imageOffset": 232300,
+      "symbol": "-[__NSPlaceholderDictionary initWithDictionary:copyItems:]",
+      "symbolLocation": 176,
+      "imageIndex": 8
+    },
+    {
+      "imageOffset": 962964,
+      "symbol": "TAttributes::ApplyFont(__CFDictionary const*, __CTFont const*, TCharStream const*, CFRange, void const**)",
+      "symbolLocation": 320,
+      "imageIndex": 9
+    },
+    {
+      "imageOffset": 962240,
+      "symbol": "TAttributes::TAttributes(__CFDictionary const*, TCharStream const*, CFRange, bool)",
+      "symbolLocation": 116,
+      "imageIndex": 9
+    },
+    {
+      "imageOffset": 623332,
+      "symbol": "TTypesetterAttrString::Initialize(__CFAttributedString const*, bool)",
+      "symbolLocation": 720,
+      "imageIndex": 9
+    },
+    {
+      "imageOffset": 622584,
+      "symbol": "TTypesetterAttrString::TTypesetterAttrString(__CFAttributedString const*, __CFDictionary const*, bool)",
+      "symbolLocation": 160,
+      "imageIndex": 9
+    },
+    {
+      "imageOffset": 152284,
+      "symbol": "CTLineCreateWithAttributedString",
+      "symbolLocation": 84,
+      "imageIndex": 9
+    },
+    {
+      "imageOffset": 575128,
+      "symbol": "__NSCoreTypesetterCreateBaseLineFromAttributedString",
+      "symbolLocation": 704,
+      "imageIndex": 10
+    },
+    {
+      "imageOffset": 589568,
+      "symbol": "-[NSCoreTypesetter _stringDrawingCoreTextEngineWithOriginalString:rect:padding:graphicsContext:forceClipping:attributes:stringDrawingOptions:drawingContext:stringDrawingInterface:]",
+      "symbolLocation": 2816,
+      "imageIndex": 10
+    },
+    {
+      "imageOffset": 30576,
+      "symbol": "__NSStringDrawingEngine",
+      "symbolLocation": 1844,
+      "imageIndex": 10
+    },
+    {
+      "imageOffset": 294760,
+      "symbol": "-[NSString(NSExtendedStringDrawing) boundingRectWithSize:options:attributes:context:]",
+      "symbolLocation": 124,
+      "imageIndex": 10
+    },
+    {
+      "imageOffset": 294620,
+      "symbol": "-[NSString(NSStringDrawing) sizeWithAttributes:]",
+      "symbolLocation": 40,
+      "imageIndex": 10
+    },
+    {
+      "imageOffset": 354756,
+      "sourceLine": 2927,
+      "sourceFile": "CanvasView.swift",
+      "symbol": "CanvasView.drawDebugInformation()",
+      "imageIndex": 0,
+      "symbolLocation": 628
+    },
+    {
+      "imageOffset": 353560,
+      "sourceLine": 837,
+      "sourceFile": "CanvasView.swift",
+      "symbol": "CanvasView.drawHUD(_:)",
+      "imageIndex": 0,
+      "symbolLocation": 392
+    },
+    {
+      "imageOffset": 357432,
+      "sourceFile": "/<compiler-generated>",
+      "symbol": "closure #1 in CanvasView.configureScene()",
+      "symbolLocation": 116,
+      "imageIndex": 0
+    },
+    {
+      "imageOffset": 276376,
+      "sourceFile": "/<compiler-generated>",
+      "symbol": "@objc CanvasDrawingView.draw(_:)",
+      "symbolLocation": 220,
+      "imageIndex": 0
+    },
+    {
+      "imageOffset": 5653772,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 5653812,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 5415948,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 5417512,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 1352532,
+      "symbol": "_NSViewDrawRect",
+      "symbolLocation": 132,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 14069260,
+      "symbol": "-[NSView _recursive:displayRectIgnoringOpacity:inContext:stopAtLayerBackedViews:]",
+      "symbolLocation": 1084,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 1351012,
+      "symbol": "-[NSView(NSLayerKitGlue) _drawViewBackingLayer:inContext:drawingHandler:]",
+      "symbolLocation": 536,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 10596852,
+      "symbol": "-[NSViewBackingLayer drawInContext:]",
+      "symbolLocation": 56,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 5795992,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 5799160,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 6434752,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 6435860,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 10595860,
+      "symbol": "-[NSViewBackingLayer display]",
+      "symbolLocation": 1284,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 137188,
+      "symbol": "CA::Layer::display_if_needed(CA::Transaction*)",
+      "symbolLocation": 784,
+      "imageIndex": 12
+    },
+    {
+      "imageOffset": 1895736,
+      "symbol": "CA::Context::commit_transaction(CA::Transaction*, double, double*)",
+      "symbolLocation": 620,
+      "imageIndex": 12
+    },
+    {
+      "imageOffset": 9504,
+      "symbol": "CA::Transaction::commit()",
+      "symbolLocation": 652,
+      "imageIndex": 12
+    },
+    {
+      "imageOffset": 2097852,
+      "symbol": "CA::Transaction::flush_as_runloop_observer(bool)",
+      "symbolLocation": 140,
+      "imageIndex": 12
+    },
+    {
+      "imageOffset": 9908424,
+      "symbol": "stepTransactionFlush",
+      "symbolLocation": 220,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 4852,
+      "symbol": "UC::DriverCore::continueProcessing()",
+      "symbolLocation": 84,
+      "imageIndex": 13
+    },
+    {
+      "imageOffset": 512836,
+      "symbol": "__CFRUNLOOP_IS_CALLING_OUT_TO_AN_OBSERVER_CALLBACK_FUNCTION__",
+      "symbolLocation": 36,
+      "imageIndex": 8
+    },
+    {
+      "imageOffset": 512576,
+      "symbol": "__CFRunLoopDoObservers",
+      "symbolLocation": 648,
+      "imageIndex": 8
+    },
+    {
+      "imageOffset": 1372724,
+      "symbol": "_CFRunLoopRunSpecificWithOptions",
+      "symbolLocation": 484,
+      "imageIndex": 8
+    },
+    {
+      "imageOffset": 775520,
+      "symbol": "RunCurrentEventLoopInMode",
+      "symbolLocation": 320,
+      "imageIndex": 14
+    },
+    {
+      "imageOffset": 788668,
+      "symbol": "ReceiveNextEventCommon",
+      "symbolLocation": 488,
+      "imageIndex": 14
+    },
+    {
+      "imageOffset": 2400588,
+      "symbol": "_BlockUntilNextEventMatchingListInMode",
+      "symbolLocation": 48,
+      "imageIndex": 14
+    },
+    {
+      "imageOffset": 7230416,
+      "symbol": "_DPSBlockUntilNextEventMatchingListInMode",
+      "symbolLocation": 228,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 233604,
+      "symbol": "_DPSNextEvent",
+      "symbolLocation": 576,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 12380524,
+      "symbol": "-[NSApplication(NSEventRouting) _nextEventMatchingEventMask:untilDate:inMode:dequeue:]",
+      "symbolLocation": 688,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 12379768,
+      "symbol": "-[NSApplication(NSEventRouting) nextEventMatchingMask:untilDate:inMode:dequeue:]",
+      "symbolLocation": 72,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 180540,
+      "symbol": "-[NSApplication run]",
+      "symbolLocation": 368,
+      "imageIndex": 11
+    },
+    {
+      "imageOffset": 8800,
+      "sourceFile": "/<compiler-generated>",
+      "symbol": "specialized static OpenPlaneApp.main()",
+      "symbolLocation": 480,
+      "imageIndex": 0
+    },
+    {
+      "imageOffset": 6980,
+      "sourceFile": "OpenPlaneApp.swift",
+      "symbol": "main",
+      "symbolLocation": 12,
+      "imageIndex": 0
+    },
+    {
+      "imageOffset": 132324,
+      "symbol": "start",
+      "symbolLocation": 6992,
+      "imageIndex": 15
+    }
+  ]
+}

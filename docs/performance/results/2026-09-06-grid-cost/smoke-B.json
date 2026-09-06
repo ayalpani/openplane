@@ -1,0 +1,110 @@
+{
+  "cases": {
+    "P05": {
+      "status": "partial",
+      "launch_to_ax_seconds": 1.2701348340051482,
+      "desktop": "Desktop 2"
+    },
+    "P01": {
+      "status": "partial",
+      "requested": 100,
+      "phase": {
+        "seconds": 9.900686875000247,
+        "cpu_seconds": 0.7533844583333331,
+        "cpu_percent": 7.609416072289574
+      },
+      "accepted": null
+    },
+    "P02": {
+      "status": "partial",
+      "low": {
+        "center": [
+          1587.5938992302272,
+          9836.910432189512
+        ],
+        "zoom": 0.06
+      },
+      "high": {
+        "center": [
+          1587.5938992302272,
+          9836.910432189512
+        ],
+        "zoom": 1.25
+      },
+      "end": {
+        "center": [
+          1587.5938992302272,
+          9836.910432189512
+        ],
+        "zoom": 0.06
+      },
+      "bounds_correct": true,
+      "reversals_requested": 5,
+      "arrow_interruption_requested": true
+    },
+    "P03": {
+      "status": "partial",
+      "trips": [
+        {
+          "finder_and_return_observed": true
+        },
+        {
+          "finder_and_return_observed": true
+        },
+        {
+          "finder_and_return_observed": true
+        }
+      ]
+    },
+    "P06": {
+      "status": "partial",
+      "requested": 10,
+      "start": "Desktop 2",
+      "end": "Desktop 2",
+      "accepted": null
+    },
+    "P14": {
+      "status": "partial",
+      "idle": {
+        "seconds": 30.00125004199799,
+        "cpu_seconds": 0.3469029166666662,
+        "cpu_percent": 1.156294874983694
+      }
+    },
+    "P04": {
+      "status": "BLOCKED",
+      "reason": "No dedicated disposable app/start-readiness fixture; PERF-001/005"
+    }
+  },
+  "screenshots": [
+    "/tmp/openplane-grid/B-candidate-minimum.png",
+    "/tmp/openplane-grid/B-candidate-maximum.png"
+  ],
+  "started_at": 1788650936.7627048,
+  "limitations": [
+    "Coarse script/AX timings are not first-frame latency",
+    "No pinch or pointer-route automation; held-key bounds checked separately",
+    "P04 disposable app fixture unavailable"
+  ],
+  "fixture_sha256": "c81f7e8857ade948326af8a3ee0292278fca94065ca5ff3369bb273062e1e041",
+  "binary_sha256": "db22d98f75b7106e8754c6b8cbf976f1ebe01aafd7f28a9fa9ed8fc81daccf3f",
+  "held_zoom": {
+    "high": {
+      "zoom": 1.25,
+      "center": [
+        1587.5938992302272,
+        9836.910432189512
+      ]
+    },
+    "low": {
+      "center": [
+        1587.5938992302272,
+        9836.910432189512
+      ],
+      "zoom": 0.06
+    },
+    "bounds_correct": true
+  },
+  "restored_preferences": true,
+  "finished_at": 1788651035.081045
+}

@@ -1,0 +1,10 @@
+{
+  "checked_at": 1788648386.195787,
+  "installed_binary_sha256": "1d35c809d486ab90f43904bb137c8d94186cd277fbe68191539d314057e42bd3",
+  "signature_verified": true,
+  "source_matches_tested_diff": true,
+  "smoke_restored_preferences": true,
+  "debug_preference": "1",
+  "latest_crash_report": "/Users/ayalpani/Library/Logs/DiagnosticReports/OpenPlane-2026-09-06-003613.ips",
+  "remaining_test_processes": []
+}

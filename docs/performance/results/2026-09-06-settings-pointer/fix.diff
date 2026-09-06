@@ -1,0 +1,67 @@
+--- 
++++ 
+@@ -692,6 +692,7 @@
+   required init?(coder: NSCoder) { nil }
+ 
+   override func hitTest(_ point: NSPoint) -> NSView? {
++    guard frame.contains(point) else { return nil }
+     if isSearching,
+       closeSearchButton.frame.contains(point) || searchField.frame.contains(point)
+     {
+@@ -2002,6 +2003,7 @@
+   }
+ 
+   override func mouseDown(with event: NSEvent) {
++    guard bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
+     guard cameraAnimation == nil, desktopTransitionStartedAt == nil else { return }
+     deferBackgroundWork()
+     let point = convert(event.locationInWindow, from: nil)
+@@ -2187,6 +2189,7 @@
+   }
+ 
+   override func scrollWheel(with event: NSEvent) {
++    guard bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
+     guard cameraAnimation == nil, desktopTransitionStartedAt == nil else { return }
+     deferBackgroundWork()
+     camera.center = CGPoint(
+@@ -2196,6 +2199,7 @@
+   }
+ 
+   override func magnify(with event: NSEvent) {
++    guard bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
+     guard cameraAnimation == nil, desktopTransitionStartedAt == nil else { return }
+     deferBackgroundWork()
+     let point = convert(event.locationInWindow, from: nil)
+@@ -2231,6 +2235,7 @@
+ 
+   override func menu(for event: NSEvent) -> NSMenu? {
+     let point = convert(event.locationInWindow, from: nil)
++    guard bounds.contains(point) else { return nil }
+     let bundleIdentifier = hitNode(at: point)?.bundleIdentifier
+       ?? hitPlaceholder(at: point)?.bundleIdentifier
+     guard let bundleIdentifier,
+@@ -2262,10 +2267,11 @@
+   }
+ 
+   private func updateHover(at point: CGPoint) {
+-    guard cameraAnimation == nil, !navigatorPanelFrame.contains(point) else {
++    guard bounds.contains(point), cameraAnimation == nil, !navigatorPanelFrame.contains(point) else {
+       hoveredSelectionResizeHandle = nil
+       hoveredPlaceholderBundleIdentifier = nil
+       setHoveredWindow(nil)
++      NSCursor.arrow.set()
+       return
+     }
+     let selectionBounds = groupSelectionBounds()
+@@ -4675,6 +4681,11 @@
+ 
+   required init?(coder: NSCoder) { nil }
+ 
++  override func resetCursorRects() {
++    super.resetCursorRects()
++    addCursorRect(bounds, cursor: .arrow)
++  }
++
+   override func layout() {
+     super.layout()
+     closeButton.frame = CGRect(x: bounds.width - 54, y: 38, width: 30, height: 30)

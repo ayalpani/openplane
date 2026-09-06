@@ -1,0 +1,73 @@
+{
+  "A": {
+    "idle_before": {
+      "cpu_percent": 2.064045924834426,
+      "cpu_seconds": 0.1032247083333333,
+      "seconds": 5.001052541992976
+    },
+    "action": {
+      "cpu_percent": 27.421654801870268,
+      "cpu_seconds": 1.8157740833333325,
+      "seconds": 6.621679459000006
+    },
+    "settling": {
+      "cpu_percent": 0.3967545276748101,
+      "cpu_seconds": 0.003969250000000812,
+      "seconds": 1.000653458002489
+    },
+    "idle_after": {
+      "cpu_percent": 2.0561774549376373,
+      "cpu_seconds": 0.10283045833333304,
+      "seconds": 5.00104979200114
+    },
+    "extra_pp": 25.465581571713475
+  },
+  "B": {
+    "idle_before": {
+      "cpu_percent": 1.905430388589311,
+      "cpu_seconds": 0.09529195833333315,
+      "seconds": 5.001031292005791
+    },
+    "action": {
+      "cpu_percent": 26.27101016592304,
+      "cpu_seconds": 1.7376154999999995,
+      "seconds": 6.641447624991997
+    },
+    "settling": {
+      "cpu_percent": 0.22808316109987106,
+      "cpu_seconds": 0.0022832083333330644,
+      "seconds": 1.0010420420003356
+    },
+    "idle_after": {
+      "cpu_percent": 2.0308673120661203,
+      "cpu_seconds": 0.10156470833333309,
+      "seconds": 5.001050917009707
+    },
+    "extra_pp": 24.520499654722173
+  },
+  "pairs": [
+    {
+      "pair": 1,
+      "cpu_seconds_reduction_percent": 1.463541187919326
+    },
+    {
+      "pair": 2,
+      "cpu_seconds_reduction_percent": 1.4028190454826173
+    },
+    {
+      "pair": 3,
+      "cpu_seconds_reduction_percent": 4.304422232409677
+    },
+    {
+      "pair": 4,
+      "cpu_seconds_reduction_percent": 3.529673697666902
+    },
+    {
+      "pair": 5,
+      "cpu_seconds_reduction_percent": 7.085980109108192
+    }
+  ],
+  "all_end_states_correct": true,
+  "all_posted_counts_90": true,
+  "same_start_camera": true
+}

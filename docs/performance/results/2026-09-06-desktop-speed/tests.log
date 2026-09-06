@@ -1,0 +1,1001 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project OpenPlane.xcodeproj -scheme OpenPlane -configuration Debug -derivedDataPath /tmp/openplane-desktop-speed/tests -destination platform=macOS -parallel-testing-enabled NO PRODUCT_BUNDLE_IDENTIFIER=com.yalpani.openplane.tests test
+
+Build settings from command line:
+    PRODUCT_BUNDLE_IDENTIFIER = com.yalpani.openplane.tests
+
+2026-09-06 01:38:20.455 xcodebuild[14330:1515679] [MT] IDERunDestination: Supported platforms for the buildables in the current scheme is empty.
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00006020-0016685611C0C01E, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00006020-0016685611C0C01E, name:My Mac }
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (2 targets)
+    Target 'OpenPlaneTests' in project 'OpenPlane'
+        ➜ Explicit dependency on target 'OpenPlane' in project 'OpenPlane'
+    Target 'OpenPlane' in project 'OpenPlane' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 9395bb45f1144586ef24911e7d553a10
+Build description path: /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/XCBuildData/9395bb45f1144586ef24911e7d553a10.xcbuilddata
+CreateBuildDirectory /tmp/openplane-desktop-speed/tests/Build/Products
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-desktop-speed/tests/Build/Products
+
+CreateBuildDirectory /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk /tmp/openplane-desktop-speed/tests/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -o /tmp/openplane-desktop-speed/tests/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache
+
+CreateBuildDirectory /tmp/openplane-desktop-speed/tests/Build/Products/Debug
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-desktop-speed/tests/Build/Products/Debug
+
+CreateBuildDirectory /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+CreateBuildDirectory /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/ExplicitPrecompiledModules
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+CreateBuildDirectory /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/EagerLinkingTBDs/Debug
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/EagerLinkingTBDs/Debug
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane-acf40ef4130912d87a120b6a244ec8a7-VFS/all-product-headers.yaml
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane-acf40ef4130912d87a120b6a244ec8a7-VFS/all-product-headers.yaml
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests.DependencyMetadataFileList (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests.DependencyMetadataFileList
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/empty-OpenPlaneTests.plist (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/empty-OpenPlaneTests.plist
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests.DependencyStaticMetadataFileList (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-own-target-headers.hmap (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-own-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-all-target-headers.hmap (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-all-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-project-headers.hmap (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-project-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests.hmap (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests.hmap
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-all-non-framework-target-headers.hmap (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-generated-files.hmap (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-generated-files.hmap
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.SwiftFileList (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.SwiftFileList
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests_const_extract_protocols.json (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests_const_extract_protocols.json
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.SwiftConstValuesFileList (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.LinkFileList (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.LinkFileList
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests-OutputFileMap.json (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests-OutputFileMap.json
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.DependencyStaticMetadataFileList (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.hmap
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.DependencyMetadataFileList (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.DependencyMetadataFileList
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-project-headers.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-project-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-own-target-headers.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-own-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-generated-files.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-generated-files.hmap
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-all-target-headers.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-all-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-all-non-framework-target-headers.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-DebugDylibPath-normal-arm64.txt (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-DebugDylibPath-normal-arm64.txt
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-DebugDylibInstallName-normal-arm64.txt (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-DebugDylibInstallName-normal-arm64.txt
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftConstValuesFileList (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane_const_extract_protocols.json (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane_const_extract_protocols.json
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.LinkFileList (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.LinkFileList
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane-OutputFileMap.json (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane-OutputFileMap.json
+
+WriteAuxiliaryFile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources/Entitlements.plist (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources/Entitlements.plist
+
+MkDir /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents/MacOS (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents/MacOS
+
+MkDir /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents
+
+MkDir /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest
+
+MkDir /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Resources (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Resources
+
+MkDir /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns
+
+MkDir /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS
+
+MkDir /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks
+
+MkDir /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents
+
+MkDir /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app
+
+ProcessProductPackaging "" /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.app.xcent (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Entitlements:
+    
+    {
+    "com.apple.security.get-task-allow" = 1;
+}
+    
+    builtin-productPackagingUtility -entitlements -format xml -o /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.app.xcent
+
+ProcessProductPackagingDER /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.app.xcent /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.app.xcent.der (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /usr/bin/derq query -f xml -i /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.app.xcent -o /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.app.xcent.der --raw
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCUnit.framework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCUnit.framework (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCUnit.framework /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks
+
+GenerateAssetSymbols /Users/ayalpani/dev/_products/openplane/OpenPlane/Assets.xcassets (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/ayalpani/dev/_products/openplane/OpenPlane/Assets.xcassets --compile /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Resources --output-format human-readable-text --notices --warnings --export-dependency-info /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_dependencies --output-partial-info-plist /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_generated_info.plist --app-icon AppIcon --enable-on-demand-resources NO --development-region en --target-device mac --minimum-deployment-target 26.0 --platform macosx --bundle-identifier com.yalpani.openplane.tests --generate-swift-asset-symbol-extensions NO --generate-swift-asset-symbols /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.swift --generate-objc-asset-symbols /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.h --generate-asset-symbol-index /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/* com.apple.actool.compilation-results */
+/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.h
+/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.swift
+
+
+MkDir /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_output/unthinned (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_output/unthinned
+
+MkDir /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_output/thinned (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_output/thinned
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCUIAutomation.framework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/XCUIAutomation.framework (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/XCUIAutomation.framework /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/libXCTestSwiftSupport.dylib /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/libXCTestBundleInject.dylib /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestBundleInject.dylib (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestBundleInject.dylib /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks
+
+Ld /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/__preview.dylib normal (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos26.0 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -O0 -L/tmp/openplane-desktop-speed/tests/Build/Products/Debug -F/tmp/openplane-desktop-speed/tests/Build/Products/Debug -install_name @rpath/OpenPlane.debug.dylib -rdynamic -Xlinker -no_deduplicate -Xlinker -debug_variant -Xlinker -dependency_info -Xlinker /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane_dependency_info.dat -Xlinker -no_adhoc_codesign -o /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/__preview.dylib
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTestSupport.framework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCTestSupport.framework (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCTestSupport.framework /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTestCore.framework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCTestCore.framework (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCTestCore.framework /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTest.framework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/XCTest.framework (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/XCTest.framework /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTAutomationSupport.framework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCTAutomationSupport.framework (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCTAutomationSupport.framework /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/Testing.framework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/Testing.framework (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/Testing.framework /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks
+
+CompileAssetCatalogVariant thinned /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Resources /Users/ayalpani/dev/_products/openplane/OpenPlane/Assets.xcassets (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/ayalpani/dev/_products/openplane/OpenPlane/Assets.xcassets --compile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_output/thinned --output-format human-readable-text --notices --warnings --export-dependency-info /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_dependencies_thinned --output-partial-info-plist /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_generated_info.plist_thinned --app-icon AppIcon --enable-on-demand-resources NO --development-region en --target-device mac --minimum-deployment-target 26.0 --platform macosx
+/* com.apple.actool.compilation-results */
+/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_generated_info.plist_thinned
+/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_output/thinned/AppIcon.icns
+/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_output/thinned/Assets.car
+
+
+CodeSign /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/libXCTestBundleInject.dylib (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/libXCTestBundleInject.dylib
+/tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/libXCTestBundleInject.dylib: replacing existing signature
+
+CodeSign /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTestSupport.framework (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTestSupport.framework
+/tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTestSupport.framework: replacing existing signature
+
+CodeSign /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCUnit.framework (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCUnit.framework
+/tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCUnit.framework: replacing existing signature
+
+CodeSign /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTest.framework (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTest.framework
+/tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTest.framework: replacing existing signature
+
+CodeSign /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/libXCTestSwiftSupport.dylib (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/libXCTestSwiftSupport.dylib
+/tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/libXCTestSwiftSupport.dylib: replacing existing signature
+
+CodeSign /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTAutomationSupport.framework (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTAutomationSupport.framework
+/tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTAutomationSupport.framework: replacing existing signature
+
+CodeSign /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTestCore.framework (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTestCore.framework
+/tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCTestCore.framework: replacing existing signature
+
+CodeSign /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCUIAutomation.framework (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCUIAutomation.framework
+/tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/XCUIAutomation.framework: replacing existing signature
+
+CodeSign /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/Testing.framework (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --timestamp\=none --preserve-metadata\=identifier,entitlements,flags --generate-entitlement-der /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/Testing.framework
+/tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks/Testing.framework: replacing existing signature
+
+LinkAssetCatalog /Users/ayalpani/dev/_products/openplane/OpenPlane/Assets.xcassets (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-linkAssetCatalog --thinned /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_output/thinned --thinned-dependencies /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_dependencies_thinned --thinned-info-plist-content /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_generated_info.plist_thinned --unthinned /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_output/unthinned --unthinned-dependencies /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_dependencies_unthinned --unthinned-info-plist-content /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_generated_info.plist_unthinned --output /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Resources --plist-output /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_generated_info.plist
+note: Emplaced /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Resources/AppIcon.icns (in target 'OpenPlane' from project 'OpenPlane')
+note: Emplaced /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Resources/Assets.car (in target 'OpenPlane' from project 'OpenPlane')
+
+ProcessInfoPlistFile /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Info.plist /Users/ayalpani/dev/_products/openplane/OpenPlane/Info.plist (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-infoPlistUtility /Users/ayalpani/dev/_products/openplane/OpenPlane/Info.plist -producttype com.apple.product-type.application -genpkginfo /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PkgInfo -expandbuildsettings -platform macosx -additionalcontentfile /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/assetcatalog_generated_info.plist -o /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Info.plist
+
+SwiftDriver OpenPlane normal arm64 com.apple.xcode.tools.swift.compiler (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OpenPlane -Onone @/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList -DDEBUG -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /tmp/openplane-desktop-speed/tests/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /tmp/openplane-desktop-speed/tests/Build/Products/Debug -F /tmp/openplane-desktop-speed/tests/Build/Products/Debug -emit-localized-strings -emit-localized-strings-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64 -c -j12 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/openplane-desktop-speed/tests/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -sdk-module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-generated-files.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-own-target-headers.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-project-headers.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Products/Debug/include -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources-normal/arm64 -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources/arm64 -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane-Swift.h -working-directory /Users/ayalpani/dev/_products/openplane -experimental-emit-module-separately -disable-cmo
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/_Builtin_stdbool-8RAT8345WML49ZB8L7KXJT7GE.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/SwiftShims-48TR4NH4KCM9MTAALVD4K41MI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/_SwiftConcurrencyShims-3YIUIVF7JJGI2DO6AH7JOXXJE.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/ptrcheck-DDIVS9UQU4LU6OF7AKIXFRQ1Z.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/_Builtin_stdarg-9DGGI2PMGT72Q05G4B4104N4C.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/ptrauth-3NNTNZD9HM9I0WXDQ311U44TT.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/_Builtin_stddef-4E2JYQWM6B9OB42CZS10KF5N7.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/_Builtin_float-BY3TOC3UM01MWAVM0WF3E3C5E.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/DeveloperToolsSupport-5DS1U3TC9RK15D8N8HV8T4O3G.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/_AvailabilityInternal-DIC8GB9W87BPSAAPSPVWABU1O.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/_DarwinFoundation1-5GYLCDWQ0APMHMJ54GRKFR84.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/_DarwinFoundation2-EEBTZF5FQIL30CAXKSSYVNE52.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/_Builtin_limits-BCAS7NJQ498TBDMV0XNTDO5HZ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/_Builtin_tgmath-6YM5JTL1GDHFPT8RK5BOLXKM0.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/_Builtin_stdint-PT6R8DPOIMJIOH8UUFV9Z6SX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/sys_types-68UKA1F9OG5OIR5ELHZVWNNPD.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/OpenGL-CTVUNGNEYI1RU6FM849NBD3JM.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/_Builtin_intrinsics-7S2TW1U31EMA96CNBJVCL5MZJ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/libDER-9JR7RWJG4JBOMDYPP3OUNVF6J.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/_Builtin_stdatomic-281POVG49QY92LNW9Y3R4ZND8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/_DarwinFoundation3-3B3CH7VSMK5TTTDQ9I4C1DODE.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/_Builtin_inttypes-2CI6YFWP3X1Q3UPBNQHRBXNIV.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/Darwin-F393VTL7V3YG8PY90HWM4JCO6.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/simd-6N72CJF8PE1Z8RUUS9WP9BM38.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/libkern-BRUQJIT7LEL30JWR954TP7XAZ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/CUPS-8VTYUP33V6E8Y8BD60VQJX63N.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/MachO-2KCOWLWSXEDH6HNG91SRNS2YF.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/launch-BYWMON31WRSMTEZZPKMCASLK8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/ObjectiveC-802E81LY5GILNG35F8PK3HK2G.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/Spatial-C5KIQUG7CC06H8TPC6LCE7JAP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/os_object-4OQCFT27496C8I8I07IFZKLXL.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/os_workgroup-BC66FGTTS0ONFFM4IC225BEC7.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/Dispatch-1392PYVUYFYZBHYQLXIZ7IJ7X.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/CoreFoundation-7IXWFDYM12AGBUBK05EH9BU3Q.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/XPC-9Y78TPLO9KIBUOIBH67L1ED3S.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/os-8G86Z4P5G3F5FW3E0ACVK7CYT.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/Security-6YDEF8YB0NDJ2YL5XKLD64JR3.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/IOKit-3N8Z98JCIGWAGPWRMTKXTVWZO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/ColorSync-ACF2GRNNMAD92BWGF9PNEM854.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/CoreAudioTypes-C74V7D3JQUVCGCP198LEFS567.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/CFNetwork-KR3JNCPF5L6BP0U2I76ZJR1S.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/DiskArbitration-7WFMLJSGQX07LVF6YER8Y019R.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/CoreGraphics-C1HCOC3LCRYD2XYJ5LSNOM7FE.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/CoreServices-AVS0UBB8L8Y76NAIL3PNJG0M1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/CoreText-2TK8Q7HT9RFHK9ITS5DUE2635.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/ImageIO-DJI01V11LNOUSG6SMZX016790.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/Foundation-4BM0JTH7R5TUPTZOLBF9CGY1R.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/DataDetection-6NFJNHPF4RLYZ6VI477JVBFOH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/UniformTypeIdentifiers-4LOOBCP9F4Z9EUK2MZP6693AF.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/CoreMIDI-7AUON6AHHAMOSV4ZBG3WTTU4X.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/Symbols-7O1LLMEAQQWZCDBFBFSB5QQVN.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/Accessibility-9B3091Y20AADZDAOTV1FJ7XA4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/CoreAudio-A8MN05RDHIWZ3YV2B8LY4WT7H.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/IOSurface-7VZ2EN5YWI995GND7KTE0NTRT.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/ServiceManagement-2E5QFTZ3UPDB7G0Z5K0I1O7SN.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/CoreData-6JXVIIJ6HTMVFMR99F9L16AEJ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/OSLog-6F8W2EBILNJ1X2H7Y23ZCE7A9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/CoreTransferable-ECXIYYWG3FCCFV28RGKVQ614J.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/ApplicationServices-EKTFCMPRVB3ARLSE9C71G329W.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/Metal-1A36XCZ1NTGEIRY6NULK05PJ6.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/Carbon-3K38A6E35P839X4F7CHD1ZHFD.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/CoreVideo-3MK1PMAZNTJD4WKCOE613I9CP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/AudioToolbox-3XQ72WA5X9R5YK1KO222QVIH8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/CoreImage-E2NQUIW5TEEZ8IA0EH14YBPMI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/QuartzCore-2MTWPFBHGEYOKB7IAGEOAUDL1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/CoreMedia-EH6QVOA2LMEZLCRJUBJD4YA0I.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/SwiftUICore-1WKR1AF3MTPJOIUW7CNVQP1LI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/AppKit-7NC596NOT6LOZI6EZNYOAWNX8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/AVFAudio-31JQV7Y876RAPWXCNXZZ17J00.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/MediaToolbox-B7P6NVNZHGK7DAIXS67DL3ZV2.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/AVFoundation-EQ9ZCXA2QII145KA3FOOSUMGE.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/ScreenCaptureKit-3LBPGCQGMXV4BG1U5MU6GKVF9.pcm
+
+SwiftCompile normal arm64 Compiling\ WindowService.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/WindowService.swift (in target 'OpenPlane' from project 'OpenPlane')
+
+SwiftCompile normal arm64 /Users/ayalpani/dev/_products/openplane/OpenPlane/WindowService.swift (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ OpenPlane (in target 'OpenPlane' from project 'OpenPlane')
+
+EmitSwiftModule normal arm64 (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+
+SwiftCompile normal arm64 Compiling\ PermissionView.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/PermissionView.swift (in target 'OpenPlane' from project 'OpenPlane')
+
+SwiftCompile normal arm64 /Users/ayalpani/dev/_products/openplane/OpenPlane/PermissionView.swift (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+
+SwiftCompile normal arm64 Compiling\ CanvasModel.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasModel.swift (in target 'OpenPlane' from project 'OpenPlane')
+SwiftCompile normal arm64 /Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasModel.swift (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+
+SwiftCompile normal arm64 Compiling\ AppDelegate.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/AppDelegate.swift (in target 'OpenPlane' from project 'OpenPlane')
+
+SwiftCompile normal arm64 /Users/ayalpani/dev/_products/openplane/OpenPlane/AppDelegate.swift (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+
+SwiftCompile normal arm64 Compiling\ CanvasView.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasView.swift (in target 'OpenPlane' from project 'OpenPlane')
+SwiftCompile normal arm64 /Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasView.swift (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+
+SwiftCompile normal arm64 Compiling\ OpenPlaneApp.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/OpenPlaneApp.swift (in target 'OpenPlane' from project 'OpenPlane')
+
+SwiftCompile normal arm64 /Users/ayalpani/dev/_products/openplane/OpenPlane/OpenPlaneApp.swift (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+
+SwiftCompile normal arm64 Compiling\ GeneratedAssetSymbols.swift /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'OpenPlane' from project 'OpenPlane')
+
+SwiftCompile normal arm64 /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for OpenPlane (in target 'OpenPlane' from project 'OpenPlane')
+
+SwiftDriver\ Compilation\ Requirements OpenPlane normal arm64 com.apple.xcode.tools.swift.compiler (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OpenPlane -Onone @/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList -DDEBUG -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /tmp/openplane-desktop-speed/tests/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /tmp/openplane-desktop-speed/tests/Build/Products/Debug -F /tmp/openplane-desktop-speed/tests/Build/Products/Debug -emit-localized-strings -emit-localized-strings-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64 -c -j12 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/openplane-desktop-speed/tests/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -sdk-module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-generated-files.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-own-target-headers.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-project-headers.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Products/Debug/include -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources-normal/arm64 -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources/arm64 -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane-Swift.h -working-directory /Users/ayalpani/dev/_products/openplane -experimental-emit-module-separately -disable-cmo
+
+SwiftMergeGeneratedHeaders /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources/OpenPlane-Swift.h /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane-Swift.h (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-swiftHeaderTool -arch arm64 /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane-Swift.h -o /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources/OpenPlane-Swift.h
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.swiftmodule/arm64-apple-macos.swiftdoc /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftdoc (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftdoc /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.swiftmodule/arm64-apple-macos.swiftdoc
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.swiftmodule/arm64-apple-macos.swiftmodule /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.swiftmodule/arm64-apple-macos.swiftmodule
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.swiftmodule/arm64-apple-macos.abi.json /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.abi.json (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.abi.json /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.swiftmodule/arm64-apple-macos.abi.json
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftsourceinfo (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftsourceinfo /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+SwiftDriver OpenPlaneTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OpenPlaneTests -Onone @/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -index-store-path /tmp/openplane-desktop-speed/tests/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /tmp/openplane-desktop-speed/tests/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /tmp/openplane-desktop-speed/tests/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j12 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/openplane-desktop-speed/tests/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -sdk-module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-generated-files.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-own-target-headers.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-project-headers.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Products/Debug/include -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/DerivedSources/arm64 -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests-Swift.h -working-directory /Users/ayalpani/dev/_products/openplane -experimental-emit-module-separately -disable-cmo
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules/XCUIAutomation-33DJRRB63WB984V2D593U3T8I.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules/XCTest-ZIHIIG6EXVO7XJPNFZGQGHR0.pcm
+
+SwiftExplicitDependencyCompileModuleFromInterface arm64 /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules/XCUIAutomation-1EIHXTF766050.swiftmodule
+
+SwiftDriverJobDiscovery normal arm64 Compiling GeneratedAssetSymbols.swift (in target 'OpenPlane' from project 'OpenPlane')
+
+SwiftExplicitDependencyCompileModuleFromInterface arm64 /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules/XCTest-301658AGI76TB.swiftmodule
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ OpenPlaneTests (in target 'OpenPlaneTests' from project 'OpenPlane')
+
+EmitSwiftModule normal arm64 (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+
+SwiftCompile normal arm64 Compiling\ DesktopNavigationTests.swift /Users/ayalpani/dev/_products/openplane/OpenPlaneTests/DesktopNavigationTests.swift (in target 'OpenPlaneTests' from project 'OpenPlane')
+
+SwiftCompile normal arm64 /Users/ayalpani/dev/_products/openplane/OpenPlaneTests/DesktopNavigationTests.swift (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+
+SwiftCompile normal arm64 Compiling\ CanvasSelectionTests.swift /Users/ayalpani/dev/_products/openplane/OpenPlaneTests/CanvasSelectionTests.swift (in target 'OpenPlaneTests' from project 'OpenPlane')
+
+SwiftCompile normal arm64 /Users/ayalpani/dev/_products/openplane/OpenPlaneTests/CanvasSelectionTests.swift (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+
+SwiftCompile normal arm64 Compiling\ CanvasMathTests.swift /Users/ayalpani/dev/_products/openplane/OpenPlaneTests/CanvasMathTests.swift (in target 'OpenPlaneTests' from project 'OpenPlane')
+SwiftCompile normal arm64 /Users/ayalpani/dev/_products/openplane/OpenPlaneTests/CanvasMathTests.swift (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for OpenPlaneTests (in target 'OpenPlaneTests' from project 'OpenPlane')
+
+SwiftDriver\ Compilation\ Requirements OpenPlaneTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OpenPlaneTests -Onone @/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -index-store-path /tmp/openplane-desktop-speed/tests/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /tmp/openplane-desktop-speed/tests/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /tmp/openplane-desktop-speed/tests/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j12 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/openplane-desktop-speed/tests/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -sdk-module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-generated-files.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-own-target-headers.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-project-headers.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Products/Debug/include -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/DerivedSources/arm64 -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests-Swift.h -working-directory /Users/ayalpani/dev/_products/openplane -experimental-emit-module-separately -disable-cmo
+
+SwiftMergeGeneratedHeaders /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/DerivedSources/OpenPlaneTests-Swift.h /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests-Swift.h (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-swiftHeaderTool -arch arm64 /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests-Swift.h -o /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/DerivedSources/OpenPlaneTests-Swift.h
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlaneTests.swiftmodule/arm64-apple-macos.swiftdoc /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.swiftdoc (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.swiftdoc /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlaneTests.swiftmodule/arm64-apple-macos.swiftdoc
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlaneTests.swiftmodule/arm64-apple-macos.swiftmodule /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.swiftmodule (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.swiftmodule /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlaneTests.swiftmodule/arm64-apple-macos.swiftmodule
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlaneTests.swiftmodule/arm64-apple-macos.abi.json /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.abi.json (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.abi.json /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlaneTests.swiftmodule/arm64-apple-macos.abi.json
+
+Copy /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlaneTests.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.swiftsourceinfo (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.swiftsourceinfo /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlaneTests.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+SwiftDriverJobDiscovery normal arm64 Compiling DesktopNavigationTests.swift (in target 'OpenPlaneTests' from project 'OpenPlane')
+
+SwiftDriverJobDiscovery normal arm64 Compiling OpenPlaneApp.swift (in target 'OpenPlane' from project 'OpenPlane')
+
+SwiftDriverJobDiscovery normal arm64 Compiling PermissionView.swift (in target 'OpenPlane' from project 'OpenPlane')
+
+SwiftDriverJobDiscovery normal arm64 Compiling CanvasSelectionTests.swift (in target 'OpenPlaneTests' from project 'OpenPlane')
+
+SwiftDriverJobDiscovery normal arm64 Compiling AppDelegate.swift (in target 'OpenPlane' from project 'OpenPlane')
+
+SwiftDriverJobDiscovery normal arm64 Compiling WindowService.swift (in target 'OpenPlane' from project 'OpenPlane')
+
+SwiftDriverJobDiscovery normal arm64 Compiling CanvasModel.swift (in target 'OpenPlane' from project 'OpenPlane')
+
+SwiftDriverJobDiscovery normal arm64 Compiling CanvasView.swift (in target 'OpenPlane' from project 'OpenPlane')
+
+SwiftDriver\ Compilation OpenPlane normal arm64 com.apple.xcode.tools.swift.compiler (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OpenPlane -Onone @/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList -DDEBUG -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -enable-testing -index-store-path /tmp/openplane-desktop-speed/tests/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /tmp/openplane-desktop-speed/tests/Build/Products/Debug -F /tmp/openplane-desktop-speed/tests/Build/Products/Debug -emit-localized-strings -emit-localized-strings-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64 -c -j12 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/openplane-desktop-speed/tests/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -sdk-module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-generated-files.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-own-target-headers.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-project-headers.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Products/Debug/include -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources-normal/arm64 -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources/arm64 -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane-Swift.h -working-directory /Users/ayalpani/dev/_products/openplane -experimental-emit-module-separately -disable-cmo
+
+Ld /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/OpenPlane.debug.dylib normal (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos26.0 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -O0 -L/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/tmp/openplane-desktop-speed/tests/Build/Products/Debug -F/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/tmp/openplane-desktop-speed/tests/Build/Products/Debug -filelist /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.LinkFileList -install_name @rpath/OpenPlane.debug.dylib -Xlinker -rpath -Xlinker @executable_path/../Frameworks -Xlinker -object_path_lto -Xlinker /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -debug_variant -Xlinker -dependency_info -Xlinker /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane_dependency_info.dat -fobjc-link-runtime -fprofile-instr-generate -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule @/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane-linker-args.resp -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -Xlinker -no_adhoc_codesign -o /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/OpenPlane.debug.dylib
+
+ConstructStubExecutorLinkFileList /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-ExecutorLinkFileList-normal-arm64.txt (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    construct-stub-executor-link-file-list /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/OpenPlane.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-ExecutorLinkFileList-normal-arm64.txt
+note: Using stub executor library with Swift entry point. (in target 'OpenPlane' from project 'OpenPlane')
+
+Ld /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/OpenPlane normal (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos26.0 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -O0 -L/tmp/openplane-desktop-speed/tests/Build/Products/Debug -F/tmp/openplane-desktop-speed/tests/Build/Products/Debug -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker @executable_path/../Frameworks -rdynamic -Xlinker -no_deduplicate -Xlinker -debug_variant -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane-ExecutorLinkFileList-normal-arm64.txt /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/OpenPlane.debug.dylib -Xlinker -no_adhoc_codesign -o /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/OpenPlane
+
+CopySwiftLibs /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-swiftStdLibTool --copy --verbose --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --scan-executable /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/OpenPlane.debug.dylib --scan-folder /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks --scan-folder /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns --scan-folder /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Library/SystemExtensions --scan-folder /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Extensions --platform macosx --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name OpenPlane --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk --xcode-version 17F113 --platform-family macOS --deployment-target 26.0 --bundle-identifier com.yalpani.openplane.tests --output /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/Resources --target-triple arm64-apple-macos26.0 --binary-file /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/OpenPlane --dependency-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane_dependency_info.dat --stringsdata-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList --metadata-file-list /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.DependencyMetadataFileList --static-metadata-file-list /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-09-06 01:38:30.015 appintentsmetadataprocessor[14462:1516402] Starting appintentsmetadataprocessor export
+2026-09-06 01:38:30.016 appintentsmetadataprocessor[14462:1516402] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+ProcessInfoPlistFile /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents/Info.plist /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/empty-OpenPlaneTests.plist (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-infoPlistUtility /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/empty-OpenPlaneTests.plist -producttype com.apple.product-type.bundle.unit-test -expandbuildsettings -platform macosx -o /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents/Info.plist
+
+SwiftDriverJobDiscovery normal arm64 Compiling CanvasMathTests.swift (in target 'OpenPlaneTests' from project 'OpenPlane')
+
+SwiftDriver\ Compilation OpenPlaneTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OpenPlaneTests -Onone @/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -index-store-path /tmp/openplane-desktop-speed/tests/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /tmp/openplane-desktop-speed/tests/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /tmp/openplane-desktop-speed/tests/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j12 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/openplane-desktop-speed/tests/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -sdk-module-cache-path /tmp/openplane-desktop-speed/tests/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/openplane-desktop-speed/tests/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-generated-files.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-own-target-headers.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests-project-headers.hmap -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Products/Debug/include -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/DerivedSources/arm64 -Xcc -I/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests-Swift.h -working-directory /Users/ayalpani/dev/_products/openplane -experimental-emit-module-separately -disable-cmo
+
+Ld /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents/MacOS/OpenPlaneTests normal (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos26.0 -bundle -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -O0 -L/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/tmp/openplane-desktop-speed/tests/Build/Products/Debug -L/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/tmp/openplane-desktop-speed/tests/Build/Products/Debug -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -filelist /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.LinkFileList -Xlinker -rpath -Xlinker @loader_path/../Frameworks -Xlinker -rpath -Xlinker @executable_path/../Frameworks -bundle_loader /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/OpenPlane -Xlinker -object_path_lto -Xlinker /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests_lto.o -Xlinker -no_deduplicate -Xlinker -debug_variant -Xlinker -dependency_info -Xlinker /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests_dependency_info.dat -fobjc-link-runtime -fprofile-instr-generate -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.swiftmodule @/tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests-linker-args.resp -Xlinker -needed_framework -Xlinker XCTest -framework XCTest -Xlinker -needed-lXCTestSwiftSupport -lXCTestSwiftSupport -framework XCTest /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/OpenPlane.debug.dylib -Xlinker -no_adhoc_codesign -o /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents/MacOS/OpenPlaneTests
+
+CopySwiftLibs /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents/MacOS/OpenPlaneTests --scan-folder /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents/Frameworks --scan-folder /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents/PlugIns --scan-folder /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents/Library/SystemExtensions --scan-folder /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents/Extensions --scan-folder /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks/XCTest.framework --platform macosx --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name OpenPlaneTests --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk --xcode-version 17F113 --platform-family macOS --deployment-target 26.0 --bundle-identifier com.yalpani.openplane.tests --output /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents/Resources --target-triple arm64-apple-macos26.0 --binary-file /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest/Contents/MacOS/OpenPlaneTests --dependency-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests_dependency_info.dat --stringsdata-file /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.SwiftFileList --metadata-file-list /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests.DependencyMetadataFileList --static-metadata-file-list /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/OpenPlaneTests.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlaneTests.build/Objects-normal/arm64/OpenPlaneTests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-09-06 01:38:31.220 appintentsmetadataprocessor[14465:1516421] Starting appintentsmetadataprocessor export
+2026-09-06 01:38:31.222 appintentsmetadataprocessor[14465:1516421] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+CodeSign /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Sign to Run Locally"
+    
+    /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest
+
+RegisterExecutionPolicyException /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-RegisterExecutionPolicyException /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest
+
+Touch /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest (in target 'OpenPlaneTests' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /usr/bin/touch -c /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/PlugIns/OpenPlaneTests.xctest
+
+CodeSign /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/OpenPlane.debug.dylib (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --timestamp\=none --generate-entitlement-der /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/OpenPlane.debug.dylib
+
+CodeSign /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/__preview.dylib (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --timestamp\=none --generate-entitlement-der /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/__preview.dylib
+
+CodeSign /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --entitlements /tmp/openplane-desktop-speed/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.app.xcent --timestamp\=none --generate-entitlement-der /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app
+
+RegisterExecutionPolicyException /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-RegisterExecutionPolicyException /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app
+
+Validate /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-validationUtility /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app -no-validate-extension -infoplist-subpath Contents/Info.plist
+
+Touch /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /usr/bin/touch -c /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app
+
+RegisterWithLaunchServices /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /tmp/openplane-desktop-speed/tests/Build/Products/Debug/OpenPlane.app
+
+2026-09-06 01:38:32.705282+0200 OpenPlane[14473:1516497] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/0b/k1jv3qb156l_p6wnvzh1csk00000gn/T/com.yalpani.openplane.tests.savedState
+Test Suite 'All tests' started at 2026-09-06 01:38:32.905.
+Test Suite 'OpenPlaneTests.xctest' started at 2026-09-06 01:38:32.905.
+Test Suite 'CanvasMathTests' started at 2026-09-06 01:38:32.906.
+Test Case '-[OpenPlaneTests.CanvasMathTests testAmbiguousAppWindowSlotsAreReusedWhenPersisting]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testAmbiguousAppWindowSlotsAreReusedWhenPersisting]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testAnimatedKeyboardZoomContinuesTowardAnExtendedTargetWithoutRestarting]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testAnimatedKeyboardZoomContinuesTowardAnExtendedTargetWithoutRestarting]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testAppNavigationHistoryMovesBothDirectionsAndDropsForwardBranch]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testAppNavigationHistoryMovesBothDirectionsAndDropsForwardBranch]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testAppWindowSlotsUseUniqueTitlesWithoutGuessingAmbiguousChildren]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testAppWindowSlotsUseUniqueTitlesWithoutGuessingAmbiguousChildren]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testBackspaceQuitsOnlyOncePerKeyPress]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testBackspaceQuitsOnlyOncePerKeyPress]' passed (0.000 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testCanvasChromeScalesAndFadesAtBirdsEyeZoom]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testCanvasChromeScalesAndFadesAtBirdsEyeZoom]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testCanvasPaletteHasOneVariantOfEveryBaseColorAndFallsBackToSlate]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testCanvasPaletteHasOneVariantOfEveryBaseColorAndFallsBackToSlate]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testCanvasSearchMatchesAppNamesAndWindowTitles]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testCanvasSearchMatchesAppNamesAndWindowTitles]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testCascadeAvoidsExistingFrame]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testCascadeAvoidsExistingFrame]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testClampedPanelOriginStaysInsideAvailableFrame]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testClampedPanelOriginStaysInsideAvailableFrame]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testCommandTabMatcherOnlyClaimsTheSystemSwitcherShortcut]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testCommandTabMatcherOnlyClaimsTheSystemSwitcherShortcut]' passed (0.002 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testCoordinateRoundTrip]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testCoordinateRoundTrip]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testDesktopPagesRenameNavigateAndLockIndependentViews]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testDesktopPagesRenameNavigateAndLockIndependentViews]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testDesktopTitleNudgeEnclosesNotchAndGrowsWithText]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testDesktopTitleNudgeEnclosesNotchAndGrowsWithText]' passed (0.000 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testDirectionalNavigationFinderDownChoosesLibreOfficeNotWisprFlow]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testDirectionalNavigationFinderDownChoosesLibreOfficeNotWisprFlow]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testDirectionalNavigationPrefersARealLeftNeighborOverACloserDiagonal]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testDirectionalNavigationPrefersARealLeftNeighborOverACloserDiagonal]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testDirectionalNavigationScenariosInEveryDirection]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testDirectionalNavigationScenariosInEveryDirection]' passed (0.004 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testDirectionalNavigationSupportsWindowAndPlaceholderKeys]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testDirectionalNavigationSupportsWindowAndPlaceholderKeys]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testDirectionalNavigationTreatsWindowsAndClosedCardsEqually]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testDirectionalNavigationTreatsWindowsAndClosedCardsEqually]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testDirectionalNavigationUsesSpatialNeighbors]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testDirectionalNavigationUsesSpatialNeighbors]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testFocusBackdropFadesOutAcrossCameraTransition]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testFocusBackdropFadesOutAcrossCameraTransition]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testFocusKeepsCanvasBackgroundOpaqueUntilWindowHandoff]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testFocusKeepsCanvasBackgroundOpaqueUntilWindowHandoff]' passed (0.000 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testGridHasRequestedGap]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testGridHasRequestedGap]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testGridPatternStaysInSyncAndVisible]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testGridPatternStaysInSyncAndVisible]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testHeldKeyboardZoomAcceleratesAndMovesContinuouslyInBothDirections]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testHeldKeyboardZoomAcceleratesAndMovesContinuouslyInBothDirections]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testHeldZoomUsesDoubleRateInBothDirectionsWithoutMovingCenter]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testHeldZoomUsesDoubleRateInBothDirectionsWithoutMovingCenter]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testInventoryTrackerWaitsForThreeMissesAndRestoresTransientWindows]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testInventoryTrackerWaitsForThreeMissesAndRestoresTransientWindows]' passed (0.000 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testKeyboardZoomStepsInExpectedDirectionAndStaysWithinLimits]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testKeyboardZoomStepsInExpectedDirectionAndStaysWithinLimits]' passed (0.000 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testLegacyWindowPositionsMigrateIntoManifestedAppHomes]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testLegacyWindowPositionsMigrateIntoManifestedAppHomes]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testManifestedAppHomesAndWindowSlotsStayIndependentPerDesktop]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testManifestedAppHomesAndWindowSlotsStayIndependentPerDesktop]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testMarqueeRequiresFullContainmentAndGroupTranslationUsesCanvasCoordinates]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testMarqueeRequiresFullContainmentAndGroupTranslationUsesCanvasCoordinates]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testNavigationCameraCentersEveryTargetAndPreservesZoom]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testNavigationCameraCentersEveryTargetAndPreservesZoom]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testNearestAvailablePlacementIsDeterministicAndKeepsItsGap]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testNearestAvailablePlacementIsDeterministicAndKeepsItsGap]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testNearestAvailablePlacementStillFindsSpaceBeyondThePreferredRings]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testNearestAvailablePlacementStillFindsSpaceBeyondThePreferredRings]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testPendingPlaceholderLaunchIgnoresAnotherActivatedApplication]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testPendingPlaceholderLaunchIgnoresAnotherActivatedApplication]' passed (0.000 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testPendingQuitSuppressesConfirmationWindowUntilItDisappears]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testPendingQuitSuppressesConfirmationWindowUntilItDisappears]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testPreviewCacheRoundTrip]' started.
+2026-09-06 01:38:32.954101+0200 OpenPlane[14473:1516673] [Common] Unable to obtain a task name port right for pid 613: (os/kern) failure (0x5)
+Test Case '-[OpenPlaneTests.CanvasMathTests testPreviewCacheRoundTrip]' passed (0.011 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testPreviewRefreshSchedulerKeepsSelectionLiveAndRotatesBackgrounds]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testPreviewRefreshSchedulerKeepsSelectionLiveAndRotatesBackgrounds]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testPreviewResolutionFollowsVisibleRetinaSizeWithinLimits]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testPreviewResolutionFollowsVisibleRetinaSizeWithinLimits]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testPreviewsExpandWithinLargestAvailableCell]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testPreviewsExpandWithinLargestAvailableCell]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testPreviewStatusExplainsFreshnessAndFallback]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testPreviewStatusExplainsFreshnessAndFallback]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testPrivateBrowserWindowsAreDetectedWithoutRedactingUnrelatedApps]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testPrivateBrowserWindowsAreDetectedWithoutRedactingUnrelatedApps]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testSelectionBoundsIncludeZoomedIconAndOnlyVisibleTitle]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testSelectionBoundsIncludeZoomedIconAndOnlyVisibleTitle]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testSelectionMovesTitleBeforeShowingBorder]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testSelectionMovesTitleBeforeShowingBorder]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testSelectionPaddingIsEqualWhenDifferentItemsDefineEachOutsideEdge]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testSelectionPaddingIsEqualWhenDifferentItemsDefineEachOutsideEdge]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testSelectionResizeUsesOppositeEdgesAsAnchors]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testSelectionResizeUsesOppositeEdgesAsAnchors]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testStateMachineRejectsSecondFocus]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testStateMachineRejectsSecondFocus]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testTrackedCameraMovesFocusedWindowOnStraightScreenPath]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testTrackedCameraMovesFocusedWindowOnStraightScreenPath]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testWindowIdentityMatchesBrowserDecoratedAndTruncatedTitles]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testWindowIdentityMatchesBrowserDecoratedAndTruncatedTitles]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testWindowPositionsRestoreWithoutGuessingBetweenAmbiguousWindows]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testWindowPositionsRestoreWithoutGuessingBetweenAmbiguousWindows]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testZoomAroundViewportCenterKeepsCameraCenter]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testZoomAroundViewportCenterKeepsCameraCenter]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasMathTests testZoomKeepsPointerOverSameWorldPoint]' started.
+Test Case '-[OpenPlaneTests.CanvasMathTests testZoomKeepsPointerOverSameWorldPoint]' passed (0.001 seconds).
+Test Suite 'CanvasMathTests' passed at 2026-09-06 01:38:32.971.
+	 Executed 52 tests, with 0 failures (0 unexpected) in 0.046 (0.065) seconds
+Test Suite 'CanvasSelectionTests' started at 2026-09-06 01:38:32.971.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testArrowSelectionDoesNotRefreshUnrelatedCardsOrInvalidateWholeCanvas]' started.
+2026-09-06 01:38:32.982971+0200 OpenPlane[14473:1516497] [Utility] AFIsDeviceGreymatterEligible Missing entitlements for os_eligibility lookup
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testArrowSelectionDoesNotRefreshUnrelatedCardsOrInvalidateWholeCanvas]' passed (0.056 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testCameraMaintenanceCoalescesMovementAndPersistsFinalCamera]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testCameraMaintenanceCoalescesMovementAndPersistsFinalCamera]' passed (0.762 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testCameraTranslationReusesCardContents]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testCameraTranslationReusesCardContents]' passed (0.061 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testDebugOverlaySurvivesRepeatedZoomRedraws]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testDebugOverlaySurvivesRepeatedZoomRedraws]' passed (1.019 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testDraggingClosedMemberMovesWholeGroupAndPersistsOnlySelectedHomes]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testDraggingClosedMemberMovesWholeGroupAndPersistsOnlySelectedHomes]' passed (0.032 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testDraggingGroupBackgroundMovesClosedMembersWithoutLaunching]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testDraggingGroupBackgroundMovesClosedMembersWithoutLaunching]' passed (0.030 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testFittedFrameTracksZoomWithoutScalingItsScreenPadding]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testFittedFrameTracksZoomWithoutScalingItsScreenPadding]' passed (0.043 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testGridToggleRestoresDotsAtCurrentZoom]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testGridToggleRestoresDotsAtCurrentZoom]' passed (0.041 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testMarqueeIncludesClosedCardsAndSnapsWithoutChangingPositions]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testMarqueeIncludesClosedCardsAndSnapsWithoutChangingPositions]' passed (0.007 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testMarqueeUsesSameGeometryForOpenAndClosedIDsAtDifferentZooms]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testMarqueeUsesSameGeometryForOpenAndClosedIDsAtDifferentZooms]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testNativeCameraTravelCompletesAndInterruptsWithoutFrameCallbacks]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testNativeCameraTravelCompletesAndInterruptsWithoutFrameCallbacks]' passed (0.522 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testPlainClickStillLaunchesButDraggingSingleClosedCardDoesNot]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testPlainClickStillLaunchesButDraggingSingleClosedCardDoesNot]' passed (0.045 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testRapidCameraReversalsPreserveNonBinaryZoom]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testRapidCameraReversalsPreserveNonBinaryZoom]' passed (0.517 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testResizedBoxSnapsToAllIncludedClosedCardsOnMouseUp]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testResizedBoxSnapsToAllIncludedClosedCardsOnMouseUp]' passed (0.036 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testSavingOrResizingDuringNativeTravelKeepsTheCurrentCamera]' started.
+2026-09-06 01:38:36.451487+0200 OpenPlane[14473:1516497] [NSCGS] Ignoring request to entangle context after pre-commit
+2026-09-06 01:38:36.451563+0200 OpenPlane[14473:1516497] [NSCGS] Ignoring request to entangle context after pre-commit
+2026-09-06 01:38:36.451579+0200 OpenPlane[14473:1516497] [NSCGS] Ignoring request to entangle context after pre-commit
+2026-09-06 01:38:36.451720+0200 OpenPlane[14473:1516497] [NSCGS] Entangling fence requested after pre-commit
+2026-09-06 01:38:36.455499+0200 OpenPlane[14473:1516497] [API] cannot add handler to 2 from 2 - dropping
+2026-09-06 01:38:36.456739+0200 OpenPlane[14473:1516497] [NSCGS] Warning: Invalid attempt to open a new transaction during CA commit. This is likely to break AppKit transactional behavior. Break on NSCGSTransactionCreatedDuringCommitError to debug.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testSavingOrResizingDuringNativeTravelKeepsTheCurrentCamera]' passed (0.328 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testSearchFindsClosedAppAndReturnLaunchesOnlyMatchingSelectionOnce]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testSearchFindsClosedAppAndReturnLaunchesOnlyMatchingSelectionOnce]' passed (0.026 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testSearchKeepsClosedCardsUnchangedForMatchesNonmatchesAndEmptyQuery]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testSearchKeepsClosedCardsUnchangedForMatchesNonmatchesAndEmptyQuery]' passed (1.445 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testSearchNavigatesClosedResultsWithoutWrappingOrLaunchingAndSurvivesRefresh]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testSearchNavigatesClosedResultsWithoutWrappingOrLaunchingAndSurvivesRefresh]' passed (0.044 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testSearchShowsOnlyClickableArrowsAsResultCountChanges]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testSearchShowsOnlyClickableArrowsAsResultCountChanges]' passed (0.041 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testShiftClickAndShiftReturnToggleWithoutLaunchingIncludingSingleSelection]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testShiftClickAndShiftReturnToggleWithoutLaunchingIncludingSingleSelection]' passed (0.029 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testUnselectedCardInsideGroupBoundsReceivesShiftClick]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testUnselectedCardInsideGroupBoundsReceivesShiftClick]' passed (0.040 seconds).
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testZoomPreservesWorldCoordinatesAndLayerIdentity]' started.
+Test Case '-[OpenPlaneTests.CanvasSelectionTests testZoomPreservesWorldCoordinatesAndLayerIdentity]' passed (0.043 seconds).
+Test Suite 'CanvasSelectionTests' passed at 2026-09-06 01:38:38.145.
+	 Executed 22 tests, with 0 failures (0 unexpected) in 5.167 (5.174) seconds
+Test Suite 'DesktopNavigationTests' started at 2026-09-06 01:38:38.145.
+Test Case '-[OpenPlaneTests.DesktopNavigationTests testAll88DirectionalChoicesMatchApprovedDesktop]' started.
+Test Case '-[OpenPlaneTests.DesktopNavigationTests testAll88DirectionalChoicesMatchApprovedDesktop]' passed (0.002 seconds).
+Test Case '-[OpenPlaneTests.DesktopNavigationTests testApprovedDesktopChoicesSurviveCameraChangesAndCandidateReordering]' started.
+Test Case '-[OpenPlaneTests.DesktopNavigationTests testApprovedDesktopChoicesSurviveCameraChangesAndCandidateReordering]' passed (0.011 seconds).
+Test Case '-[OpenPlaneTests.DesktopNavigationTests testApprovedDesktopFixtureIsComplete]' started.
+Test Case '-[OpenPlaneTests.DesktopNavigationTests testApprovedDesktopFixtureIsComplete]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.DesktopNavigationTests testChainedNavigationVisitsEveryNodeAndStopsAtBoundaries]' started.
+Test Case '-[OpenPlaneTests.DesktopNavigationTests testChainedNavigationVisitsEveryNodeAndStopsAtBoundaries]' passed (0.001 seconds).
+Test Suite 'DesktopNavigationTests' passed at 2026-09-06 01:38:38.161.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.014 (0.015) seconds
+Test Suite 'DesktopTabTests' started at 2026-09-06 01:38:38.161.
+Test Case '-[OpenPlaneTests.DesktopTabTests testLongTabRowScrollsSelectedTitleIntoViewAndRenamePersists]' started.
+Test Case '-[OpenPlaneTests.DesktopTabTests testLongTabRowScrollsSelectedTitleIntoViewAndRenamePersists]' passed (0.028 seconds).
+Test Case '-[OpenPlaneTests.DesktopTabTests testRapidTabClicksUseLatestDestinationAndStopCameraAnimation]' started.
+Test Case '-[OpenPlaneTests.DesktopTabTests testRapidTabClicksUseLatestDestinationAndStopCameraAnimation]' passed (0.021 seconds).
+Test Case '-[OpenPlaneTests.DesktopTabTests testSingleDesktopKeepsTitleAndNewDesktopUsesSameFadePath]' started.
+Test Case '-[OpenPlaneTests.DesktopTabTests testSingleDesktopKeepsTitleAndNewDesktopUsesSameFadePath]' passed (0.008 seconds).
+Test Case '-[OpenPlaneTests.DesktopTabTests testTabClickFadesBeforeChangingCameraAndRestoresEachDesktopExactly]' started.
+Test Case '-[OpenPlaneTests.DesktopTabTests testTabClickFadesBeforeChangingCameraAndRestoresEachDesktopExactly]' passed (0.019 seconds).
+Test Case '-[OpenPlaneTests.DesktopTabTests testTabKeyCyclesDesktopsBothWaysWithFadeAndRestoresEachCamera]' started.
+Test Case '-[OpenPlaneTests.DesktopTabTests testTabKeyCyclesDesktopsBothWaysWithFadeAndRestoresEachCamera]' passed (0.025 seconds).
+Test Case '-[OpenPlaneTests.DesktopTabTests testTabKeyLeavesTextEditingAndModifiedShortcutsAloneAndIgnoresRepeat]' started.
+Test Case '-[OpenPlaneTests.DesktopTabTests testTabKeyLeavesTextEditingAndModifiedShortcutsAloneAndIgnoresRepeat]' passed (0.028 seconds).
+Test Case '-[OpenPlaneTests.DesktopTabTests testTabsAndDebugOverlayRenderThroughoutDesktopFade]' started.
+Test Case '-[OpenPlaneTests.DesktopTabTests testTabsAndDebugOverlayRenderThroughoutDesktopFade]' passed (0.181 seconds).
+Test Suite 'DesktopTabTests' passed at 2026-09-06 01:38:38.474.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.311 (0.313) seconds
+Test Suite 'OpenPlaneTests.xctest' passed at 2026-09-06 01:38:38.474.
+	 Executed 85 tests, with 0 failures (0 unexpected) in 5.539 (5.569) seconds
+Test Suite 'All tests' passed at 2026-09-06 01:38:38.474.
+	 Executed 85 tests, with 0 failures (0 unexpected) in 5.539 (5.569) seconds
+2026-09-06 01:38:38.784 xcodebuild[14330:1515679] [MT] IDETestOperationsObserverDebug: 7.263 elapsed -- Testing started completed.
+2026-09-06 01:38:38.784 xcodebuild[14330:1515679] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-09-06 01:38:38.784 xcodebuild[14330:1515679] [MT] IDETestOperationsObserverDebug: 7.263 sec, +7.263 sec -- end
+
+Test session results, code coverage, and logs:
+	/tmp/openplane-desktop-speed/tests/Logs/Test/Test-OpenPlane-2026.09.06_01-38-20-+0200.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started

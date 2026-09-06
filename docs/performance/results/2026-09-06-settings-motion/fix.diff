@@ -1,0 +1,114 @@
+--- CanvasView-before.swift
++++ CanvasView.swift
+@@ -4475,28 +4475,52 @@
+ 
+   required init?(coder: NSCoder) { nil }
+ 
++  private var transitionGeneration = 0
++  private var isAnimatingSettings = false
++  private var panelWidth: CGFloat { min(380, bounds.width * 0.45) }
++
+   func showSettings(_ panel: NSView) {
+-    settings?.removeFromSuperview()
++    subviews.filter { $0 !== canvas }.forEach { $0.removeFromSuperview() }
+     settings = panel
++    panel.frame = CGRect(x: bounds.width, y: 0, width: panelWidth, height: bounds.height)
+     addSubview(panel)
+-    needsLayout = true
+-    layoutSubtreeIfNeeded()
++    animateSettings(panel, opening: true)
+   }
+ 
+   func hideSettings() {
+-    settings?.removeFromSuperview()
++    guard let panel = settings else { return }
+     settings = nil
+-    needsLayout = true
+-    layoutSubtreeIfNeeded()
++    animateSettings(panel, opening: false)
+     window?.makeFirstResponder(canvas)
++  }
++
++  private func animateSettings(_ panel: NSView, opening: Bool) {
++    transitionGeneration += 1
++    let generation = transitionGeneration
++    isAnimatingSettings = true
++    let width = opening ? panelWidth : 0
++    NSAnimationContext.runAnimationGroup { context in
++      context.duration = window == nil || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 0.18
++      context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
++      canvas.animator().frame = CGRect(x: 0, y: 0, width: bounds.width - width, height: bounds.height)
++      panel.animator().frame = CGRect(x: bounds.width - width, y: 0, width: panelWidth, height: bounds.height)
++    } completionHandler: { [weak self, weak panel] in
++      guard let self else { return }
++      if !opening, let panel, self.settings !== panel { panel.removeFromSuperview() }
++      guard self.transitionGeneration == generation else { return }
++      self.isAnimatingSettings = false
++      self.needsLayout = true
++    }
+   }
+ 
+   override func layout() {
+     super.layout()
+-    let width: CGFloat = settings == nil ? 0 : min(380, bounds.width * 0.45)
++    guard !isAnimatingSettings else { return }
++    let width: CGFloat = settings == nil ? 0 : panelWidth
+     canvas.frame = CGRect(x: 0, y: 0, width: bounds.width - width, height: bounds.height)
+     settings?.frame = CGRect(x: bounds.width - width, y: 0, width: width, height: bounds.height)
+   }
++
+ }
+ 
+ @MainActor
+@@ -4536,19 +4560,24 @@
+ private final class SettingsToggleRow: NSView {
+   private let item: NSMenuItem
+   private let control = SettingsSwitch()
++  private let rowButton = NSButton()
+ 
+   init(title: String, symbol: String, item: NSMenuItem, width: CGFloat) {
+     self.item = item
+     super.init(frame: CGRect(x: 24, y: 0, width: width, height: 52))
+-    let tile = NSView(frame: CGRect(x: 0, y: 11, width: 30, height: 30))
+-    tile.wantsLayer = true
+-    tile.layer?.backgroundColor = NSColor(white: 0.96, alpha: 1).cgColor
+-    tile.layer?.cornerRadius = 9
+-    let icon = NSImageView(frame: CGRect(x: 6, y: 6, width: 18, height: 18))
++    rowButton.frame = bounds
++    rowButton.autoresizingMask = [.width, .height]
++    rowButton.title = ""
++    rowButton.isBordered = false
++    rowButton.setAccessibilityElement(false)
++    rowButton.target = self
++    rowButton.action = #selector(toggle(_:))
++    addSubview(rowButton)
++    let icon = NSImageView(frame: CGRect(x: 2, y: 13, width: 26, height: 26))
+     icon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
++    icon.imageScaling = .scaleProportionallyUpOrDown
+     icon.contentTintColor = NSColor(srgbRed: 0.43, green: 0.48, blue: 0.55, alpha: 1)
+-    tile.addSubview(icon)
+-    addSubview(tile)
++    addSubview(icon)
+     let label = NSTextField(labelWithString: title)
+     label.font = .systemFont(ofSize: 13.5, weight: .medium)
+     label.textColor = NSColor(srgbRed: 0.12, green: 0.17, blue: 0.23, alpha: 1)
+@@ -4565,10 +4594,16 @@
+ 
+   required init?(coder: NSCoder) { nil }
+ 
+-  @objc private func toggle(_ sender: SettingsSwitch) {
++  override func hitTest(_ point: NSPoint) -> NSView? {
++    guard let hit = super.hitTest(point) else { return nil }
++    return hit === control ? control : rowButton
++  }
++
++  @objc private func toggle(_ sender: Any?) {
+     if let action = item.action { NSApp.sendAction(action, to: item.target, from: item) }
+-    sender.state = item.state
+-  }
++    control.state = item.state
++  }
++
+ }
+ 
+ @MainActor

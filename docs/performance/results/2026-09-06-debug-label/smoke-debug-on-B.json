@@ -1,0 +1,110 @@
+{
+  "cases": {
+    "P05": {
+      "status": "partial",
+      "launch_to_ax_seconds": 1.2728072079917183,
+      "desktop": "Desktop 2"
+    },
+    "P01": {
+      "status": "partial",
+      "requested": 100,
+      "phase": {
+        "seconds": 10.034116499999072,
+        "cpu_seconds": 0.6430502083333334,
+        "cpu_percent": 6.408638053319322
+      },
+      "accepted": null
+    },
+    "P02": {
+      "status": "partial",
+      "low": {
+        "center": [
+          3555.593899230227,
+          10343.562891205906
+        ],
+        "zoom": 0.06
+      },
+      "high": {
+        "center": [
+          3555.593899230227,
+          10343.562891205906
+        ],
+        "zoom": 1.25
+      },
+      "end": {
+        "center": [
+          3555.593899230227,
+          10343.562891205906
+        ],
+        "zoom": 0.06
+      },
+      "bounds_correct": true,
+      "reversals_requested": 5,
+      "arrow_interruption_requested": true
+    },
+    "P03": {
+      "status": "partial",
+      "trips": [
+        {
+          "finder_and_return_observed": true
+        },
+        {
+          "finder_and_return_observed": true
+        },
+        {
+          "finder_and_return_observed": true
+        }
+      ]
+    },
+    "P06": {
+      "status": "partial",
+      "requested": 10,
+      "start": "Desktop 2",
+      "end": "Desktop 2",
+      "accepted": null
+    },
+    "P14": {
+      "status": "partial",
+      "idle": {
+        "seconds": 30.0011879579979,
+        "cpu_seconds": 0.34781366666666713,
+        "cpu_percent": 1.1593329809259931
+      }
+    },
+    "P04": {
+      "status": "BLOCKED",
+      "reason": "No dedicated disposable app/start-readiness fixture; PERF-001/005"
+    }
+  },
+  "screenshots": [
+    "/tmp/openplane-debug-label/B-candidate-minimum.png",
+    "/tmp/openplane-debug-label/B-candidate-maximum.png"
+  ],
+  "started_at": 1788648216.296612,
+  "limitations": [
+    "Coarse script/AX timings are not first-frame latency",
+    "No pinch or pointer-route automation; held-key bounds checked separately",
+    "P04 disposable app fixture unavailable"
+  ],
+  "fixture_sha256": "261a2924637c723dcdff29bcc16535968204bca42dc5ccb795c10ecf3c995158",
+  "binary_sha256": "1d35c809d486ab90f43904bb137c8d94186cd277fbe68191539d314057e42bd3",
+  "held_zoom": {
+    "high": {
+      "center": [
+        3555.593899230227,
+        10343.562891205906
+      ],
+      "zoom": 1.25
+    },
+    "low": {
+      "center": [
+        3555.593899230227,
+        10343.562891205906
+      ],
+      "zoom": 0.06
+    },
+    "bounds_correct": true
+  },
+  "restored_preferences": true,
+  "finished_at": 1788648314.547837
+}

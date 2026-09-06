@@ -1,0 +1,318 @@
+{
+  "before": [
+    {
+      "desktop": "Hahaha",
+      "trial": 1,
+      "pid": 72130,
+      "idle_before": {
+        "seconds": 5.004903250002826,
+        "cpu_seconds": 0.09909200000000007,
+        "cpu_percent": 1.979898412620546
+      },
+      "navigation": {
+        "seconds": 10.19312054200418,
+        "cpu_seconds": 2.535984458333333,
+        "cpu_percent": 24.879372787587045
+      },
+      "settling": {
+        "seconds": 1.0023233329993673,
+        "cpu_seconds": 0.04214841666666658,
+        "cpu_percent": 4.205071884392936
+      },
+      "idle_after": {
+        "seconds": 5.000132583001687,
+        "cpu_seconds": 0.042228375000000096,
+        "cpu_percent": 0.8445451055349715
+      },
+      "navigation_above_idle_pp": 22.8994743749665
+    },
+    {
+      "desktop": "Hahaha",
+      "trial": 2,
+      "pid": 72130,
+      "idle_before": {
+        "seconds": 5.003674209001474,
+        "cpu_seconds": 0.0489947083333333,
+        "cpu_percent": 0.9791746282200618
+      },
+      "navigation": {
+        "seconds": 10.164740833002725,
+        "cpu_seconds": 2.4431676666666666,
+        "cpu_percent": 24.03571037182008
+      },
+      "settling": {
+        "seconds": 1.0050412910059094,
+        "cpu_seconds": 0.0479267916666668,
+        "cpu_percent": 4.768639069415607
+      },
+      "idle_after": {
+        "seconds": 5.005062042000645,
+        "cpu_seconds": 0.037579208333332836,
+        "cpu_percent": 0.7508240261155986
+      },
+      "navigation_above_idle_pp": 23.05653574360002
+    },
+    {
+      "desktop": "Hahaha",
+      "trial": 3,
+      "pid": 72130,
+      "idle_before": {
+        "seconds": 5.0006142080019345,
+        "cpu_seconds": 0.04632516666666664,
+        "cpu_percent": 0.9263895341603748
+      },
+      "navigation": {
+        "seconds": 10.150342916997033,
+        "cpu_seconds": 2.384928583333334,
+        "cpu_percent": 23.49603952138114
+      },
+      "settling": {
+        "seconds": 1.0031115000019781,
+        "cpu_seconds": 0.041167374999998785,
+        "cpu_percent": 4.103968003548719
+      },
+      "idle_after": {
+        "seconds": 5.005071208004665,
+        "cpu_seconds": 0.0554972083333336,
+        "cpu_percent": 1.108819555745307
+      },
+      "navigation_above_idle_pp": 22.569649987220764
+    },
+    {
+      "desktop": "Desktop 2",
+      "trial": 1,
+      "pid": 72130,
+      "idle_before": {
+        "seconds": 5.0035136669976055,
+        "cpu_seconds": 0.07929020833333311,
+        "cpu_percent": 1.5846905516880856
+      },
+      "navigation": {
+        "seconds": 9.558274874994822,
+        "cpu_seconds": 1.5330068749999999,
+        "cpu_percent": 16.03853095928914
+      },
+      "settling": {
+        "seconds": 1.0042797089990927,
+        "cpu_seconds": 0.011065874999999892,
+        "cpu_percent": 1.1018718093018733
+      },
+      "idle_after": {
+        "seconds": 5.002849332995538,
+        "cpu_seconds": 0.05873245833333485,
+        "cpu_percent": 1.1739801545885817
+      },
+      "navigation_above_idle_pp": 14.453840407601055
+    },
+    {
+      "desktop": "Desktop 2",
+      "trial": 2,
+      "pid": 72130,
+      "idle_before": {
+        "seconds": 5.000324291999277,
+        "cpu_seconds": 0.05385262499999932,
+        "cpu_percent": 1.0769826486287244
+      },
+      "navigation": {
+        "seconds": 9.834146417000738,
+        "cpu_seconds": 1.5639169166666669,
+        "cpu_percent": 15.902924873714026
+      },
+      "settling": {
+        "seconds": 1.0032048339999164,
+        "cpu_seconds": 0.0209527499999993,
+        "cpu_percent": 2.0885814431792347
+      },
+      "idle_after": {
+        "seconds": 5.004396540993184,
+        "cpu_seconds": 0.05313512500000073,
+        "cpu_percent": 1.0617688779206016
+      },
+      "navigation_above_idle_pp": 14.825942225085301
+    },
+    {
+      "desktop": "Desktop 2",
+      "trial": 3,
+      "pid": 72130,
+      "idle_before": {
+        "seconds": 5.000721207994502,
+        "cpu_seconds": 0.048071625000000395,
+        "cpu_percent": 0.9612938414393056
+      },
+      "navigation": {
+        "seconds": 9.560342875003698,
+        "cpu_seconds": 1.561318291666666,
+        "cpu_percent": 16.331195565682698
+      },
+      "settling": {
+        "seconds": 1.0013320420039236,
+        "cpu_seconds": 0.027480499999999353,
+        "cpu_percent": 2.7443943514484754
+      },
+      "idle_after": {
+        "seconds": 5.002422958001262,
+        "cpu_seconds": 0.0538939583333331,
+        "cpu_percent": 1.0773570884711168
+      },
+      "navigation_above_idle_pp": 15.369901724243393
+    }
+  ],
+  "after": [
+    {
+      "desktop": "Hahaha",
+      "trial": 1,
+      "pid": 72864,
+      "idle_before": {
+        "seconds": 5.004075416996784,
+        "cpu_seconds": 0.12055833333333332,
+        "cpu_percent": 2.4092029653239497
+      },
+      "navigation": {
+        "seconds": 9.499134833997232,
+        "cpu_seconds": 0.7694462083333332,
+        "cpu_percent": 8.100171455399275
+      },
+      "settling": {
+        "seconds": 1.0036675419978565,
+        "cpu_seconds": 0.013294916666666712,
+        "cpu_percent": 1.3246335176090716
+      },
+      "idle_after": {
+        "seconds": 5.005062374999397,
+        "cpu_seconds": 0.03837766666666664,
+        "cpu_percent": 0.7667769907996654
+      },
+      "navigation_above_idle_pp": 5.690968490075326
+    },
+    {
+      "desktop": "Hahaha",
+      "trial": 2,
+      "pid": 72864,
+      "idle_before": {
+        "seconds": 5.0004457920003915,
+        "cpu_seconds": 0.04183495833333328,
+        "cpu_percent": 0.8366245745581319
+      },
+      "navigation": {
+        "seconds": 9.593237041997781,
+        "cpu_seconds": 0.8056131666666664,
+        "cpu_percent": 8.397719801353917
+      },
+      "settling": {
+        "seconds": 1.0050554159970488,
+        "cpu_seconds": 0.01442479166666688,
+        "cpu_percent": 1.4352235147508758
+      },
+      "idle_after": {
+        "seconds": 5.005060083996796,
+        "cpu_seconds": 0.046823458333333345,
+        "cpu_percent": 0.9355224022793833
+      },
+      "navigation_above_idle_pp": 7.561095226795785
+    },
+    {
+      "desktop": "Hahaha",
+      "trial": 3,
+      "pid": 72864,
+      "idle_before": {
+        "seconds": 5.004488958998991,
+        "cpu_seconds": 0.05150741666666647,
+        "cpu_percent": 1.0292243041928721
+      },
+      "navigation": {
+        "seconds": 9.59628249999514,
+        "cpu_seconds": 0.8057280833333333,
+        "cpu_percent": 8.396252229274632
+      },
+      "settling": {
+        "seconds": 1.0041373330022907,
+        "cpu_seconds": 0.013730583333333435,
+        "cpu_percent": 1.3674009402956948
+      },
+      "idle_after": {
+        "seconds": 5.00064804199792,
+        "cpu_seconds": 0.05474816666666671,
+        "cpu_percent": 1.0948214352792773
+      },
+      "navigation_above_idle_pp": 7.36702792508176
+    },
+    {
+      "desktop": "Desktop 2",
+      "trial": 1,
+      "pid": 72864,
+      "idle_before": {
+        "seconds": 5.001364000003377,
+        "cpu_seconds": 0.11497187500000017,
+        "cpu_percent": 2.298810384525552
+      },
+      "navigation": {
+        "seconds": 9.558691541998996,
+        "cpu_seconds": 0.7457962916666663,
+        "cpu_percent": 7.802284323014139
+      },
+      "settling": {
+        "seconds": 1.0047564580017934,
+        "cpu_seconds": 0.015692750000000366,
+        "cpu_percent": 1.561846144408893
+      },
+      "idle_after": {
+        "seconds": 5.003273709000496,
+        "cpu_seconds": 0.05603229166666601,
+        "cpu_percent": 1.1199125797548979
+      },
+      "navigation_above_idle_pp": 5.503473938488588
+    },
+    {
+      "desktop": "Desktop 2",
+      "trial": 2,
+      "pid": 72864,
+      "idle_before": {
+        "seconds": 5.005047792001278,
+        "cpu_seconds": 0.0494894583333334,
+        "cpu_percent": 0.98879092448276
+      },
+      "navigation": {
+        "seconds": 9.538405082996178,
+        "cpu_seconds": 0.7539162083333331,
+        "cpu_percent": 7.904007030245721
+      },
+      "settling": {
+        "seconds": 1.0029616249958053,
+        "cpu_seconds": 0.009660000000000224,
+        "cpu_percent": 0.9631475182353687
+      },
+      "idle_after": {
+        "seconds": 5.000082999998995,
+        "cpu_seconds": 0.055181874999999714,
+        "cpu_percent": 1.1036191799218296
+      },
+      "navigation_above_idle_pp": 6.91521610576296
+    },
+    {
+      "desktop": "Desktop 2",
+      "trial": 3,
+      "pid": 72864,
+      "idle_before": {
+        "seconds": 5.001584792000358,
+        "cpu_seconds": 0.05557587499999972,
+        "cpu_percent": 1.111165306822129
+      },
+      "navigation": {
+        "seconds": 9.494146292003279,
+        "cpu_seconds": 0.7478883750000005,
+        "cpu_percent": 7.877363082449354
+      },
+      "settling": {
+        "seconds": 1.0050487499975134,
+        "cpu_seconds": 0.01489587499999967,
+        "cpu_percent": 1.482104723779471
+      },
+      "idle_after": {
+        "seconds": 5.003644958000223,
+        "cpu_seconds": 0.05036358333333357,
+        "cpu_percent": 1.0065379089858943
+      },
+      "navigation_above_idle_pp": 6.766197775627225
+    }
+  ]
+}

@@ -978,13 +978,12 @@ enum CanvasMath {
   }
 
   static func selectionAnimationPhases(
-    progress: CGFloat,
-    synchronized: Bool = false
+    progress: CGFloat
   ) -> (title: CGFloat, border: CGFloat) {
     let progress = min(1, max(0, progress))
     return (
       title: min(1, progress / 0.55),
-      border: synchronized ? progress : max(0, (progress - 0.55) / 0.45)
+      border: progress
     )
   }
 
@@ -1002,16 +1001,6 @@ enum CanvasMath {
   static func easedTransition(_ progress: CGFloat) -> CGFloat {
     let progress = min(1, max(0, progress))
     return progress * progress * (3 - 2 * progress)
-  }
-
-  static func selectionHandoffPhase(
-    progress: CGFloat,
-    incoming: Bool,
-    synchronized: Bool = false
-  ) -> CGFloat {
-    if synchronized { return easedTransition(progress) }
-    let local = incoming ? (progress - 0.5) * 2 : progress * 2
-    return easedTransition(local)
   }
 
   static func appIconScale(at zoom: CGFloat) -> CGFloat {
@@ -1498,5 +1487,76 @@ enum CanvasMath {
       center: CGPoint(x: worldFrame.midX, y: worldFrame.midY),
       zoom: camera.zoom
     )
+  }
+}
+
+// Window identities are session-local; preview selection never changes this history.
+struct RecentWindowOrder {
+  private(set) var history: [CGWindowID] = []
+  private(set) var visible: [CGWindowID] = []
+  private var previousInventory: Set<CGWindowID> = []
+
+  mutating func used(_ id: CGWindowID) {
+    guard history.first != id else { return }
+    history.removeAll { $0 == id }
+    history.insert(id, at: 0)
+  }
+
+  mutating func updateInventory(_ ids: [CGWindowID]) {
+    let available = Set(ids)
+    // Focus can arrive before asynchronous discovery exposes a new window.
+    history.removeAll { previousInventory.contains($0) && !available.contains($0) }
+    previousInventory = available
+    var seen = Set(history)
+    history += ids.filter { seen.insert($0).inserted }
+  }
+
+  mutating func reconcile(_ ids: [CGWindowID], reorder: Bool) {
+    updateInventory(ids)
+    let available = Set(ids)
+    if reorder { visible = history.filter { available.contains($0) } }
+    else {
+      visible.removeAll { !available.contains($0) }
+      var shown = Set(visible)
+      visible += history.filter { available.contains($0) && shown.insert($0).inserted }
+    }
+  }
+
+  static func frames(sizes: [CGSize]) -> [CGRect] {
+    var top: CGFloat = 0
+    return sizes.map { size in
+      let frame = CGRect(x: -size.width / 2, y: top - size.height, width: size.width, height: size.height)
+      top = frame.minY - 100
+      return frame
+    }
+  }
+}
+
+struct InstalledApp: Sendable {
+  let id: String
+  let name: String
+  let url: URL
+
+  static func catalog() -> [InstalledApp] {
+    var apps: [String: InstalledApp] = [:]
+    for root in ["/Applications", "/System/Applications", NSHomeDirectory() + "/Applications"] {
+      guard let iterator = FileManager.default.enumerator(at: URL(fileURLWithPath: root),
+        includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles]) else { continue }
+      for case let url as URL in iterator {
+        guard url.pathExtension.lowercased() == "app" else { continue }
+        iterator.skipDescendants()
+        guard let bundle = Bundle(url: url), let id = bundle.bundleIdentifier,
+          id != Bundle.main.bundleIdentifier, apps[id] == nil,
+          bundle.object(forInfoDictionaryKey: "LSBackgroundOnly") as? Bool != true else { continue }
+        let name = bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
+          ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
+          ?? url.deletingPathExtension().lastPathComponent
+        apps[id] = InstalledApp(id: id, name: name, url: url)
+      }
+    }
+    return apps.values.sorted {
+      let comparison = $0.name.localizedStandardCompare($1.name)
+      return comparison == .orderedSame ? $0.id < $1.id : comparison == .orderedAscending
+    }
   }
 }

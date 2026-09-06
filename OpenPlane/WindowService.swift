@@ -82,7 +82,6 @@ private struct AccessibilityWindowRequest: Sendable {
 
 private struct AccessibilityInventoryResult: @unchecked Sendable {
   let elements: [CGWindowID: AXUIElement]
-  let eligibleProcessIDs: Set<pid_t>
 }
 
 private actor AccessibilityInventory {
@@ -102,7 +101,6 @@ private actor AccessibilityInventory {
     retryAfterByWindowID = retryAfterByWindowID.filter { requestsByID[$0.key] != nil }
 
     var elements = matchesByWindowID.mapValues(\.element)
-    var eligibleProcessIDs = Set(matchesByWindowID.values.map(\.processID))
     let unresolved = requests.filter { matchesByWindowID[$0.id] == nil }
     let now = Date()
 
@@ -119,7 +117,6 @@ private actor AccessibilityInventory {
         }
         continue
       }
-      eligibleProcessIDs.insert(processID)
 
       var used = matchesByWindowID.values.compactMap {
         $0.processID == processID ? $0.element : nil
@@ -144,8 +141,7 @@ private actor AccessibilityInventory {
     }
 
     return AccessibilityInventoryResult(
-      elements: elements,
-      eligibleProcessIDs: eligibleProcessIDs
+      elements: elements
     )
   }
 
@@ -213,7 +209,8 @@ private enum AccessibilityWindowMatching {
     }
 
     let geometryMatches = scores.sorted { $0.geometry < $1.geometry }
-    guard let best = geometryMatches.first,
+    // An unrelated helper surface must not claim the only standard AX window.
+    guard let best = geometryMatches.first, best.geometry <= 8,
       geometryMatches.count == 1 || geometryMatches[1].geometry - best.geometry > 2
     else { return nil }
     return best.element
@@ -320,7 +317,7 @@ final class WindowService {
 
     return windows.compactMap { window in
       guard let application = window.owningApplication,
-        accessibility.eligibleProcessIDs.contains(application.processID)
+        accessibility.elements[window.windowID] != nil
       else { return nil }
       let title = window.title?.trimmingCharacters(in: .whitespacesAndNewlines)
       let resolvedTitle = title?.isEmpty == false ? title! : application.applicationName
@@ -468,4 +465,80 @@ final class WindowService {
     return icon
   }
 
+}
+
+// Observe the active application's focus rather than polling screen captures in the background.
+@MainActor
+final class WindowFocusObserver {
+  var onFocus: ((CGWindowID) -> Void)?
+  private var observer: AXObserver?
+  private var observedPID: pid_t?
+
+  func observeFrontmost() {
+    guard AXIsProcessTrusted() else { return }
+    guard let app = NSWorkspace.shared.frontmostApplication,
+      app.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
+    if observedPID != app.processIdentifier {
+      stop()
+      observedPID = app.processIdentifier
+      var created: AXObserver?
+      let result = AXObserverCreate(app.processIdentifier, { _, _, _, context in
+        guard let context else { return }
+        MainActor.assumeIsolated {
+          Unmanaged<WindowFocusObserver>.fromOpaque(context).takeUnretainedValue().recordFrontmost()
+        }
+      }, &created)
+      if result == .success, let created {
+        observer = created
+        let element = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(element, 0.2)
+        for notification in [kAXFocusedWindowChangedNotification, kAXMainWindowChangedNotification] {
+          AXObserverAddNotification(created, element, notification as CFString,
+            Unmanaged.passUnretained(self).toOpaque())
+        }
+        CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(created), .commonModes)
+      }
+    }
+    recordFrontmost()
+  }
+
+  func recordFrontmost() {
+    guard AXIsProcessTrusted() else { return }
+    guard let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier,
+      pid != ProcessInfo.processInfo.processIdentifier,
+      let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+        as? [[String: Any]] else { return }
+    let candidates = windows.filter {
+      ($0[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == pid
+        && ($0[kCGWindowLayer as String] as? NSNumber)?.intValue == 0
+    }
+    let application = AXUIElementCreateApplication(pid)
+    AXUIElementSetMessagingTimeout(application, 0.2)
+    var focused: CFTypeRef?
+    if AXUIElementCopyAttributeValue(application, kAXFocusedWindowAttribute as CFString, &focused) == .success,
+      let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() {
+      let element = focused as! AXUIElement
+      if let point = AccessibilityWindowMatching.point(of: element),
+        let size = AccessibilityWindowMatching.size(of: element),
+        let match = candidates.first(where: { info in
+          guard let raw = info[kCGWindowBounds as String] as? NSDictionary,
+            let frame = CGRect(dictionaryRepresentation: raw) else { return false }
+          return abs(frame.minX - point.x) < 2 && abs(frame.minY - point.y) < 2
+            && abs(frame.width - size.width) < 2 && abs(frame.height - size.height) < 2
+        }), let id = (match[kCGWindowNumber as String] as? NSNumber)?.uint32Value {
+        onFocus?(id)
+        return
+      }
+    }
+    // Some apps expose activation but no focused-window attribute; use their frontmost window.
+    if let info = candidates.first, let id = (info[kCGWindowNumber as String] as? NSNumber)?.uint32Value {
+      onFocus?(id)
+    }
+  }
+
+  func stop() {
+    if let observer { CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes) }
+    observer = nil
+    observedPID = nil
+  }
 }

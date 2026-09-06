@@ -1,0 +1,87 @@
+--- /tmp/openplane-tab-queue/CanvasView-before.swift	2026-09-06 01:57:26.541498484 +0200
++++ OpenPlane/CanvasView.swift	2026-09-06 01:59:34.592238290 +0200
+@@ -596,7 +596,7 @@
+   private let desktopTabsContent = NSView()
+   private var desktopTabButtons: [NSButton] = []
+   private var desktopTransitionStartedAt: TimeInterval?
+-  private var pendingDesktopChange: (() -> Void)?
++  private var pendingDesktopChanges: [() -> Void] = []
+   private var desktopTransitionDisplayLink: CADisplayLink?
+   private let settingsPopover = NSPopover()
+   private let navigatorMenu = NSMenu()
+@@ -1477,7 +1477,6 @@
+   }
+ 
+   func handleNavigationKey(_ event: NSEvent) -> Bool {
+-    if desktopTransitionStartedAt != nil { return true }
+     guard !settingsPopover.isShown else { return false }
+     guard desktopTitleField.currentEditor() == nil else { return false }
+     let modifiers = event.modifierFlags.intersection([.shift, .command, .control, .option])
+@@ -1486,15 +1485,21 @@
+     if isSearching { return false }
+ 
+     if event.keyCode == 48 {
+-      guard !event.isARepeat, desktopPages.pages.count > 1,
+-        let index = desktopPages.pages.firstIndex(where: { $0.id == desktopPages.selectedID })
+-      else { return true }
++      guard !event.isARepeat, desktopPages.pages.count > 1 else { return true }
+       let offset = modifiers == [.shift] ? -1 : 1
+-      let nextIndex = (index + offset + desktopPages.pages.count) % desktopPages.pages.count
+-      selectDesktop(id: desktopPages.pages[nextIndex].id)
++      transitionDesktop { [weak self] in
++        guard let self,
++          let index = self.desktopPages.pages.firstIndex(where: { $0.id == self.desktopPages.selectedID })
++        else { return }
++        let nextIndex = (index + offset + self.desktopPages.pages.count) % self.desktopPages.pages.count
++        let target = self.desktopPages.select(self.desktopPages.pages[nextIndex].id) ?? self.camera
++        self.applySelectedDesktop(camera: target)
++      }
+       return true
+     }
+ 
++    if desktopTransitionStartedAt != nil { return true }
++
+     if modifiers == [.shift] {
+       switch event.keyCode {
+       case 36, 76:
+@@ -3849,7 +3854,7 @@
+ 
+   private func transitionDesktop(_ change: @escaping () -> Void) {
+     if desktopTransitionStartedAt != nil {
+-      pendingDesktopChange = change
++      pendingDesktopChanges.append(change)
+       return
+     }
+     window?.makeFirstResponder(self)
+@@ -3900,21 +3905,23 @@
+   func advanceDesktopTransition(to progress: CGFloat) {
+     guard desktopTransitionStartedAt != nil else { return }
+     if progress >= 1 {
+-      let pending = pendingDesktopChange
+-      pendingDesktopChange = nil
+-      finishDesktopTransition()
+-      if let pending { transitionDesktop(pending) }
++      finishDesktopTransition(completingQueuedChanges: false)
++      if !pendingDesktopChanges.isEmpty {
++        transitionDesktop(pendingDesktopChanges.removeFirst())
++      }
+     }
+   }
+ 
+-  private func finishDesktopTransition() {
++  private func finishDesktopTransition(completingQueuedChanges: Bool = true) {
+     guard desktopTransitionStartedAt != nil else { return }
+-    let pending = pendingDesktopChange
+-    pendingDesktopChange = nil
+     desktopTransitionStartedAt = nil
+     desktopTransitionDisplayLink?.invalidate()
+     desktopTransitionDisplayLink = nil
+-    pending?()
++    if completingQueuedChanges {
++      let pending = pendingDesktopChanges
++      pendingDesktopChanges.removeAll()
++      for change in pending { change() }
++    }
+     for layer in [sceneView.layer, hudView.layer].compactMap({ $0 }) {
+       layer.removeAnimation(forKey: "desktopCrossfade")
+     }

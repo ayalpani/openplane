@@ -1,0 +1,61 @@
+--- before/CanvasView.swift
++++ after/CanvasView.swift
+@@ -596,7 +596,7 @@
+   private let desktopTabsContent = NSView()
+   private var desktopTabButtons: [NSButton] = []
+   private var desktopTransitionStartedAt: TimeInterval?
+-  private var pendingDesktopChanges: [() -> Void] = []
++  private var pendingDesktopChanges: [(direction: Int?, change: () -> Void)] = []
+   private var desktopTransitionDisplayLink: CADisplayLink?
+   private var settingsWorkspace: CanvasWorkspaceView? { superview as? CanvasWorkspaceView }
+   private let expandLandscapePreviewsMenuItem = NSMenuItem()
+@@ -1480,7 +1480,7 @@
+     if event.keyCode == 48 {
+       guard !event.isARepeat, desktopPages.pages.count > 1 else { return true }
+       let offset = modifiers == [.shift] ? -1 : 1
+-      transitionDesktop { [weak self] in
++      transitionDesktop(direction: offset) { [weak self] in
+         guard let self,
+           let index = self.desktopPages.pages.firstIndex(where: { $0.id == self.desktopPages.selectedID })
+         else { return }
+@@ -3802,9 +3802,9 @@
+     updateLockViewButton()
+   }
+ 
+-  private func transitionDesktop(_ change: @escaping () -> Void) {
++  private func transitionDesktop(direction: Int? = nil, _ change: @escaping () -> Void) {
+     if desktopTransitionStartedAt != nil {
+-      pendingDesktopChanges.append(change)
++      pendingDesktopChanges.append((direction, change))
+       return
+     }
+     window?.makeFirstResponder(self)
+@@ -3829,7 +3829,8 @@
+     let nextIndex = desktopPages.pages.firstIndex(where: { $0.id == desktopPages.selectedID }) ?? previousIndex
+     synchronizeScene()
+     if nextIndex != previousIndex {
+-      let offset: CGFloat = nextIndex > previousIndex ? -40 : 40
++      let forward = direction.map { $0 > 0 } ?? (nextIndex > previousIndex)
++      let offset: CGFloat = forward ? -40 : 40
+       for layer in [cameraLayer, gridLayer] {
+         let slide = CABasicAnimation(keyPath: "position")
+         slide.fromValue = NSValue(point: CGPoint(x: layer.position.x + offset, y: layer.position.y))
+@@ -3869,7 +3870,8 @@
+     if progress >= 1 {
+       finishDesktopTransition(completingQueuedChanges: false)
+       if !pendingDesktopChanges.isEmpty {
+-        transitionDesktop(pendingDesktopChanges.removeFirst())
++        let pending = pendingDesktopChanges.removeFirst()
++        transitionDesktop(direction: pending.direction, pending.change)
+       }
+     }
+   }
+@@ -3882,7 +3884,7 @@
+     if completingQueuedChanges {
+       let pending = pendingDesktopChanges
+       pendingDesktopChanges.removeAll()
+-      for change in pending { change() }
++      for pending in pending { pending.change() }
+     }
+     for layer in [sceneView.layer, hudView.layer].compactMap({ $0 }) {
+       layer.removeAnimation(forKey: "desktopCrossfade")

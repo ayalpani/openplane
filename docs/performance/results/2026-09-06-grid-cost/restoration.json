@@ -1,0 +1,5 @@
+{
+  "preferences_restored": true,
+  "cause": "defaults import preserved the newly added showGrid key absent from original export; explicitly removed this key before importing original preferences",
+  "checked_before_restart": true
+}

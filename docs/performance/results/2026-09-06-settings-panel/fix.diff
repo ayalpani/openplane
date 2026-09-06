@@ -1,0 +1,339 @@
+--- CanvasView-before.swift
++++ CanvasView.swift
+@@ -598,7 +598,7 @@
+   private var desktopTransitionStartedAt: TimeInterval?
+   private var pendingDesktopChanges: [() -> Void] = []
+   private var desktopTransitionDisplayLink: CADisplayLink?
+-  private let settingsPopover = NSPopover()
++  private var settingsWorkspace: CanvasWorkspaceView? { superview as? CanvasWorkspaceView }
+   private let navigatorMenu = NSMenu()
+   private let desktopPagesMenu = NSMenu()
+   private let desktopPagesMenuItem = NSMenuItem()
+@@ -1477,7 +1477,7 @@
+   }
+ 
+   func handleNavigationKey(_ event: NSEvent) -> Bool {
+-    guard !settingsPopover.isShown else { return false }
++    guard settingsWorkspace?.isSettingsVisible != true else { return false }
+     guard desktopTitleField.currentEditor() == nil else { return false }
+     let modifiers = event.modifierFlags.intersection([.shift, .command, .control, .option])
+     guard modifiers.isEmpty || modifiers == [.shift] else { return false }
+@@ -1686,8 +1686,8 @@
+ 
+   @discardableResult
+   func dismissSettings() -> Bool {
+-    guard settingsPopover.isShown else { return false }
+-    settingsPopover.close()
++    guard let host = settingsWorkspace, host.isSettingsVisible else { return false }
++    host.hideSettings()
+     return true
+   }
+ 
+@@ -3272,36 +3272,28 @@
+     expandLandscapePreviewsMenuItem.title = "Expand previews"
+     expandLandscapePreviewsMenuItem.target = self
+     expandLandscapePreviewsMenuItem.action = #selector(toggleLandscapePreviewExpansion(_:))
+-    navigatorMenu.addItem(expandLandscapePreviewsMenuItem)
+     debugInformationMenuItem.title = "Show Debug Information"
+     debugInformationMenuItem.target = self
+     debugInformationMenuItem.action = #selector(toggleDebugInformation(_:))
+-    navigatorMenu.addItem(debugInformationMenuItem)
+     gridMenuItem.title = "Show Grid Dots"
+     gridMenuItem.target = self
+     gridMenuItem.action = #selector(toggleGrid(_:))
+-    navigatorMenu.addItem(gridMenuItem)
+     centerGuideMenuItem.title = "Show Center Guide"
+     centerGuideMenuItem.target = self
+     centerGuideMenuItem.action = #selector(toggleCenterGuide(_:))
+-    navigatorMenu.addItem(centerGuideMenuItem)
+     synchronizedSelectionMenuItem.title = "Animate Selection from Start"
+     synchronizedSelectionMenuItem.target = self
+     synchronizedSelectionMenuItem.action = #selector(toggleSynchronizedSelection(_:))
+-    navigatorMenu.addItem(synchronizedSelectionMenuItem)
+     lightClosedCardsMenuItem.title = "Use Light Closed Cards"
+     lightClosedCardsMenuItem.target = self
+     lightClosedCardsMenuItem.action = #selector(toggleLightClosedCards(_:))
+-    navigatorMenu.addItem(lightClosedCardsMenuItem)
+     privateBrowserPreviewsMenuItem.title = "Show Private Browser Previews"
+     privateBrowserPreviewsMenuItem.target = self
+     privateBrowserPreviewsMenuItem.action = #selector(togglePrivateBrowserPreviews(_:))
+-    navigatorMenu.addItem(privateBrowserPreviewsMenuItem)
+     navigatorMenu.addItem(.separator())
+     commandTabShortcutMenuItem.title = "Use ⌘Tab for OpenPlane"
+     commandTabShortcutMenuItem.target = self
+     commandTabShortcutMenuItem.action = #selector(toggleCommandTabShortcut(_:))
+-    navigatorMenu.addItem(commandTabShortcutMenuItem)
+   }
+ 
+   private func configureSearch() {
+@@ -3386,13 +3378,13 @@
+ 
+   private func configureSettingsButton() {
+     settingsButton.title = ""
+-    settingsButton.image = Self.colorSettingsImage()
++    settingsButton.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Settings")
+     settingsButton.imagePosition = .imageOnly
+     settingsButton.imageScaling = .scaleProportionallyDown
+     settingsButton.isBordered = false
+     settingsButton.focusRingType = .none
+-    settingsButton.toolTip = "Color palette"
+-    settingsButton.setAccessibilityLabel("Color palette")
++    settingsButton.toolTip = "Settings"
++    settingsButton.setAccessibilityLabel("Settings")
+     settingsButton.target = self
+     settingsButton.action = #selector(showSettings(_:))
+     addSubview(settingsButton)
+@@ -4278,6 +4270,7 @@
+   @objc private func showSettings(_ sender: NSButton) {
+     if dismissSettings() { return }
+ 
++    guard let host = settingsWorkspace else { return }
+     let paletteView = CanvasPaletteView(selectedID: background.id)
+     paletteView.onSelect = { [weak self, weak paletteView] selectedBackground in
+       guard let self else { return }
+@@ -4290,14 +4283,27 @@
+       paletteView?.select(background: selectedBackground)
+     }
+ 
+-    let controller = NSViewController()
+-    controller.view = paletteView
+-    settingsPopover.contentViewController = controller
+-    settingsPopover.contentSize = paletteView.frame.size
+-    settingsPopover.behavior = .transient
+-    settingsPopover.animates = true
+-    settingsPopover.appearance = NSAppearance(named: .aqua)
+-    settingsPopover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .maxY)
++    updateNavigatorPanel()
++    let panel = CanvasSettingsPanel(palette: paletteView, groups: [
++      ("Appearance", [
++        ("Expand previews", "rectangle.expand.vertical", expandLandscapePreviewsMenuItem),
++        ("Grid dots", "circle.grid.3x3", gridMenuItem),
++        ("Center guide", "plus", centerGuideMenuItem),
++        ("Light closed cards", "rectangle", lightClosedCardsMenuItem),
++      ]),
++      ("Navigation", [
++        ("Animate selection from start", "arrow.right", synchronizedSelectionMenuItem),
++        ("Use ⌘Tab for OpenPlane", "command", commandTabShortcutMenuItem),
++      ]),
++      ("Privacy", [
++        ("Private browser previews", "eye", privateBrowserPreviewsMenuItem),
++      ]),
++      ("Advanced", [
++        ("Debug information", "waveform.path", debugInformationMenuItem),
++      ]),
++    ])
++    panel.onClose = { [weak self] in self?.dismissSettings() }
++    host.showSettings(panel)
+   }
+ 
+   private static func colorSettingsImage() -> NSImage? {
+@@ -4507,3 +4513,155 @@
+     }
+   }
+ }
++
++// The canvas keeps its world coordinates; only its viewport gives space to settings.
++@MainActor
++final class CanvasWorkspaceView: NSView {
++  let canvas: CanvasView
++  private var settings: NSView?
++  var isSettingsVisible: Bool { settings != nil }
++
++  init(canvas: CanvasView) {
++    self.canvas = canvas
++    super.init(frame: canvas.frame)
++    wantsLayer = true
++    layer?.masksToBounds = true
++    addSubview(canvas)
++  }
++
++  required init?(coder: NSCoder) { nil }
++
++  func showSettings(_ panel: NSView) {
++    settings?.removeFromSuperview()
++    settings = panel
++    addSubview(panel)
++    needsLayout = true
++    layoutSubtreeIfNeeded()
++  }
++
++  func hideSettings() {
++    settings?.removeFromSuperview()
++    settings = nil
++    needsLayout = true
++    layoutSubtreeIfNeeded()
++    window?.makeFirstResponder(canvas)
++  }
++
++  override func layout() {
++    super.layout()
++    let width: CGFloat = settings == nil ? 0 : min(380, bounds.width * 0.45)
++    canvas.frame = CGRect(x: 0, y: 0, width: bounds.width - width, height: bounds.height)
++    settings?.frame = CGRect(x: bounds.width - width, y: 0, width: width, height: bounds.height)
++  }
++}
++
++@MainActor
++private final class SettingsDocumentView: NSView {
++  override var isFlipped: Bool { true }
++}
++
++@MainActor
++private final class SettingsToggleRow: NSView {
++  private let item: NSMenuItem
++  private let control = NSSwitch()
++
++  init(title: String, symbol: String, item: NSMenuItem, width: CGFloat) {
++    self.item = item
++    super.init(frame: CGRect(x: 24, y: 0, width: width, height: 52))
++    let tile = NSView(frame: CGRect(x: 0, y: 11, width: 30, height: 30))
++    tile.wantsLayer = true
++    tile.layer?.backgroundColor = NSColor(white: 0.96, alpha: 1).cgColor
++    tile.layer?.cornerRadius = 9
++    let icon = NSImageView(frame: CGRect(x: 6, y: 6, width: 18, height: 18))
++    icon.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
++    icon.contentTintColor = NSColor(srgbRed: 0.43, green: 0.48, blue: 0.55, alpha: 1)
++    tile.addSubview(icon)
++    addSubview(tile)
++    let label = NSTextField(labelWithString: title)
++    label.font = .systemFont(ofSize: 13.5, weight: .medium)
++    label.textColor = NSColor(srgbRed: 0.12, green: 0.17, blue: 0.23, alpha: 1)
++    label.frame = CGRect(x: 42, y: 16, width: width - 88, height: 20)
++    addSubview(label)
++    control.frame = CGRect(x: width - 38, y: 12, width: 38, height: 28)
++    control.state = item.state
++    control.target = self
++    control.action = #selector(toggle(_:))
++    control.identifier = NSUserInterfaceItemIdentifier(title)
++    control.setAccessibilityLabel(title)
++    addSubview(control)
++  }
++
++  required init?(coder: NSCoder) { nil }
++
++  @objc private func toggle(_ sender: NSSwitch) {
++    if let action = item.action { NSApp.sendAction(action, to: item.target, from: item) }
++    sender.state = item.state
++  }
++}
++
++@MainActor
++private final class CanvasSettingsPanel: NSView {
++  var onClose: (() -> Void)?
++  private let scroll = NSScrollView()
++  private let closeButton = NSButton()
++  override var isFlipped: Bool { true }
++
++  init(palette: NSView, groups: [(String, [(String, String, NSMenuItem)])]) {
++    super.init(frame: CGRect(x: 0, y: 0, width: 380, height: 900))
++    appearance = NSAppearance(named: .aqua)
++    wantsLayer = true
++    layer?.backgroundColor = NSColor.white.cgColor
++    let title = NSTextField(labelWithString: "Settings")
++    title.font = .systemFont(ofSize: 25, weight: .semibold)
++    title.textColor = NSColor(srgbRed: 0.12, green: 0.17, blue: 0.23, alpha: 1)
++    title.frame = CGRect(x: 24, y: 38, width: 270, height: 34)
++    addSubview(title)
++    closeButton.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: "Close settings")
++    closeButton.isBordered = false
++    closeButton.contentTintColor = .secondaryLabelColor
++    closeButton.target = self
++    closeButton.action = #selector(close(_:))
++    closeButton.setAccessibilityLabel("Close settings")
++    addSubview(closeButton)
++    scroll.drawsBackground = false
++    scroll.hasVerticalScroller = true
++    scroll.autohidesScrollers = true
++    let document = SettingsDocumentView(frame: .zero)
++    var y: CGFloat = 10
++    func section(_ text: String) {
++      let label = NSTextField(labelWithString: text)
++      label.font = .systemFont(ofSize: 12, weight: .medium)
++      label.textColor = .secondaryLabelColor
++      label.frame = CGRect(x: 24, y: y, width: 310, height: 20)
++      document.addSubview(label)
++      y += 30
++    }
++    section("Background")
++    palette.frame.origin = CGPoint(x: 4, y: y)
++    document.addSubview(palette)
++    y += palette.frame.height + 12
++    for (heading, rows) in groups {
++      section(heading)
++      for (title, symbol, item) in rows {
++        let row = SettingsToggleRow(title: title, symbol: symbol, item: item, width: 332)
++        row.frame.origin.y = y
++        document.addSubview(row)
++        y += row.frame.height
++      }
++      y += 20
++    }
++    document.frame = CGRect(x: 0, y: 0, width: 380, height: y + 12)
++    scroll.documentView = document
++    addSubview(scroll)
++  }
++
++  required init?(coder: NSCoder) { nil }
++
++  override func layout() {
++    super.layout()
++    closeButton.frame = CGRect(x: bounds.width - 54, y: 38, width: 30, height: 30)
++    scroll.frame = CGRect(x: 0, y: 92, width: bounds.width, height: max(0, bounds.height - 92))
++  }
++
++  @objc private func close(_ sender: NSButton) { onClose?() }
++}
+--- AppDelegate-before.swift
++++ AppDelegate.swift
+@@ -41,6 +41,7 @@
+   private let windowService = WindowService()
+   private let previewCache = PreviewCache()
+   private let canvasView = CanvasView(frame: .zero)
++  private lazy var workspaceView = CanvasWorkspaceView(canvas: canvasView)
+   private let permissionView = PermissionView(frame: .zero)
+ 
+   private var overlayWindow: NSWindow!
+@@ -386,7 +387,7 @@
+     }
+     permissionTimer?.invalidate()
+     configureWindowForCanvas()
+-    overlayWindow.contentView = canvasView
++    overlayWindow.contentView = workspaceView
+ 
+     switch stateMachine.mode {
+     case .working(let id):
+@@ -468,6 +469,7 @@
+   }
+ 
+   private func focus(_ node: WindowNode, recordInHistory: Bool = true) {
++    canvasView.dismissSettings()
+     guard stateMachine.beginFocus(on: node.id) else { return }
+     activatedFocusWindowID = nil
+     canvasView.selectedWindowID = node.id
+@@ -572,7 +574,7 @@
+   }
+ 
+   private func reconcileWindows() async {
+-    guard overlayWindow.isVisible, overlayWindow.contentView === canvasView else { return }
++    guard overlayWindow.isVisible, overlayWindow.contentView === workspaceView else { return }
+     guard !canvasView.defersBackgroundWork else { return }
+     do {
+       let allDiscovered = try await windowService.discover(on: mainScreen)
+@@ -795,7 +797,7 @@
+   }
+ 
+   private func refreshVisiblePreviews() async {
+-    guard overlayWindow.isVisible, overlayWindow.contentView === canvasView else { return }
++    guard overlayWindow.isVisible, overlayWindow.contentView === workspaceView else { return }
+     guard !canvasView.defersBackgroundWork else { return }
+     let visibleIDs = canvasView.visibleWindowIDs()
+     let refreshIDs = previewScheduler.nextIDs(
+@@ -992,7 +994,7 @@
+   }
+ 
+   private var isShowingCanvas: Bool {
+-    overlayWindow.isVisible && overlayWindow.contentView === canvasView
++    overlayWindow.isVisible && overlayWindow.contentView === workspaceView
+       && stateMachine.mode == .overview
+   }
+ 

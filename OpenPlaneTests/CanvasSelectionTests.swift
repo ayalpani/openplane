@@ -57,6 +57,133 @@ final class CanvasSelectionTests: XCTestCase {
     }
   }
 
+  func testCameraMaintenanceCoalescesMovementAndPersistsFinalCamera() throws {
+    try withCanvas { canvas, _ in
+      let initial = UserDefaults.standard.data(forKey: "desktopPages")
+      for step in 1...100 {
+        canvas.camera.center.x = CGFloat(step) * 31
+      }
+      XCTAssertEqual(canvas.cameraMaintenanceStarts, 1)
+      XCTAssertEqual(canvas.cameraMaintenanceRuns, 0)
+      XCTAssertEqual(UserDefaults.standard.data(forKey: "desktopPages"), initial)
+      RunLoop.main.run(until: Date().addingTimeInterval(0.75))
+      XCTAssertEqual(canvas.cameraMaintenanceRuns, 1)
+      let data = try XCTUnwrap(UserDefaults.standard.data(forKey: "desktopPages"))
+      let saved = try JSONDecoder().decode(DesktopPages.self, from: data)
+      XCTAssertEqual(saved.selectedPage.camera, canvas.camera)
+      canvas.camera.center.x += 1
+      XCTAssertEqual(canvas.cameraMaintenanceStarts, 2)
+    }
+  }
+
+  func testArrowSelectionDoesNotRefreshUnrelatedCardsOrInvalidateWholeCanvas() throws {
+    try withCanvas { canvas, _ in
+      canvas.synchronizeScene()
+      canvas.needsDisplay = false
+      let fullSizeViews = canvas.subviews.filter { $0.frame == canvas.bounds }
+      for view in fullSizeViews { view.needsDisplay = false }
+      let contentCount = canvas.sceneContentUpdates
+      let arrow = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+        timestamp: 0, windowNumber: 0, context: nil, characters: "", charactersIgnoringModifiers: "",
+        isARepeat: false, keyCode: 124)!
+      XCTAssertTrue(canvas.handleNavigationKey(arrow))  // Select the nearest card first.
+      let count = canvas.sceneCardUpdates
+      XCTAssertTrue(canvas.handleNavigationKey(arrow))  // Then its right-hand neighbour.
+      XCTAssertEqual(canvas.sceneCardUpdates - count, 2)
+      XCTAssertEqual(canvas.sceneContentUpdates, contentCount)
+      XCTAssertFalse(canvas.needsDisplay)
+      XCTAssertTrue(fullSizeViews.allSatisfy { !$0.needsDisplay })
+    }
+  }
+
+  func testNativeCameraTravelCompletesAndInterruptsWithoutFrameCallbacks() throws {
+    try withCanvas { canvas, _ in
+      canvas.synchronizeScene()
+      let target = CameraState(center: CGPoint(x: 2800, y: 700), zoom: canvas.camera.zoom)
+      var completions = 0
+      canvas.animateCamera(to: target, duration: 0.05) { completions += 1 }
+      XCTAssertTrue(canvas.nativeCameraTravel)
+      XCTAssertNotNil(canvas.cameraLayer.animation(forKey: "cameraTravel"))
+      XCTAssertNotEqual(canvas.camera, target)
+      RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+      XCTAssertEqual(canvas.camera, target)
+      XCTAssertFalse(canvas.nativeCameraTravel)
+      XCTAssertEqual(completions, 1)
+      XCTAssertEqual(canvas.cameraFrameCallbacks, 0)
+
+      canvas.animateCamera(to: CameraState(center: .zero, zoom: target.zoom), duration: 0.2) {
+        XCTFail("Interrupted animation must not complete")
+      }
+      RunLoop.main.run(until: Date().addingTimeInterval(0.025))
+      let interrupted = canvas.camera
+      canvas.animateCamera(to: target, duration: 0.05) { completions += 1 }
+      XCTAssertEqual(canvas.camera.center.x, interrupted.center.x, accuracy: 40)
+      RunLoop.main.run(until: Date().addingTimeInterval(0.25))
+      XCTAssertEqual(canvas.camera, target)
+      XCTAssertEqual(completions, 2)
+      XCTAssertEqual(canvas.cameraFrameCallbacks, 0)
+
+      canvas.animateCamera(to: CameraState(center: .zero, zoom: target.zoom), duration: 0.05) {
+        XCTFail("Direct camera assignment must cancel the animation")
+      }
+      canvas.camera = target
+      RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+      XCTAssertEqual(canvas.camera, target)
+      XCTAssertFalse(canvas.nativeCameraTravel)
+    }
+  }
+
+  func testSavingOrResizingDuringNativeTravelKeepsTheCurrentCamera() throws {
+    try withCanvas { canvas, _ in
+      canvas.synchronizeScene()
+      let target = CameraState(center: CGPoint(x: 2800, y: 700), zoom: canvas.camera.zoom)
+      canvas.animateCamera(to: target, duration: 0.2) { XCTFail("Save cancelled this flight") }
+      RunLoop.main.run(until: Date().addingTimeInterval(0.025))
+      canvas.persistState()
+      XCTAssertFalse(canvas.nativeCameraTravel)
+      let saved = try JSONDecoder().decode(DesktopPages.self,
+        from: XCTUnwrap(UserDefaults.standard.data(forKey: "desktopPages")))
+      XCTAssertEqual(saved.selectedPage.camera, canvas.camera)
+      XCTAssertNotEqual(canvas.camera, target)
+
+      canvas.animateCamera(to: target, duration: 0.05) { XCTFail("Resize cancelled this flight") }
+      canvas.setFrameSize(CGSize(width: 1200, height: 900))
+      canvas.layoutSubtreeIfNeeded()
+      XCTAssertFalse(canvas.nativeCameraTravel)
+      let position = canvas.camera.center.applying(canvas.cameraLayer.affineTransform())
+      XCTAssertEqual(position.x, canvas.bounds.midX, accuracy: 0.001)
+      XCTAssertEqual(position.y, canvas.bounds.midY, accuracy: 0.001)
+      RunLoop.main.run(until: Date().addingTimeInterval(0.25))
+    }
+  }
+
+  func testRapidCameraReversalsPreserveNonBinaryZoom() throws {
+    try withCanvas { canvas, _ in
+      let window = NSWindow(contentRect: viewport, styleMask: [.borderless],
+        backing: .buffered, defer: false)
+      window.isReleasedWhenClosed = false
+      window.contentView = canvas
+      window.orderFront(nil)
+      defer { window.close() }
+      let zoom: CGFloat = 0.1655411772
+      canvas.camera = CameraState(center: .zero, zoom: zoom)
+      canvas.synchronizeScene()
+      let contentUpdates = canvas.sceneContentUpdates
+      for index in 0..<6 {
+        let target = CameraState(center: CGPoint(x: index.isMultiple(of: 2) ? 2800 : 0, y: 700),
+          zoom: zoom)
+        canvas.animateCamera(to: target, duration: 0.18) {}
+        RunLoop.main.run(until: Date().addingTimeInterval(0.04))
+        XCTAssertNotNil(canvas.cameraLayer.presentation())
+        XCTAssertTrue(canvas.nativeCameraTravel)
+        XCTAssertEqual(canvas.camera.zoom, zoom)
+      }
+      RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+      XCTAssertEqual(canvas.cameraFrameCallbacks, 0)
+      XCTAssertEqual(canvas.sceneContentUpdates, contentUpdates)
+    }
+  }
+
   func testZoomPreservesWorldCoordinatesAndLayerIdentity() throws {
     try withCanvas { canvas, _ in
       canvas.synchronizeScene()
@@ -68,6 +195,56 @@ final class CanvasSelectionTests: XCTestCase {
           XCTAssertEqual(card.affineTransform().a * canvas.cameraLayer.affineTransform().a, 1, accuracy: 0.0001)
         }
       }
+    }
+  }
+
+  func testGridToggleRestoresDotsAtCurrentZoom() throws {
+    let defaults = UserDefaults.standard
+    let previous = defaults.object(forKey: "showGrid")
+    defaults.removeObject(forKey: "showGrid")
+    defer { defaults.set(previous, forKey: "showGrid") }
+    try withCanvas { canvas, _ in
+      canvas.camera.zoom = 0.3
+      let grid = try XCTUnwrap(canvas.subviews.flatMap { $0.layer?.sublayers ?? [] }
+        .first { $0 is CAReplicatorLayer })
+      let tile = try XCTUnwrap(grid.sublayers?.first?.sublayers?.first)
+      XCTAssertFalse(grid.isHidden, "Dots remain enabled by default")
+      let original = try XCTUnwrap(tile.contents as AnyObject?)
+      let item = NSMenuItem()
+      canvas.perform(NSSelectorFromString("toggleGrid:"), with: item)
+      XCTAssertTrue(grid.isHidden)
+      canvas.camera.zoom = 0.7
+      XCTAssertTrue(grid.isHidden)
+      XCTAssertTrue(tile.contents as AnyObject? === original, "Disabled dots must skip raster work")
+      canvas.perform(NSSelectorFromString("toggleGrid:"), with: item)
+      XCTAssertFalse(grid.isHidden)
+      XCTAssertFalse(tile.contents as AnyObject? === original, "Re-enabling must refresh the tile")
+      XCTAssertEqual(canvas.camera.zoom, 0.7)
+      canvas.camera.zoom = 0.06
+      XCTAssertTrue(grid.isHidden, "Existing low-zoom fade threshold is preserved")
+    }
+  }
+
+  func testDebugOverlaySurvivesRepeatedZoomRedraws() throws {
+    let defaults = UserDefaults.standard
+    let previous = defaults.object(forKey: "showDebugInformation")
+    defaults.set(true, forKey: "showDebugInformation")
+    defer { defaults.set(previous, forKey: "showDebugInformation") }
+    try withCanvas { canvas, _ in
+      let hud = try XCTUnwrap(canvas.subviews.filter { $0.frame == canvas.bounds }.last)
+      let rect = CGRect(x: 0, y: canvas.bounds.maxY - 60, width: 180, height: 60)
+      let bitmap = try XCTUnwrap(hud.bitmapImageRepForCachingDisplay(in: rect))
+      var firstImage: Data?
+      for step in 0..<1_200 {
+        autoreleasepool {
+          canvas.camera.zoom = 0.06 + CGFloat(step % 120) / 100
+          hud.cacheDisplay(in: rect, to: bitmap)
+          if step == 0 { firstImage = bitmap.representation(using: .png, properties: [:]) }
+        }
+      }
+      XCTAssertNotNil(firstImage)
+      XCTAssertNotEqual(firstImage, bitmap.representation(using: .png, properties: [:]),
+        "The debug label must still update across zoom values, not freeze to avoid the crash")
     }
   }
 
@@ -485,19 +662,233 @@ final class DesktopTabTests: XCTestCase {
         ([], [1, 2, 0]), ([.shift], [2, 1, 0]),
       ] {
         for index in destinations {
-          let original = canvas.camera
           XCTAssertTrue(canvas.handleNavigationKey(tabKey(modifiers: modifiers)))
           canvas.advanceDesktopTransition(to: 0.25)
-          XCTAssertEqual(canvas.desktopTransitionOpacity, 0.5, accuracy: 0.001)
-          XCTAssertEqual(canvas.camera, original)
+          XCTAssertEqual(canvas.camera, pages[index].camera)
           canvas.advanceDesktopTransition(to: 0.5)
           XCTAssertEqual(canvas.camera, pages[index].camera)
           canvas.advanceDesktopTransition(to: 1)
           XCTAssertEqual(try savedPages().selectedID, pages[index].id)
-          XCTAssertEqual(canvas.desktopTransitionOpacity, 0)
+          XCTAssertFalse(canvas.defersBackgroundWork)
         }
       }
       XCTAssertEqual(try savedPages().pages, pages)
+    }
+  }
+
+  func testRapidTabPressesVisitEveryRequestedDesktopInOrder() throws {
+    try withCanvas(count: 4) { canvas, pages in
+      for _ in 0..<3 { XCTAssertTrue(canvas.handleNavigationKey(tabKey())) }
+      XCTAssertEqual(canvas.camera, pages[1].camera)
+      canvas.advanceDesktopTransition(to: 1)
+      XCTAssertEqual(canvas.camera, pages[2].camera)
+      canvas.advanceDesktopTransition(to: 1)
+      XCTAssertEqual(canvas.camera, pages[3].camera)
+      canvas.advanceDesktopTransition(to: 1)
+      XCTAssertFalse(canvas.defersBackgroundWork)
+      for _ in 0..<3 { XCTAssertTrue(canvas.handleNavigationKey(tabKey(modifiers: .shift))) }
+      for index in [2, 1, 0] {
+        XCTAssertEqual(canvas.camera, pages[index].camera)
+        canvas.advanceDesktopTransition(to: 1)
+      }
+      XCTAssertEqual(try savedPages().pages, pages)
+    }
+  }
+
+  func testPlusAddsDesktopAndTabOnlyVisitsExistingPages() throws {
+    try withCanvas { canvas, _ in
+      let plus = try XCTUnwrap(descendants(of: canvas).compactMap { $0 as? NSButton }.first {
+        $0.toolTip == "New desktop (+)"
+      })
+      XCTAssertGreaterThan(plus.frame.minX, try tab(2, in: canvas).frame.maxX)
+      let originalCamera = canvas.camera
+      plus.performClick(nil)
+      canvas.advanceDesktopTransition(to: 1)
+      XCTAssertEqual(try savedPages().pages.count, 4)
+      XCTAssertEqual(canvas.camera, originalCamera)
+      let key = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.shift],
+        timestamp: 0, windowNumber: 0, context: nil, characters: "+",
+        charactersIgnoringModifiers: "=", isARepeat: false, keyCode: 24)!
+      XCTAssertTrue(canvas.handleNavigationKey(key))
+      canvas.advanceDesktopTransition(to: 1)
+      let pages = try savedPages()
+      XCTAssertEqual(pages.pages.count, 5)
+      for _ in 0..<5 {
+        XCTAssertTrue(canvas.handleNavigationKey(tabKey()))
+        canvas.advanceDesktopTransition(to: 1)
+      }
+      XCTAssertEqual(try savedPages().pages.count, 5)
+      XCTAssertEqual(try savedPages().selectedID, pages.selectedID)
+      let settings = descendants(of: canvas).compactMap { $0 as? NSButton }.filter {
+        $0.toolTip == "Settings"
+      }
+      XCTAssertEqual(settings.count, 1)
+      let search = try XCTUnwrap(descendants(of: canvas).compactMap { $0 as? NSButton }.first { $0.toolTip == "Search apps" })
+      XCTAssertGreaterThan(settings[0].frame.minY, search.frame.maxY)
+    }
+  }
+
+  func testSettingsPointerDoesNotReachCanvas() throws {
+    try withCanvas { canvas, _ in
+      let host = CanvasWorkspaceView(canvas: canvas)
+      host.frame = CGRect(x: 0, y: 0, width: 1200, height: 900)
+      host.layoutSubtreeIfNeeded()
+      let settings = try XCTUnwrap(descendants(of: canvas).compactMap { $0 as? NSButton }.first { $0.toolTip == "Settings" })
+      settings.performClick(nil)
+      defer { canvas.dismissSettings(); NSCursor.arrow.set() }
+      host.layoutSubtreeIfNeeded()
+      let point = CGPoint(x: canvas.frame.maxX + 80, y: 400)
+      XCTAssertNil(canvas.hitTest(point))
+      let move = try XCTUnwrap(NSEvent.mouseEvent(with: .mouseMoved, location: point,
+        modifierFlags: [], timestamp: 0, windowNumber: 0, context: nil,
+        eventNumber: 0, clickCount: 0, pressure: 0))
+      NSCursor.openHand.set()
+      canvas.mouseMoved(with: move)
+      XCTAssertEqual(NSCursor.current, NSCursor.arrow)
+      XCTAssertNil(canvas.menu(for: move))
+      let originalCamera = canvas.camera
+      canvas.mouseDown(with: move)
+      XCTAssertEqual(canvas.camera, originalCamera)
+      XCTAssertFalse(canvas.defersBackgroundWork)
+      XCTAssertTrue(host.isSettingsVisible)
+    }
+  }
+
+  func testKeyboardNavigationKeepsSettingsOpen() throws {
+    try withCanvas { canvas, pages in
+      let host = CanvasWorkspaceView(canvas: canvas)
+      host.frame = CGRect(x: 0, y: 0, width: 1200, height: 900)
+      host.layoutSubtreeIfNeeded()
+      let settings = try XCTUnwrap(descendants(of: canvas).compactMap { $0 as? NSButton }.first { $0.toolTip == "Settings" })
+      settings.performClick(nil)
+      defer { canvas.dismissSearch(); canvas.dismissSettings() }
+      func key(_ code: UInt16, _ text: String = "", _ modifiers: NSEvent.ModifierFlags = []) -> NSEvent {
+        NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: modifiers,
+          timestamp: 0, windowNumber: 0, context: nil, characters: text,
+          charactersIgnoringModifiers: text, isARepeat: false, keyCode: code)!
+      }
+      for code: UInt16 in [123, 124, 125, 126, 36, 76, 51] {
+        XCTAssertTrue(canvas.handleNavigationKey(key(code)))
+        XCTAssertTrue(host.isSettingsVisible)
+      }
+      XCTAssertTrue(canvas.handleNavigationKey(key(36, "", [.shift])))
+      for code: UInt16 in [125, 126] {
+        XCTAssertTrue(canvas.handleNavigationKey(key(code, "", [.shift])))
+        XCTAssertTrue(canvas.handleNavigationKeyUp(key(code, "", [.shift])))
+      }
+      XCTAssertTrue(canvas.handleNavigationKey(tabKey()))
+      canvas.advanceDesktopTransition(to: 1)
+      XCTAssertEqual(try savedPages().selectedID, pages[1].id)
+      XCTAssertTrue(host.isSettingsVisible)
+      XCTAssertTrue(canvas.handleNavigationKey(tabKey(modifiers: [.shift])))
+      canvas.advanceDesktopTransition(to: 1)
+      XCTAssertEqual(try savedPages().selectedID, pages[0].id)
+      XCTAssertTrue(canvas.handleNavigationKey(key(24, "+", [.shift])))
+      canvas.advanceDesktopTransition(to: 1)
+      XCTAssertEqual(try savedPages().pages.count, 4)
+      XCTAssertTrue(host.isSettingsVisible)
+      XCTAssertTrue(canvas.handleNavigationKey(key(0, "a")))
+      XCTAssertTrue(host.isSettingsVisible)
+      XCTAssertFalse(canvas.handleNavigationKey(key(24, "+")), "Search editor owns text input")
+      XCTAssertEqual(try savedPages().pages.count, 4)
+    }
+  }
+
+  func testSettingsReserveViewportAndRestoreCameraAndPlacements() throws {
+    try withCanvas { canvas, pages in
+      let host = CanvasWorkspaceView(canvas: canvas)
+      host.frame = CGRect(x: 0, y: 0, width: 1200, height: 900)
+      host.layoutSubtreeIfNeeded()
+      let original = canvas.camera
+      let button = try XCTUnwrap(descendants(of: canvas).compactMap { $0 as? NSButton }.first {
+        $0.toolTip == "Settings"
+      })
+      let defaults = UserDefaults.standard
+      let previousGrid = defaults.object(forKey: "showGrid")
+      defer { defaults.set(previousGrid, forKey: "showGrid") }
+      button.performClick(nil)
+      XCTAssertTrue(host.isSettingsVisible)
+      XCTAssertEqual(canvas.frame.width, 760)
+      XCTAssertEqual(canvas.camera, original)
+      let grid = try XCTUnwrap(descendants(of: host).compactMap { $0 as? SettingsSwitch }.first {
+        $0.identifier?.rawValue == "Grid dots"
+      })
+      let oldState = grid.state
+      let row = try XCTUnwrap(grid.superview)
+      for x: CGFloat in [10, 100] {
+        let point = row.convert(CGPoint(x: x, y: 26), to: row.superview)
+        let hit = try XCTUnwrap(row.hitTest(point) as? NSButton)
+        XCTAssertFalse(hit === grid)
+        XCTAssertTrue(NSApp.sendAction(try XCTUnwrap(hit.action), to: hit.target, from: hit))
+      }
+      XCTAssertEqual(grid.state, oldState, "Icon and text clicks each toggle once")
+      XCTAssertTrue(NSApp.sendAction(try XCTUnwrap(grid.action), to: grid.target, from: grid))
+      XCTAssertNotEqual(grid.state, oldState)
+      XCTAssertEqual(defaults.bool(forKey: "showGrid"), grid.state == .on)
+      XCTAssertTrue(NSApp.sendAction(try XCTUnwrap(grid.action), to: grid.target, from: grid))
+      XCTAssertEqual(grid.state, oldState)
+      XCTAssertTrue(canvas.dismissSettings())
+      XCTAssertFalse(canvas.dismissSettings())
+      XCTAssertEqual(canvas.frame.width, 1200)
+      XCTAssertEqual(canvas.camera, original)
+      XCTAssertEqual(try savedPages().pages, pages)
+    }
+  }
+
+  func testDesktopSlideDirectionFollowsTabOrderAndKeepsCameraExact() throws {
+    try withCanvas(count: 4) { canvas, pages in
+      for index in [2, 0, 3, 1] {
+        let previous = try savedPages().selectedID
+        let previousIndex = try XCTUnwrap(pages.firstIndex { $0.id == previous })
+        try tab(index, in: canvas).performClick(nil)
+        let slide = try XCTUnwrap(canvas.cameraLayer.animation(forKey: "desktopSlide") as? CABasicAnimation)
+        let from = try XCTUnwrap(slide.fromValue as? NSValue).pointValue
+        let to = try XCTUnwrap(slide.toValue as? NSValue).pointValue
+        XCTAssertEqual(from.x - to.x, index > previousIndex ? -40 : 40)
+        XCTAssertEqual(from.y, to.y)
+        XCTAssertEqual(slide.duration, CanvasView.desktopTransitionDuration)
+        XCTAssertEqual(canvas.camera, pages[index].camera)
+        canvas.advanceDesktopTransition(to: 1)
+        XCTAssertNil(canvas.cameraLayer.animation(forKey: "desktopSlide"))
+        XCTAssertEqual(canvas.camera, pages[index].camera)
+      }
+      XCTAssertEqual(try savedPages().pages, pages)
+    }
+  }
+
+  func testQueuedTabWrapSlidesForwardAndPreservesEveryDesktop() throws {
+    try withCanvas(count: 3) { canvas, pages in
+      for _ in 0..<7 {
+        XCTAssertTrue(canvas.handleNavigationKey(tabKey()))
+      }
+      for index in [1, 2, 0, 1, 2, 0, 1] {
+        let slide = try XCTUnwrap(canvas.cameraLayer.animation(forKey: "desktopSlide") as? CABasicAnimation)
+        let from = try XCTUnwrap(slide.fromValue as? NSValue).pointValue
+        let to = try XCTUnwrap(slide.toValue as? NSValue).pointValue
+        XCTAssertEqual(from.x - to.x, -40)
+        XCTAssertEqual(from.y, to.y)
+        XCTAssertEqual(slide.duration, 0.18)
+        XCTAssertEqual(canvas.camera, pages[index].camera)
+        XCTAssertEqual(try savedPages().selectedID, pages[index].id)
+        canvas.advanceDesktopTransition(to: 1)
+      }
+      XCTAssertFalse(canvas.defersBackgroundWork)
+      XCTAssertEqual(try savedPages().pages, pages)
+    }
+  }
+
+  func testQueuedTabsPreserveDirectionAndIgnoreAutoRepeat() throws {
+    try withCanvas(count: 4) { canvas, pages in
+      XCTAssertTrue(canvas.handleNavigationKey(tabKey()))
+      XCTAssertTrue(canvas.handleNavigationKey(tabKey(modifiers: .shift)))
+      XCTAssertTrue(canvas.handleNavigationKey(tabKey(repeated: true)))
+      XCTAssertTrue(canvas.handleNavigationKey(tabKey()))
+      for index in [1, 0, 1] {
+        XCTAssertEqual(canvas.camera, pages[index].camera)
+        canvas.advanceDesktopTransition(to: 1)
+      }
+      XCTAssertFalse(canvas.defersBackgroundWork)
+      XCTAssertEqual(try savedPages().selectedID, pages[1].id)
     }
   }
 
@@ -538,23 +929,20 @@ final class DesktopTabTests: XCTestCase {
     }
   }
 
-  func testTabClickFadesBeforeChangingCameraAndRestoresEachDesktopExactly() throws {
+  func testTabClickCrossfadesScenesAndRestoresEachDesktopExactly() throws {
     try withCanvas { canvas, pages in
       let original = canvas.camera
+      let originalSubviews = canvas.subviews
       try tab(1, in: canvas).performClick(nil)
-      XCTAssertEqual(canvas.camera, original)
-      canvas.advanceDesktopTransition(to: 0.25)
-      XCTAssertEqual(canvas.desktopTransitionOpacity, 0.5, accuracy: 0.001)
-      XCTAssertEqual(canvas.camera, original, "The outgoing desktop must not travel during fade-out")
-      canvas.advanceDesktopTransition(to: 0.5)
-      XCTAssertEqual(canvas.desktopTransitionOpacity, 1)
-      XCTAssertEqual(canvas.camera, pages[1].camera)
-      canvas.advanceDesktopTransition(to: 0.75)
-      XCTAssertEqual(canvas.desktopTransitionOpacity, 0.5, accuracy: 0.001)
-      XCTAssertEqual(canvas.camera, pages[1].camera, "The incoming desktop must not travel during fade-in")
+      XCTAssertEqual(canvas.camera, pages[1].camera, "Incoming scene is ready when fading begins")
+      XCTAssertEqual(canvas.subviews, originalSubviews, "Crossfade must not insert a solid-color cover")
+      for progress in [0.25, 0.5, 0.75] {
+        canvas.advanceDesktopTransition(to: progress)
+        XCTAssertEqual(canvas.camera, pages[1].camera, "Crossfade must not move the incoming camera")
+      }
       canvas.advanceDesktopTransition(to: 1)
-      XCTAssertEqual(canvas.desktopTransitionOpacity, 0)
-      XCTAssertTrue(try tab(1, in: canvas).isHidden, "The editable active title replaces its tab button")
+      XCTAssertEqual(canvas.subviews, originalSubviews)
+      XCTAssertTrue(try tab(1, in: canvas).isHidden)
 
       try tab(0, in: canvas).performClick(nil)
       canvas.advanceDesktopTransition(to: 1)
@@ -575,7 +963,7 @@ final class DesktopTabTests: XCTestCase {
       canvas.advanceDesktopTransition(to: 1)
       XCTAssertEqual(canvas.camera, pages[2].camera)
       XCTAssertEqual(try savedPages().selectedID, pages[2].id)
-      XCTAssertEqual(canvas.desktopTransitionOpacity, 0)
+      XCTAssertFalse(canvas.defersBackgroundWork)
       XCTAssertFalse(canvas.defersBackgroundWork)
     }
   }
@@ -605,7 +993,7 @@ final class DesktopTabTests: XCTestCase {
       XCTAssertTrue(try tab(0, in: canvas).isHidden)
       canvas.perform(NSSelectorFromString("addDesktopPage:"), with: NSMenuItem())
       canvas.advanceDesktopTransition(to: 0.25)
-      XCTAssertEqual(try savedPages().pages.count, 1)
+      XCTAssertEqual(try savedPages().pages.count, 2)
       canvas.advanceDesktopTransition(to: 1)
       XCTAssertEqual(try savedPages().pages.count, 2)
       XCTAssertEqual(canvas.camera, original, "New desktops must not introduce a directional camera offset")

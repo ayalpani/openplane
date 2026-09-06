@@ -1,0 +1,12 @@
+{
+  "pid": 55583,
+  "idle_seconds": 3.00523404199339,
+  "idle_cpu_seconds": 7.77083333325379e-05,
+  "idle_cpu_percent": 0.002585766441038765,
+  "action_start": 106305.6047725,
+  "action_cpu_start": 9.082515916666665,
+  "action_seconds": 17.40782649999892,
+  "action_cpu_seconds": 0.105108958333334,
+  "action_cpu_percent": 0.6038028833372192,
+  "additional_cpu_seconds": 0.10465883259758278
+}

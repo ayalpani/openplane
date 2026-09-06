@@ -1,0 +1,225 @@
+--- CanvasView-before.swift
++++ CanvasView.swift
+@@ -585,7 +585,7 @@
+   private let menuButton = HoverButton()
+   private let fitAllButton = HoverButton()
+   private let searchButton = HoverButton()
+-  private let settingsButton = HoverButton()
++  private let addDesktopButton = NSButton()
+   private let lockViewButton = HoverButton()
+   private let closeSearchButton = HoverButton()
+   private let nextSearchResultButton = HoverButton()
+@@ -599,10 +599,6 @@
+   private var pendingDesktopChanges: [() -> Void] = []
+   private var desktopTransitionDisplayLink: CADisplayLink?
+   private var settingsWorkspace: CanvasWorkspaceView? { superview as? CanvasWorkspaceView }
+-  private let navigatorMenu = NSMenu()
+-  private let desktopPagesMenu = NSMenu()
+-  private let desktopPagesMenuItem = NSMenuItem()
+-  private let newDesktopMenuItem = NSMenuItem()
+   private let expandLandscapePreviewsMenuItem = NSMenuItem()
+   private let debugInformationMenuItem = NSMenuItem()
+   private let gridMenuItem = NSMenuItem()
+@@ -742,7 +738,7 @@
+       width: panel.maxX - 48 - focusMinX,
+       height: 40
+     )
+-    let footerButtonsX = panel.midX - 80
++    let footerButtonsX = panel.midX - 60
+     searchButton.frame = CGRect(
+       x: footerButtonsX,
+       y: panel.minY + 4,
+@@ -751,12 +747,6 @@
+     )
+     fitAllButton.frame = CGRect(
+       x: footerButtonsX + 40,
+-      y: panel.minY + 4,
+-      width: 40,
+-      height: 40
+-    )
+-    settingsButton.frame = CGRect(
+-      x: footerButtonsX + 120,
+       y: panel.minY + 4,
+       width: 40,
+       height: 40
+@@ -1484,6 +1474,11 @@
+ 
+     if isSearching { return false }
+ 
++    if event.characters == "+" {
++      if !event.isARepeat { addDesktopPage(nil) }
++      return true
++    }
++
+     if event.keyCode == 48 {
+       guard !event.isARepeat, desktopPages.pages.count > 1 else { return true }
+       let offset = modifiers == [.shift] ? -1 : 1
+@@ -3113,6 +3108,15 @@
+     desktopTabsScrollView.setAccessibilityLabel("Desktops")
+     addSubview(desktopTabsScrollView)
+     desktopTabsContent.addSubview(desktopTitleField)
++    addDesktopButton.title = ""
++    addDesktopButton.image = NSImage(systemSymbolName: "plus", accessibilityDescription: "New desktop")
++    addDesktopButton.isBordered = false
++    addDesktopButton.contentTintColor = .white.withAlphaComponent(0.7)
++    addDesktopButton.toolTip = "New desktop (+)"
++    addDesktopButton.setAccessibilityLabel("New desktop")
++    addDesktopButton.target = self
++    addDesktopButton.action = #selector(addDesktopPage(_:))
++    desktopTabsContent.addSubview(addDesktopButton)
+     rebuildDesktopTabs()
+   }
+ 
+@@ -3167,7 +3171,7 @@
+       return ceil(min(multiple ? 260 : 720, max(multiple ? 96 : 180, textWidth + 32)))
+     }
+     let gap: CGFloat = 8
+-    let contentWidth = widths.reduce(0, +) + CGFloat(max(0, widths.count - 1)) * gap
++    let contentWidth = widths.reduce(0, +) + CGFloat(widths.count) * gap + 36
+     let layout = desktopTitleNudgeLayout
+     let visibleWidth = min(contentWidth, max(0, bounds.width - 96))
+     desktopTabsScrollView.frame = CGRect(
+@@ -3185,6 +3189,7 @@
+       }
+       x += width + gap
+     }
++    addDesktopButton.frame = CGRect(x: x, y: 0, width: 36, height: layout.titleBoxHeight)
+   }
+ 
+   @objc private func selectDesktopTab(_ sender: NSButton) {
+@@ -3249,26 +3254,18 @@
+ 
+   private func configureMenuButton() {
+     menuButton.title = ""
+-    menuButton.image = Self.menuImage()
++    menuButton.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Settings")
++    menuButton.contentTintColor = .white.withAlphaComponent(0.82)
+     menuButton.imagePosition = .imageOnly
+     menuButton.imageScaling = .scaleProportionallyDown
+     menuButton.isBordered = false
+     menuButton.focusRingType = .none
+-    menuButton.toolTip = "Menu"
+-    menuButton.setAccessibilityLabel("Menu")
++    menuButton.toolTip = "Settings"
++    menuButton.setAccessibilityLabel("Settings")
+     menuButton.target = self
+-    menuButton.action = #selector(showNavigatorMenu(_:))
++    menuButton.action = #selector(showSettings(_:))
+     addSubview(menuButton)
+ 
+-    navigatorMenu.autoenablesItems = false
+-    newDesktopMenuItem.title = "New Desktop"
+-    newDesktopMenuItem.target = self
+-    newDesktopMenuItem.action = #selector(addDesktopPage(_:))
+-    navigatorMenu.addItem(newDesktopMenuItem)
+-    desktopPagesMenuItem.title = "Desktops"
+-    desktopPagesMenuItem.submenu = desktopPagesMenu
+-    navigatorMenu.addItem(desktopPagesMenuItem)
+-    navigatorMenu.addItem(.separator())
+     expandLandscapePreviewsMenuItem.title = "Expand previews"
+     expandLandscapePreviewsMenuItem.target = self
+     expandLandscapePreviewsMenuItem.action = #selector(toggleLandscapePreviewExpansion(_:))
+@@ -3290,7 +3287,6 @@
+     privateBrowserPreviewsMenuItem.title = "Show Private Browser Previews"
+     privateBrowserPreviewsMenuItem.target = self
+     privateBrowserPreviewsMenuItem.action = #selector(togglePrivateBrowserPreviews(_:))
+-    navigatorMenu.addItem(.separator())
+     commandTabShortcutMenuItem.title = "Use ⌘Tab for OpenPlane"
+     commandTabShortcutMenuItem.target = self
+     commandTabShortcutMenuItem.action = #selector(toggleCommandTabShortcut(_:))
+@@ -3377,17 +3373,7 @@
+   }
+ 
+   private func configureSettingsButton() {
+-    settingsButton.title = ""
+-    settingsButton.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: "Settings")
+-    settingsButton.imagePosition = .imageOnly
+-    settingsButton.imageScaling = .scaleProportionallyDown
+-    settingsButton.isBordered = false
+-    settingsButton.focusRingType = .none
+-    settingsButton.toolTip = "Settings"
+-    settingsButton.setAccessibilityLabel("Settings")
+-    settingsButton.target = self
+-    settingsButton.action = #selector(showSettings(_:))
+-    addSubview(settingsButton)
++
+   }
+ 
+   private func configureLockViewButton() {
+@@ -3644,7 +3630,6 @@
+     focusButton.isHidden = visible
+     searchButton.isHidden = visible
+     fitAllButton.isHidden = visible
+-    settingsButton.isHidden = visible
+     lockViewButton.isHidden = visible
+     menuButton.isHidden = visible
+     nextSearchResultButton.isHidden = true
+@@ -3670,23 +3655,6 @@
+ 
+   @objc private func showSearch(_ sender: NSButton) {
+     beginSearch()
+-  }
+-
+-  @objc private func showNavigatorMenu(_ sender: NSButton) {
+-    expandLandscapePreviewsMenuItem.state = expandsLandscapePreviews ? .on : .off
+-    debugInformationMenuItem.state = showsDebugInformation ? .on : .off
+-    gridMenuItem.state = showsGrid ? .on : .off
+-    centerGuideMenuItem.state = showsCenterGuide ? .on : .off
+-    synchronizedSelectionMenuItem.state = synchronizesSelectionAnimation ? .on : .off
+-    lightClosedCardsMenuItem.state = usesLightClosedCards ? .on : .off
+-    privateBrowserPreviewsMenuItem.state = showsPrivateBrowserPreviews ? .on : .off
+-    commandTabShortcutMenuItem.state = usesCommandTabShortcut ? .on : .off
+-    rebuildDesktopPagesMenu()
+-    navigatorMenu.popUp(
+-      positioning: nil,
+-      at: CGPoint(x: sender.bounds.minX, y: sender.bounds.minY),
+-      in: sender
+-    )
+   }
+ 
+   @objc private func toggleLandscapePreviewExpansion(_ sender: NSMenuItem) {
+@@ -3804,7 +3772,7 @@
+     updateLockViewButton()
+   }
+ 
+-  @objc private func addDesktopPage(_ sender: NSMenuItem) {
++  @objc private func addDesktopPage(_ sender: Any?) {
+     transitionDesktop { [weak self] in
+       guard let self else { return }
+       // Desktops are independent arrangements, not adjacent regions of one plane.
+@@ -3812,13 +3780,6 @@
+       self.rebuildDesktopTabs()
+       self.applySelectedDesktop(camera: self.camera)
+     }
+-  }
+-
+-  @objc private func selectDesktopPage(_ sender: NSMenuItem) {
+-    guard let rawID = sender.representedObject as? String,
+-      let id = UUID(uuidString: rawID)
+-    else { return }
+-    selectDesktop(id: id)
+   }
+ 
+   private func selectDesktop(id: UUID) {
+@@ -3934,21 +3895,6 @@
+       layer.removeAnimation(forKey: "desktopSlide")
+     }
+     needsDisplay = true
+-  }
+-
+-  private func rebuildDesktopPagesMenu() {
+-    desktopPagesMenu.removeAllItems()
+-    for page in desktopPages.pages {
+-      let item = NSMenuItem(
+-        title: page.displayTitle,
+-        action: #selector(selectDesktopPage(_:)),
+-        keyEquivalent: ""
+-      )
+-      item.target = self
+-      item.representedObject = page.id.uuidString
+-      item.state = page.id == desktopPages.selectedID ? .on : .off
+-      desktopPagesMenu.addItem(item)
+-    }
+   }
+ 
+   private func updateLockViewButton() {

@@ -1,0 +1,21 @@
+{
+  "checked_at": 1788651080.017357,
+  "original_preferences_restored_and_checked_before_restart": true,
+  "grid_default_enabled": true,
+  "installed_binary_sha256": "db22d98f75b7106e8754c6b8cbf976f1ebe01aafd7f28a9fa9ed8fc81daccf3f",
+  "signature_verified": true,
+  "final_source_matches_85_test_build": true,
+  "tile_side": 256,
+  "remaining_test_processes": [],
+  "latest_crash_report": "/Users/ayalpani/Library/Logs/DiagnosticReports/OpenPlane-2026-09-06-003613.ips",
+  "full_performance_verification": "BLOCKED: see report",
+  "smoke_cases": {
+    "P05": "partial",
+    "P01": "partial",
+    "P02": "partial",
+    "P03": "partial",
+    "P06": "partial",
+    "P14": "partial",
+    "P04": "BLOCKED"
+  }
+}

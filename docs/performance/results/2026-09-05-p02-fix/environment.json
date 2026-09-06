@@ -1,0 +1,8 @@
+{
+  "commit": "09707146f1e93862bfb9e7b734681f28cd1e7020",
+  "candidate_source_diff_sha256": "f6dd268b97028a2a193c127d5531bd9348a6645812784df8d07ab52a1124f3d6",
+  "baseline_binary_sha256": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+  "candidate_binary_sha256": "c2d7f7dce2e109060dc68928f4fddebc83290c0e8db98fb846556a96b5b01fdc",
+  "os": "26.6.2",
+  "machine": "Mac14,10"
+}

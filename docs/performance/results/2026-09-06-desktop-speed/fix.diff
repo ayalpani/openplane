@@ -1,0 +1,11 @@
+--- /tmp/openplane-desktop-speed/CanvasView-before.swift	2026-09-06 01:37:52.502130058 +0200
++++ OpenPlane/CanvasView.swift	2026-09-06 01:37:52.527668488 +0200
+@@ -323,7 +323,7 @@
+   private static let navigatorTextFont = NSFont.systemFont(ofSize: 14, weight: .medium)
+   private static let desktopTitleFont = NSFont.systemFont(ofSize: 36, weight: .heavy)
+   private static let desktopTabFont = NSFont.systemFont(ofSize: 20, weight: .semibold)
+-  static let desktopTransitionDuration: TimeInterval = 0.28
++  static let desktopTransitionDuration: TimeInterval = selectionTransitionDuration
+   private static let selectionHandleHitSize: CGFloat = 20
+   private static let minimumGroupSize: CGFloat = 80
+   private static let previewFadeDuration: TimeInterval = 0.25

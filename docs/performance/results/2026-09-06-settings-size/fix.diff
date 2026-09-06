@@ -1,0 +1,128 @@
+--- 
++++ 
+@@ -320,7 +320,7 @@
+   private static let lightClosedCardsPreferenceKey = "useLightClosedCards"
+   private static let desktopPagesPreferenceKey = "desktopPages"
+   private static let navigatorPanelSize = CGSize(width: 268, height: 244)
+-  private static let navigatorTextFont = NSFont.systemFont(ofSize: 14, weight: .medium)
++  private static let navigatorTextFont = NSFont.systemFont(ofSize: 12, weight: .medium)
+   private static let desktopTitleFont = NSFont.systemFont(ofSize: 36, weight: .heavy)
+   private static let desktopTabFont = NSFont.systemFont(ofSize: 20, weight: .semibold)
+   static let desktopTransitionDuration: TimeInterval = selectionTransitionDuration
+@@ -4447,14 +4447,18 @@
+   }
+ 
+   private func updateSelection() {
+-    for button in swatches {
+-      let isSelected = button.identifier?.rawValue == selectedID
+-      button.layer?.borderColor = isSelected
+-        ? selectedBorderColor
+-        : NSColor.black.withAlphaComponent(0.14).cgColor
+-      button.layer?.borderWidth = isSelected ? 3 : 1
+-    }
+-  }
++    needsDisplay = true
++  }
++
++  override func draw(_ dirtyRect: NSRect) {
++    super.draw(dirtyRect)
++    guard let button = swatches.first(where: { $0.identifier?.rawValue == selectedID }) else { return }
++    NSColor(cgColor: selectedBorderColor)?.setStroke()
++    let ring = NSBezierPath(roundedRect: button.frame.insetBy(dx: -3, dy: -3), xRadius: 13, yRadius: 13)
++    ring.lineWidth = 2
++    ring.stroke()
++  }
++
+ }
+ 
+ // The canvas keeps its world coordinates; only its viewport gives space to settings.
+@@ -4476,7 +4480,7 @@
+ 
+   private var transitionGeneration = 0
+   private var isAnimatingSettings = false
+-  private var panelWidth: CGFloat { min(380, bounds.width * 0.45) }
++  private var panelWidth: CGFloat { min(440, bounds.width * 0.45) }
+ 
+   func showSettings(_ panel: NSView) {
+     subviews.filter { $0 !== canvas }.forEach { $0.removeFromSuperview() }
+@@ -4578,16 +4582,24 @@
+     icon.contentTintColor = NSColor(srgbRed: 0.43, green: 0.48, blue: 0.55, alpha: 1)
+     addSubview(icon)
+     let label = NSTextField(labelWithString: title)
+-    label.font = .systemFont(ofSize: 13.5, weight: .medium)
++    label.font = .systemFont(ofSize: 16, weight: .medium)
+     label.textColor = NSColor(srgbRed: 0.12, green: 0.17, blue: 0.23, alpha: 1)
+-    label.frame = CGRect(x: 42, y: 16, width: width - 88, height: 20)
++    label.frame = CGRect(x: 42, y: 16, width: width - 88, height: 22)
++    label.autoresizingMask = [.width]
+     addSubview(label)
+     control.frame = CGRect(x: width - 38, y: 12, width: 38, height: 28)
++    control.autoresizingMask = [.minXMargin]
+     control.state = item.state
+     control.target = self
+     control.action = #selector(toggle(_:))
+     control.identifier = NSUserInterfaceItemIdentifier(title)
+     control.setAccessibilityLabel(title)
++    if title == "Expand previews" {
++      let explanation = "Enlarge smaller previews proportionally to the largest window dimensions. Actual windows stay unchanged."
++      toolTip = explanation
++      control.toolTip = explanation
++      rowButton.toolTip = explanation
++    }
+     addSubview(control)
+   }
+ 
+@@ -4613,12 +4625,12 @@
+   override var isFlipped: Bool { true }
+ 
+   init(palette: NSView, groups: [(String, [(String, String, NSMenuItem)])]) {
+-    super.init(frame: CGRect(x: 0, y: 0, width: 380, height: 900))
++    super.init(frame: CGRect(x: 0, y: 0, width: 440, height: 900))
+     appearance = NSAppearance(named: .aqua)
+     wantsLayer = true
+     layer?.backgroundColor = NSColor.white.cgColor
+     let title = NSTextField(labelWithString: "Settings")
+-    title.font = .systemFont(ofSize: 25, weight: .semibold)
++    title.font = .systemFont(ofSize: 28, weight: .semibold)
+     title.textColor = NSColor(srgbRed: 0.12, green: 0.17, blue: 0.23, alpha: 1)
+     title.frame = CGRect(x: 24, y: 38, width: 270, height: 34)
+     addSubview(title)
+@@ -4636,7 +4648,7 @@
+     var y: CGFloat = 10
+     func section(_ text: String) {
+       let label = NSTextField(labelWithString: text)
+-      label.font = .systemFont(ofSize: 12, weight: .medium)
++      label.font = .systemFont(ofSize: 14, weight: .medium)
+       label.textColor = .secondaryLabelColor
+       label.frame = CGRect(x: 24, y: y, width: 310, height: 20)
+       document.addSubview(label)
+@@ -4649,14 +4661,14 @@
+     for (heading, rows) in groups {
+       section(heading)
+       for (title, symbol, item) in rows {
+-        let row = SettingsToggleRow(title: title, symbol: symbol, item: item, width: 332)
++        let row = SettingsToggleRow(title: title, symbol: symbol, item: item, width: 392)
+         row.frame.origin.y = y
+         document.addSubview(row)
+         y += row.frame.height
+       }
+       y += 20
+     }
+-    document.frame = CGRect(x: 0, y: 0, width: 380, height: y + 12)
++    document.frame = CGRect(x: 0, y: 0, width: 440, height: y + 12)
+     scroll.documentView = document
+     addSubview(scroll)
+   }
+@@ -4667,6 +4679,12 @@
+     super.layout()
+     closeButton.frame = CGRect(x: bounds.width - 54, y: 38, width: 30, height: 30)
+     scroll.frame = CGRect(x: 0, y: 92, width: bounds.width, height: max(0, bounds.height - 92))
++    if let document = scroll.documentView {
++      document.frame.size.width = scroll.contentSize.width
++      for row in document.subviews where row is SettingsToggleRow {
++        row.frame.size.width = max(0, document.bounds.width - 48)
++      }
++    }
+   }
+ 
+   @objc private func close(_ sender: NSButton) { onClose?() }

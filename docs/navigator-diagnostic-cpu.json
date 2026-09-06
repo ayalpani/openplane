@@ -1,0 +1,217 @@
+{
+  "purpose": "Diagnostic ablation, not a shipping optimization. updateNavigatorPanel returns after initial content setup; all subsequent navigator updates are omitted. Camera, minimap and selection remain active. Two trials per desktop per variant, identical starting preferences, no concurrent builds or profilers. Original source and installed application restored.",
+  "baseline_sha256": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+  "diagnostic_sha256": "4e0509551c03ca09f70dadfa6897aba3884106b4ca47d0243a1da82737a53ba4",
+  "baseline": [
+    {
+      "desktop": "Hahaha",
+      "trial": 1,
+      "pid": 73956,
+      "idle_before": {
+        "seconds": 5.003545583000232,
+        "cpu_seconds": 0.12508966666666665,
+        "cpu_percent": 2.5000205272769844
+      },
+      "navigation": {
+        "seconds": 9.521622708001814,
+        "cpu_seconds": 0.7560479166666667,
+        "cpu_percent": 7.940326348273562
+      },
+      "settling": {
+        "seconds": 1.0047720840011607,
+        "cpu_seconds": 0.01344858333333332,
+        "cpu_percent": 1.338471037111117
+      },
+      "idle_after": {
+        "seconds": 5.0032122080010595,
+        "cpu_seconds": 0.04631133333333337,
+        "cpu_percent": 0.9256320021619912
+      },
+      "navigation_above_idle_pp": 5.440305820996578
+    },
+    {
+      "desktop": "Hahaha",
+      "trial": 2,
+      "pid": 73956,
+      "idle_before": {
+        "seconds": 5.005052082997281,
+        "cpu_seconds": 0.041748499999999966,
+        "cpu_percent": 0.8341271840471803
+      },
+      "navigation": {
+        "seconds": 9.5600969159932,
+        "cpu_seconds": 0.8017301666666667,
+        "cpu_percent": 8.386213797952642
+      },
+      "settling": {
+        "seconds": 1.0002474579960108,
+        "cpu_seconds": 0.012761083333333367,
+        "cpu_percent": 1.2757926282462255
+      },
+      "idle_after": {
+        "seconds": 5.005063083997811,
+        "cpu_seconds": 0.04825679166666674,
+        "cpu_percent": 0.9641595092168442
+      },
+      "navigation_above_idle_pp": 7.552086613905462
+    },
+    {
+      "desktop": "Desktop 2",
+      "trial": 1,
+      "pid": 73956,
+      "idle_before": {
+        "seconds": 5.004495124994719,
+        "cpu_seconds": 0.04271233333333324,
+        "cpu_percent": 0.8534793673793081
+      },
+      "navigation": {
+        "seconds": 9.663226915996347,
+        "cpu_seconds": 0.7585684166666664,
+        "cpu_percent": 7.850052816321065
+      },
+      "settling": {
+        "seconds": 1.0027978329962934,
+        "cpu_seconds": 0.01637466666666665,
+        "cpu_percent": 1.632898090509453
+      },
+      "idle_after": {
+        "seconds": 5.000403999998525,
+        "cpu_seconds": 0.07733037500000028,
+        "cpu_percent": 1.5464825442108896
+      },
+      "navigation_above_idle_pp": 6.996573448941756
+    },
+    {
+      "desktop": "Desktop 2",
+      "trial": 2,
+      "pid": 73956,
+      "idle_before": {
+        "seconds": 5.003711708006449,
+        "cpu_seconds": 0.044942499999999885,
+        "cpu_percent": 0.8981832412144629
+      },
+      "navigation": {
+        "seconds": 9.657189666002523,
+        "cpu_seconds": 0.7446602500000004,
+        "cpu_percent": 7.710941544635142
+      },
+      "settling": {
+        "seconds": 1.0000477920038975,
+        "cpu_seconds": 0.016236374999999192,
+        "cpu_percent": 1.6235599068185247
+      },
+      "idle_after": {
+        "seconds": 5.005050708998169,
+        "cpu_seconds": 0.04436370833333392,
+        "cpu_percent": 0.8863787983921132
+      },
+      "navigation_above_idle_pp": 6.812758303420679
+    }
+  ],
+  "frozen_navigator": [
+    {
+      "desktop": "Hahaha",
+      "trial": 1,
+      "pid": 74142,
+      "idle_before": {
+        "seconds": 5.005077292000351,
+        "cpu_seconds": 0.10047449999999991,
+        "cpu_percent": 2.00745151649484
+      },
+      "navigation": {
+        "seconds": 9.57601520800381,
+        "cpu_seconds": 0.5076493750000001,
+        "cpu_percent": 5.3012590725179445
+      },
+      "settling": {
+        "seconds": 1.0046311659971252,
+        "cpu_seconds": 0.0031267916666666284,
+        "cpu_percent": 0.311237772875899
+      },
+      "idle_after": {
+        "seconds": 5.003109917000984,
+        "cpu_seconds": 0.04759000000000002,
+        "cpu_percent": 0.9512083641873476
+      },
+      "navigation_above_idle_pp": 3.2938075560231046
+    },
+    {
+      "desktop": "Hahaha",
+      "trial": 2,
+      "pid": 74142,
+      "idle_before": {
+        "seconds": 5.005349291001039,
+        "cpu_seconds": 0.04530687499999986,
+        "cpu_percent": 0.9051690974185492
+      },
+      "navigation": {
+        "seconds": 9.65139791600086,
+        "cpu_seconds": 0.49108491666666665,
+        "cpu_percent": 5.08822577766177
+      },
+      "settling": {
+        "seconds": 1.002029458002653,
+        "cpu_seconds": 0.01204304166666681,
+        "cpu_percent": 1.2018650320592594
+      },
+      "idle_after": {
+        "seconds": 5.0050602500050445,
+        "cpu_seconds": 0.04659295833333332,
+        "cpu_percent": 0.9309170320834073
+      },
+      "navigation_above_idle_pp": 4.1830566802432205
+    },
+    {
+      "desktop": "Desktop 2",
+      "trial": 1,
+      "pid": 74142,
+      "idle_before": {
+        "seconds": 5.0051156250046915,
+        "cpu_seconds": 0.04208904166666683,
+        "cpu_percent": 0.8409204665801776
+      },
+      "navigation": {
+        "seconds": 9.49678637499892,
+        "cpu_seconds": 0.47492004166666657,
+        "cpu_percent": 5.000850002448546
+      },
+      "settling": {
+        "seconds": 1.000968209002167,
+        "cpu_seconds": 0.03291033333333315,
+        "cpu_percent": 3.2878500073584163
+      },
+      "idle_after": {
+        "seconds": 5.003830500005279,
+        "cpu_seconds": 0.04497433333333323,
+        "cpu_percent": 0.8987980974432643
+      },
+      "navigation_above_idle_pp": 4.159929535868368
+    },
+    {
+      "desktop": "Desktop 2",
+      "trial": 2,
+      "pid": 74142,
+      "idle_before": {
+        "seconds": 5.002226917000371,
+        "cpu_seconds": 0.051748708333333227,
+        "cpu_percent": 1.0345134115659989
+      },
+      "navigation": {
+        "seconds": 9.591851332996157,
+        "cpu_seconds": 0.4661259583333335,
+        "cpu_percent": 4.859603658887528
+      },
+      "settling": {
+        "seconds": 1.0050502500016592,
+        "cpu_seconds": 0.0033442500000000486,
+        "cpu_percent": 0.3327445568014662
+      },
+      "idle_after": {
+        "seconds": 5.001974458005861,
+        "cpu_seconds": 0.056869958333333415,
+        "cpu_percent": 1.136950194583876
+      },
+      "navigation_above_idle_pp": 3.82509024732153
+    }
+  ]
+}

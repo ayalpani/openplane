@@ -1,0 +1,23 @@
+{
+  "samples": [],
+  "fixture_sha256": "887c14616b1cf1892511529d3e0205afd8eadcd78b9ce4aa037da9b3efabd80b",
+  "started_at": 1788645364.105002,
+  "limitations": [
+    "Personal scene; live window/preview changes uncontrolled",
+    "Accepted/completed individual inputs and presented-frame latency unavailable"
+  ],
+  "original_camera": {
+    "center": [
+      1587.5938992302272,
+      9220.562891205906
+    ],
+    "zoom": 1
+  },
+  "builds": {
+    "A": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+    "B": "c2d7f7dce2e109060dc68928f4fddebc83290c0e8db98fb846556a96b5b01fdc"
+  },
+  "error": "Command '['osascript', '-e', 'tell application \"System Events\"\\nrepeat 45 times\\nif not frontmost of process \"OpenPlane\" then error \"Focus lost\"\\nkey code 126 using shift down\\ndelay 0.05\\nend repeat\\nend tell']' returned non-zero exit status 1.",
+  "restored": true,
+  "finished_at": 1788645382.027165
+}

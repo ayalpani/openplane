@@ -1,0 +1,50 @@
+{
+  "CanvasView.stepKeyboardTapZoom": {
+    "inclusive_sample_occurrences": 3710,
+    "nodes": 3
+  },
+  "CanvasView.stepKeyboardZoom": {
+    "inclusive_sample_occurrences": 0,
+    "nodes": 0
+  },
+  "CanvasView.camera.setter": {
+    "inclusive_sample_occurrences": 3710,
+    "nodes": 7
+  },
+  "CanvasView.synchronizeScene": {
+    "inclusive_sample_occurrences": 1905,
+    "nodes": 36
+  },
+  "CanvasView.updateCard": {
+    "inclusive_sample_occurrences": 340,
+    "nodes": 89
+  },
+  "CanvasView.updateSceneCamera": {
+    "inclusive_sample_occurrences": 1829,
+    "nodes": 26
+  },
+  "CanvasView.updateGrid": {
+    "inclusive_sample_occurrences": 557,
+    "nodes": 26
+  },
+  "CanvasView.sceneImage": {
+    "inclusive_sample_occurrences": 0,
+    "nodes": 0
+  },
+  "CanvasView.updateSelectionAppearance": {
+    "inclusive_sample_occurrences": 149,
+    "nodes": 47
+  },
+  "-[CATextLayer drawInContext:]": {
+    "inclusive_sample_occurrences": 647,
+    "nodes": 15
+  },
+  "mach_msg2_trap": {
+    "inclusive_sample_occurrences": 30106,
+    "nodes": 55
+  },
+  "CA::Transaction::commit": {
+    "inclusive_sample_occurrences": 3624,
+    "nodes": 30
+  }
+}

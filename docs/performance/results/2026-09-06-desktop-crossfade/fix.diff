@@ -1,0 +1,93 @@
+--- /tmp/openplane-crossfade/CanvasView-before.swift	2026-09-06 01:49:26.766266724 +0200
++++ OpenPlane/CanvasView.swift	2026-09-06 01:51:43.450866064 +0200
+@@ -595,9 +595,7 @@
+   private let desktopTabsScrollView = NSScrollView()
+   private let desktopTabsContent = NSView()
+   private var desktopTabButtons: [NSButton] = []
+-  private let desktopFadeView = NSView()
+   private var desktopTransitionStartedAt: TimeInterval?
+-  private var desktopTransitionChange: (() -> Void)?
+   private var pendingDesktopChange: (() -> Void)?
+   private var desktopTransitionDisplayLink: CADisplayLink?
+   private let settingsPopover = NSPopover()
+@@ -3840,7 +3838,7 @@
+     clearGroupSelection()
+     selectedWindowID = nil
+     selectedPlaceholderBundleIdentifier = nil
+-    // Assign, don't interpolate: both the layout and camera change under the opaque fade.
++    // Assign, don't interpolate: Core Animation crossfades the old and new scenes.
+     camera = target
+     applySelectedDesktopLayout(around: target.center)
+     updateDesktopTabs()
+@@ -3870,15 +3868,20 @@
+     synchronizeManifestedPlacements()
+     persistDesktopPages()
+ 
+-    desktopFadeView.frame = bounds
+-    desktopFadeView.autoresizingMask = [.width, .height]
+-    desktopFadeView.wantsLayer = true
+-    desktopFadeView.layer?.backgroundColor = background.color.cgColor
+-    desktopFadeView.alphaValue = 0
+-    addSubview(desktopFadeView, positioned: .above, relativeTo: nil)
+-    // The tab strip stays stationary and usable while the canvas fades underneath it.
+-    addSubview(desktopTabsScrollView, positioned: .above, relativeTo: desktopFadeView)
+-    desktopTransitionChange = change
++    CATransaction.begin()
++    CATransaction.setDisableActions(true)
++    change()
++    synchronizeScene()
++    hudView.needsDisplay = true
++    hudView.displayIfNeeded()
++    for layer in [sceneView.layer, hudView.layer].compactMap({ $0 }) {
++      let fade = CATransition()
++      fade.type = .fade
++      fade.duration = Self.desktopTransitionDuration
++      fade.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
++      layer.add(fade, forKey: "desktopCrossfade")
++    }
++    CATransaction.commit()
+     desktopTransitionStartedAt = CACurrentMediaTime()
+     let link = displayLink(target: self, selector: #selector(stepDesktopTransition(_:)))
+     desktopTransitionDisplayLink = link
+@@ -3893,20 +3896,9 @@
+     advanceDesktopTransition(to: (CACurrentMediaTime() - startedAt) / Self.desktopTransitionDuration)
+   }
+ 
+-  var desktopTransitionOpacity: CGFloat {
+-    desktopTransitionStartedAt == nil ? 0 : desktopFadeView.alphaValue
+-  }
+-
+-  // Also exercised at exact frame boundaries by the desktop interaction regression tests.
++  // Core Animation draws the fade; this clock only gates input and pending switches.
+   func advanceDesktopTransition(to progress: CGFloat) {
+     guard desktopTransitionStartedAt != nil else { return }
+-    let progress = min(1, max(0, progress))
+-    desktopFadeView.alphaValue = CanvasMath.easedTransition(1 - abs(2 * progress - 1))
+-    if progress >= 0.5, let change = desktopTransitionChange {
+-      desktopTransitionChange = nil
+-      desktopFadeView.alphaValue = 1
+-      change()
+-    }
+     if progress >= 1 {
+       let pending = pendingDesktopChange
+       pendingDesktopChange = nil
+@@ -3917,16 +3909,15 @@
+ 
+   private func finishDesktopTransition() {
+     guard desktopTransitionStartedAt != nil else { return }
+-    let change = desktopTransitionChange
+     let pending = pendingDesktopChange
+-    desktopTransitionChange = nil
+     pendingDesktopChange = nil
+     desktopTransitionStartedAt = nil
+     desktopTransitionDisplayLink?.invalidate()
+     desktopTransitionDisplayLink = nil
+-    change?()
+     pending?()
+-    desktopFadeView.removeFromSuperview()
++    for layer in [sceneView.layer, hudView.layer].compactMap({ $0 }) {
++      layer.removeAnimation(forKey: "desktopCrossfade")
++    }
+     needsDisplay = true
+   }
+ 

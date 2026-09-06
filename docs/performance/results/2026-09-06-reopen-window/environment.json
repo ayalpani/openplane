@@ -1,0 +1,14 @@
+{
+  "commit": "09707146f1e93862bfb9e7b734681f28cd1e7020",
+  "source_diff_sha256": "78141063b893b24db4b7af4b0b913d353e7d99ba9f31d28010ede195209ff24f",
+  "fix_diff_sha256": "9062dd3da93d0ee73187a145f8a84dbf4a9e5f46f7c711acfebbbf322e365c38",
+  "binary_sha256": "90a41bd9320c02fe0b059bffaf3aed35ada9bdf4c373adc68cb4ed6b7352fe0d",
+  "signed_release_verified": true,
+  "macOS": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83\n",
+  "hardware": "Mac14,10",
+  "fixture": "Existing running Chrome process with zero AX windows; no windows closed for setup; profile chooser opened by candidate. Personal unversioned scene.",
+  "preview_verified": true,
+  "foreground_restored": true,
+  "settings": "No settings toggled or imported. Search and normal opening can persist selection/camera. Opened Chrome chooser retained for user.",
+  "owned_jobs_completed": true
+}

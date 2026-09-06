@@ -1,0 +1,452 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project OpenPlane.xcodeproj -scheme OpenPlane -configuration Release -derivedDataPath /tmp/openplane-settings-keyboard/build build
+
+2026-09-06 23:25:08.132 xcodebuild[51420:1910612] [MT] IDERunDestination: Supported platforms for the buildables in the current scheme is empty.
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00006020-0016685611C0C01E, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00006020-0016685611C0C01E, name:My Mac }
+{ platform:macOS, name:Any Mac }
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'OpenPlane' in project 'OpenPlane' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 8ceb9e632e8015494b95da324ad13ef9
+Build description path: /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/XCBuildData/8ceb9e632e8015494b95da324ad13ef9.xcbuilddata
+CreateBuildDirectory /tmp/openplane-settings-keyboard/build/Build/Products
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-settings-keyboard/build/Build/Products
+
+CreateBuildDirectory /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk /tmp/openplane-settings-keyboard/build/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -o /tmp/openplane-settings-keyboard/build/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache
+
+CreateBuildDirectory /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+CreateBuildDirectory /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/ExplicitPrecompiledModules
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+CreateBuildDirectory /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/EagerLinkingTBDs/Release
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/EagerLinkingTBDs/Release
+
+WriteAuxiliaryFile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane-acf40ef4130912d87a120b6a244ec8a7-VFS/all-product-headers.yaml
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    write-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane-acf40ef4130912d87a120b6a244ec8a7-VFS/all-product-headers.yaml
+
+CreateBuildDirectory /tmp/openplane-settings-keyboard/build/Build/Products/Release
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    builtin-create-build-directory /tmp/openplane-settings-keyboard/build/Build/Products/Release
+
+WriteAuxiliaryFile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.DependencyStaticMetadataFileList (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.DependencyMetadataFileList (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.DependencyMetadataFileList
+
+WriteAuxiliaryFile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-generated-files.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-generated-files.hmap
+
+WriteAuxiliaryFile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-own-target-headers.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-own-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-all-target-headers.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-all-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-all-non-framework-target-headers.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-project-headers.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-project-headers.hmap
+
+WriteAuxiliaryFile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.hmap (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.hmap
+
+WriteAuxiliaryFile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftConstValuesFileList (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_const_extract_protocols.json (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_const_extract_protocols.json
+
+WriteAuxiliaryFile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList
+
+WriteAuxiliaryFile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.LinkFileList (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.LinkFileList
+
+WriteAuxiliaryFile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-OutputFileMap.json (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-OutputFileMap.json
+
+MkDir /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app
+
+MkDir /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents
+
+WriteAuxiliaryFile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/Entitlements.plist (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    write-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/Entitlements.plist
+
+MkDir /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/MacOS (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/MacOS
+
+MkDir /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/Resources (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/Resources
+
+ProcessProductPackaging "" /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.app.xcent (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Entitlements:
+    
+    {
+    "com.apple.security.get-task-allow" = 1;
+}
+    
+    builtin-productPackagingUtility -entitlements -format xml -o /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.app.xcent
+
+ProcessProductPackagingDER /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.app.xcent /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.app.xcent.der (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /usr/bin/derq query -f xml -i /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.app.xcent -o /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.app.xcent.der --raw
+
+GenerateAssetSymbols /Users/ayalpani/dev/_products/openplane/OpenPlane/Assets.xcassets (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/ayalpani/dev/_products/openplane/OpenPlane/Assets.xcassets --compile /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/Resources --output-format human-readable-text --notices --warnings --export-dependency-info /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_dependencies --output-partial-info-plist /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_generated_info.plist --app-icon AppIcon --enable-on-demand-resources NO --development-region en --target-device mac --minimum-deployment-target 26.0 --platform macosx --bundle-identifier com.yalpani.openplane.poc --generate-swift-asset-symbol-extensions NO --generate-swift-asset-symbols /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.swift --generate-objc-asset-symbols /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.h --generate-asset-symbol-index /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/* com.apple.actool.compilation-results */
+/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.h
+/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.swift
+
+
+MkDir /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/thinned (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/thinned
+
+MkDir /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/unthinned (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /bin/mkdir -p /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/unthinned
+
+CompileAssetCatalogVariant thinned /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/Resources /Users/ayalpani/dev/_products/openplane/OpenPlane/Assets.xcassets (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/ayalpani/dev/_products/openplane/OpenPlane/Assets.xcassets --compile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/thinned --output-format human-readable-text --notices --warnings --export-dependency-info /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_dependencies_thinned --output-partial-info-plist /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_generated_info.plist_thinned --app-icon AppIcon --enable-on-demand-resources NO --development-region en --target-device mac --minimum-deployment-target 26.0 --platform macosx
+/* com.apple.actool.compilation-results */
+/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_generated_info.plist_thinned
+/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/thinned/AppIcon.icns
+/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/thinned/Assets.car
+
+
+SwiftDriver OpenPlane normal arm64 com.apple.xcode.tools.swift.compiler (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OpenPlane -O -whole-module-optimization @/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/openplane-settings-keyboard/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -swift-version 6 -I /tmp/openplane-settings-keyboard/build/Build/Products/Release -F /tmp/openplane-settings-keyboard/build/Build/Products/Release -emit-localized-strings -emit-localized-strings-path /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64 -c -num-threads 12 -Xcc -ivfsstatcache -Xcc /tmp/openplane-settings-keyboard/build/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/openplane-settings-keyboard/build/ModuleCache.noindex -sdk-module-cache-path /tmp/openplane-settings-keyboard/build/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-generated-files.hmap -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-own-target-headers.hmap -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-project-headers.hmap -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Products/Release/include -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources-normal/arm64 -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/arm64 -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources -emit-objc-header -emit-objc-header-path /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-Swift.h -working-directory /Users/ayalpani/dev/_products/openplane -no-emit-module-separately-wmo
+
+LinkAssetCatalog /Users/ayalpani/dev/_products/openplane/OpenPlane/Assets.xcassets (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-linkAssetCatalog --thinned /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/thinned --thinned-dependencies /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_dependencies_thinned --thinned-info-plist-content /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_generated_info.plist_thinned --unthinned /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_output/unthinned --unthinned-dependencies /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_dependencies_unthinned --unthinned-info-plist-content /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_generated_info.plist_unthinned --output /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/Resources --plist-output /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_generated_info.plist
+note: Emplaced /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/Resources/AppIcon.icns (in target 'OpenPlane' from project 'OpenPlane')
+note: Emplaced /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/Resources/Assets.car (in target 'OpenPlane' from project 'OpenPlane')
+
+ProcessInfoPlistFile /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/Info.plist /Users/ayalpani/dev/_products/openplane/OpenPlane/Info.plist (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-infoPlistUtility /Users/ayalpani/dev/_products/openplane/OpenPlane/Info.plist -producttype com.apple.product-type.application -genpkginfo /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/PkgInfo -expandbuildsettings -platform macosx -additionalcontentfile /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/assetcatalog_generated_info.plist -o /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/Info.plist
+
+SwiftDriver\ Compilation OpenPlane normal arm64 com.apple.xcode.tools.swift.compiler (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OpenPlane -O -whole-module-optimization @/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/openplane-settings-keyboard/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -swift-version 6 -I /tmp/openplane-settings-keyboard/build/Build/Products/Release -F /tmp/openplane-settings-keyboard/build/Build/Products/Release -emit-localized-strings -emit-localized-strings-path /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64 -c -num-threads 12 -Xcc -ivfsstatcache -Xcc /tmp/openplane-settings-keyboard/build/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/openplane-settings-keyboard/build/ModuleCache.noindex -sdk-module-cache-path /tmp/openplane-settings-keyboard/build/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-generated-files.hmap -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-own-target-headers.hmap -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-project-headers.hmap -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Products/Release/include -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources-normal/arm64 -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/arm64 -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources -emit-objc-header -emit-objc-header-path /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-Swift.h -working-directory /Users/ayalpani/dev/_products/openplane -no-emit-module-separately-wmo
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_stdbool-EOZUGZCQEE8WXKYK434VHU32V.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_stdarg-6VFAIS1J734AR45SP06QFAJE3.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_float-232VUPBURVHAKK7VJCHI4HMP4.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_stddef-8NRG569KHWBA32S41FO6OM1I0.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_AvailabilityInternal-3FDFHIHKLKSE0W35HRV3WCQ7J.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_SwiftConcurrencyShims-45M78QSNQQYV6RI840DCD9HJ7.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ptrauth-A1XLMZVZJ7SY8XKNELRT0U5XB.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ptrcheck-EPMMYK0OSNGRCPKP2F8HF5ZMN.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/SwiftShims-D12XV6A8OX1FLSUT81TPES1CI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/DeveloperToolsSupport-EH80X3UD8WHTA64BL4Z7XR5NJ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_DarwinFoundation1-DK36TBHO9I3CP9N4PDE8583L3.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_DarwinFoundation2-SIRGHWKBRNKPHD81MH2B0F4Q.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_limits-AAIKOTLIL7OD0RBCKSEDGVYOI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/sys_types-9GB7L9YOU1S9V7RDI20HB8TZY.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_stdint-88FL6UU7VZ0D55WLY3XR5XAIX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_tgmath-EFRQ41ZBDIAPXK0XCSM51WSEB.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/OpenGL-D6YD0M7T5NAGSHQUVQS1WK7MU.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/libDER-7MLOXOBLAXLBX2KNA1OEPW4G.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_intrinsics-9RW5C51AKNA775FG5NKDSSI9Y.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_stdatomic-EDYJ4WCVOFZM6XDZQ369LRIIW.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_DarwinFoundation3-B73WTJ5J4TNK3NVV40QP40P26.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_inttypes-1BMA6OM1XDZK2AX1CERTL4BTW.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Darwin-6EAZY53KTHZ2NP17BV7H8CII9.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/simd-1V6INLU6DHCO6438R246TBD4A.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/launch-JZS2IOROJWHENKDC12CPNMQ8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/libkern-4GSZB91UUKY6YNAQ2FK7T6M34.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/MachO-73JCGH6YSYX2R0OTURG07VXQP.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CUPS-DDED7RNEH0U7J6QZRZEKDW2DC.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ObjectiveC-B9UJZB0932GVTDP4G4ZY6NJ8P.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Spatial-7VC31WAKGTMFSYUJY840UISUC.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/os_object-E1RWADHV8ZVR28A82IMQ8Q8PX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/os_workgroup-36SU7LL7TOPEKLTWYYHM6IB7R.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Dispatch-CXCNY7DFNXZOS1E2ODAZDNPFX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/XPC-7QGOMHNQPI4YMRICPTX803FEU.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreFoundation-4IR628M84LMS1Z72OQAO8B38W.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/os-A08XFD4AIBBCO5HSF6OSRLCC8.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ColorSync-6V95ACA1Q222PKNNP53XAXXET.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Security-EB74Y1IJ1I760XC42WTY3TCHD.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreAudioTypes-5KUDWT2TEYZR1PBCVCAYNFPYF.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/IOKit-E6IVX8OP49OH3CKM12C00MPJZ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CFNetwork-D7MQU428AA819159BSMGX8KT0.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreGraphics-265OYM3IJPNHZB2HUHL7JZBZ7.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/DiskArbitration-13RDP6VQG793B1O2F06ABW2NY.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreServices-B35Z2LURLDF1H1MLCDVOERZPX.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ImageIO-ATQSVP6BJUVXULTF1BKLCP4NI.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreText-8EE1TC2QPBEZEA7OHHYFSQ79L.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Foundation-1ALBGAS1PCXVEL4KSGMHUFH05.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreData-5DCQJ72LD6UZQZ4I43V2R0C0W.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/IOSurface-3AMMW79B1PAT1YTQH6VX5FEGB.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreAudio-63FYGFUC65JM5MVE7U9HD6UHV.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/DataDetection-F2OMSZCQTVU8J4BRVD0XPIGJZ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ServiceManagement-4PTP4LSS5V4M9QWQTFH0RCMD5.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/OSLog-2YVLAJYP7PWN3P5Z34IXVYYV1.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Accessibility-AWNP6GFAGZF2M7271IHLX1R1L.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/UniformTypeIdentifiers-96JDIAO5TKYJP8VE7TD8TU9MQ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreMIDI-28497V2DG8ULSL2FLFI10LXVZ.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreTransferable-E06Q4D3RA8AF3SHPTRG434UT7.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Symbols-ADX0E1LD9TFYWNGNJSG77I62F.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ApplicationServices-72INY5LXC6A9JTPZ8TBL91C2V.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Metal-E223P6FX5ZAR8IIKBXE97HZAA.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Carbon-3AYN99BL0SAA7RKIAUDA73SS2.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreVideo-39XOPI5CMAGV7QCF159JYX1ZK.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreImage-2BCAO9UYLZGYVIJ5FALNIQBCO.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/QuartzCore-KHTVRYZ4YDB1R4O0RDJ9BJIH.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreMedia-CVID5M6USDS4QHRW7S2VGG280.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/AudioToolbox-DNNJX06RY319PWPS0GAX2FCYL.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/SwiftUICore-AB0ADBM6LRUCXJI3F14F4RJFM.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/AppKit-6WE4QOV5C61ZF3357ADWKOO1L.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/MediaToolbox-AZC9DF16XAWYMFHDL04C0S29G.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/AVFAudio-7Z9OYRW3V9N84RYGA4GK0TI8F.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/AVFoundation-5DXVC4ZQV95ZT7USY958AOU3T.pcm
+
+SwiftExplicitDependencyGeneratePcm arm64 /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ScreenCaptureKit-6XX29SV8K6D6G3CRYRXPN6EYJ.pcm
+
+SwiftCompile normal arm64 Compiling\ OpenPlaneApp.swift,\ AppDelegate.swift,\ CanvasModel.swift,\ CanvasView.swift,\ WindowService.swift,\ PermissionView.swift,\ GeneratedAssetSymbols.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/OpenPlaneApp.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/AppDelegate.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasModel.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasView.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/WindowService.swift /Users/ayalpani/dev/_products/openplane/OpenPlane/PermissionView.swift /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/GeneratedAssetSymbols.swift /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/AVFoundation.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Swift.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/DeveloperToolsSupport.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Foundation.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/XPC.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Dispatch.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Combine.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/DataDetection.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/_Concurrency.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/_DarwinFoundation1.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/IOKit.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/System.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/AudioToolbox.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Observation.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/QuartzCore.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/UniformTypeIdentifiers.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/ScreenCaptureKit.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Synchronization.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Darwin.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/os.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/_Builtin_float.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreText.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreTransferable.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreGraphics.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/_StringProcessing.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Spatial.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreData.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/_DarwinFoundation3.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreMIDI.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreMedia.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Symbols.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/AppKit.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreFoundation.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreVideo.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/OSLog.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/ObjectiveC.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreAudio.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Accessibility.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/AVFAudio.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/SwiftUICore.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/simd.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/Metal.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/_DarwinFoundation2.swiftmodule/arm64e-apple-macos.swiftmodule /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx/prebuilt-modules/26.5/CoreImage.swiftmodule/arm64e-apple-macos.swiftmodule /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_AvailabilityInternal-3FDFHIHKLKSE0W35HRV3WCQ7J.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/AppKit-6WE4QOV5C61ZF3357ADWKOO1L.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_tgmath-EFRQ41ZBDIAPXK0XCSM51WSEB.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/AudioToolbox-DNNJX06RY319PWPS0GAX2FCYL.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Symbols-ADX0E1LD9TFYWNGNJSG77I62F.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreImage-2BCAO9UYLZGYVIJ5FALNIQBCO.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/OSLog-2YVLAJYP7PWN3P5Z34IXVYYV1.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/DataDetection-F2OMSZCQTVU8J4BRVD0XPIGJZ.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_inttypes-1BMA6OM1XDZK2AX1CERTL4BTW.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/MediaToolbox-AZC9DF16XAWYMFHDL04C0S29G.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Security-EB74Y1IJ1I760XC42WTY3TCHD.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreText-8EE1TC2QPBEZEA7OHHYFSQ79L.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/XPC-7QGOMHNQPI4YMRICPTX803FEU.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ColorSync-6V95ACA1Q222PKNNP53XAXXET.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/DeveloperToolsSupport-EH80X3UD8WHTA64BL4Z7XR5NJ.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/sys_types-9GB7L9YOU1S9V7RDI20HB8TZY.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/SwiftUICore-AB0ADBM6LRUCXJI3F14F4RJFM.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Dispatch-CXCNY7DFNXZOS1E2ODAZDNPFX.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreServices-B35Z2LURLDF1H1MLCDVOERZPX.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Metal-E223P6FX5ZAR8IIKBXE97HZAA.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreMIDI-28497V2DG8ULSL2FLFI10LXVZ.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ScreenCaptureKit-6XX29SV8K6D6G3CRYRXPN6EYJ.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CUPS-DDED7RNEH0U7J6QZRZEKDW2DC.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreFoundation-4IR628M84LMS1Z72OQAO8B38W.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/IOKit-E6IVX8OP49OH3CKM12C00MPJZ.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreMedia-CVID5M6USDS4QHRW7S2VGG280.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ImageIO-ATQSVP6BJUVXULTF1BKLCP4NI.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreAudioTypes-5KUDWT2TEYZR1PBCVCAYNFPYF.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/simd-1V6INLU6DHCO6438R246TBD4A.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Darwin-6EAZY53KTHZ2NP17BV7H8CII9.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_DarwinFoundation1-DK36TBHO9I3CP9N4PDE8583L3.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Spatial-7VC31WAKGTMFSYUJY840UISUC.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreGraphics-265OYM3IJPNHZB2HUHL7JZBZ7.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_stdbool-EOZUGZCQEE8WXKYK434VHU32V.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/AVFAudio-7Z9OYRW3V9N84RYGA4GK0TI8F.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/launch-JZS2IOROJWHENKDC12CPNMQ8.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ptrauth-A1XLMZVZJ7SY8XKNELRT0U5XB.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_stdatomic-EDYJ4WCVOFZM6XDZQ369LRIIW.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/QuartzCore-KHTVRYZ4YDB1R4O0RDJ9BJIH.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ApplicationServices-72INY5LXC6A9JTPZ8TBL91C2V.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/UniformTypeIdentifiers-96JDIAO5TKYJP8VE7TD8TU9MQ.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/os_object-E1RWADHV8ZVR28A82IMQ8Q8PX.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ObjectiveC-B9UJZB0932GVTDP4G4ZY6NJ8P.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/libkern-4GSZB91UUKY6YNAQ2FK7T6M34.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CFNetwork-D7MQU428AA819159BSMGX8KT0.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Foundation-1ALBGAS1PCXVEL4KSGMHUFH05.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ServiceManagement-4PTP4LSS5V4M9QWQTFH0RCMD5.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_limits-AAIKOTLIL7OD0RBCKSEDGVYOI.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/SwiftShims-D12XV6A8OX1FLSUT81TPES1CI.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreTransferable-E06Q4D3RA8AF3SHPTRG434UT7.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/ptrcheck-EPMMYK0OSNGRCPKP2F8HF5ZMN.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/AVFoundation-5DXVC4ZQV95ZT7USY958AOU3T.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_DarwinFoundation2-SIRGHWKBRNKPHD81MH2B0F4Q.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_SwiftConcurrencyShims-45M78QSNQQYV6RI840DCD9HJ7.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_stdarg-6VFAIS1J734AR45SP06QFAJE3.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_intrinsics-9RW5C51AKNA775FG5NKDSSI9Y.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/IOSurface-3AMMW79B1PAT1YTQH6VX5FEGB.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/DiskArbitration-13RDP6VQG793B1O2F06ABW2NY.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Carbon-3AYN99BL0SAA7RKIAUDA73SS2.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/libDER-7MLOXOBLAXLBX2KNA1OEPW4G.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Accessibility-AWNP6GFAGZF2M7271IHLX1R1L.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreVideo-39XOPI5CMAGV7QCF159JYX1ZK.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreData-5DCQJ72LD6UZQZ4I43V2R0C0W.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_DarwinFoundation3-B73WTJ5J4TNK3NVV40QP40P26.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/MachO-73JCGH6YSYX2R0OTURG07VXQP.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/OpenGL-D6YD0M7T5NAGSHQUVQS1WK7MU.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_stddef-8NRG569KHWBA32S41FO6OM1I0.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/CoreAudio-63FYGFUC65JM5MVE7U9HD6UHV.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/os_workgroup-36SU7LL7TOPEKLTWYYHM6IB7R.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/os-A08XFD4AIBBCO5HSF6OSRLCC8.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_float-232VUPBURVHAKK7VJCHI4HMP4.pcm /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/_Builtin_stdint-88FL6UU7VZ0D55WLY3XR5XAIX.pcm /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-dependencies-1.json (in target 'OpenPlane' from project 'OpenPlane')
+
+CompileSwift normal arm64 (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+/Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasView.swift:4506:36: warning: main actor-isolated property 'settings' can not be referenced from a Sendable closure
+      if !opening, let panel, self.settings !== panel { panel.removeFromSuperview() }
+                                   ^
+/Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasView.swift:4462:15: note: property declared here
+  private var settings: NSView?
+              ^
+/Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasView.swift:4506:63: warning: call to main actor-isolated instance method 'removeFromSuperview()' in a synchronous nonisolated context
+      if !opening, let panel, self.settings !== panel { panel.removeFromSuperview() }
+                                                              ^
+AppKit.NSView.removeFromSuperview:2:22: note: calls to instance method 'removeFromSuperview()' from outside of its actor context are implicitly asynchronous
+@MainActor open func removeFromSuperview()}
+                     ^
+AppKit.NSView.removeFromSuperview:2:22: note: main actor isolation inferred from inheritance from class 'NSResponder'
+@MainActor open func removeFromSuperview()}
+                     ^
+/Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasView.swift:4507:18: warning: main actor-isolated property 'transitionGeneration' can not be referenced from a Sendable closure
+      guard self.transitionGeneration == generation else { return }
+                 ^
+/Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasView.swift:4475:15: note: property declared here
+  private var transitionGeneration = 0
+              ^
+/Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasView.swift:4508:12: warning: main actor-isolated property 'isAnimatingSettings' can not be mutated from a Sendable closure
+      self.isAnimatingSettings = false
+           ^
+/Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasView.swift:4476:15: note: mutation of this property is only permitted within the actor
+  private var isAnimatingSettings = false
+              ^
+/Users/ayalpani/dev/_products/openplane/OpenPlane/CanvasView.swift:4509:12: warning: main actor-isolated property 'needsLayout' can not be mutated from a Sendable closure
+      self.needsLayout = true
+           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSView.h:267:16: note: mutation of this property is only permitted within the actor
+@property BOOL needsLayout API_AVAILABLE(macos(10.7));
+               ^
+
+SwiftDriverJobDiscovery normal arm64 Compiling OpenPlaneApp.swift, AppDelegate.swift, CanvasModel.swift, CanvasView.swift, WindowService.swift, PermissionView.swift, GeneratedAssetSymbols.swift (in target 'OpenPlane' from project 'OpenPlane')
+
+SwiftDriver\ Compilation\ Requirements OpenPlane normal arm64 com.apple.xcode.tools.swift.compiler (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name OpenPlane -O -whole-module-optimization @/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos26.0 -g -module-cache-path /tmp/openplane-settings-keyboard/build/ModuleCache.noindex -Xfrontend -serialize-debugging-options -profile-coverage-mapping -profile-generate -swift-version 6 -I /tmp/openplane-settings-keyboard/build/Build/Products/Release -F /tmp/openplane-settings-keyboard/build/Build/Products/Release -emit-localized-strings -emit-localized-strings-path /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64 -c -num-threads 12 -Xcc -ivfsstatcache -Xcc /tmp/openplane-settings-keyboard/build/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/openplane-settings-keyboard/build/ModuleCache.noindex -sdk-module-cache-path /tmp/openplane-settings-keyboard/build/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/openplane-settings-keyboard/build/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-generated-files.hmap -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-own-target-headers.hmap -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane-project-headers.hmap -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Products/Release/include -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources-normal/arm64 -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/arm64 -Xcc -I/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources -emit-objc-header -emit-objc-header-path /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-Swift.h -working-directory /Users/ayalpani/dev/_products/openplane -no-emit-module-separately-wmo
+
+SwiftMergeGeneratedHeaders /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/OpenPlane-Swift.h /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-Swift.h (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-swiftHeaderTool -arch arm64 /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-Swift.h -o /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/DerivedSources/OpenPlane-Swift.h
+
+Copy /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.swiftmodule/arm64-apple-macos.swiftmodule /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -strip-unsigned-binaries -strip-deterministic -strip-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip -resolve-src-symlinks -rename /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.swiftmodule/arm64-apple-macos.swiftmodule
+
+Copy /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.swiftmodule/arm64-apple-macos.abi.json /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.abi.json (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -strip-unsigned-binaries -strip-deterministic -strip-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip -resolve-src-symlinks -rename /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.abi.json /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.swiftmodule/arm64-apple-macos.abi.json
+
+Copy /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.swiftmodule/arm64-apple-macos.swiftdoc /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftdoc (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -strip-unsigned-binaries -strip-deterministic -strip-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip -resolve-src-symlinks -rename /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftdoc /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.swiftmodule/arm64-apple-macos.swiftdoc
+
+Copy /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftsourceinfo (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -strip-unsigned-binaries -strip-deterministic -strip-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip -resolve-src-symlinks -rename /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftsourceinfo /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+Ld /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/MacOS/OpenPlane normal (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos26.0 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -Os -L/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/EagerLinkingTBDs/Release -L/tmp/openplane-settings-keyboard/build/Build/Products/Release -F/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/EagerLinkingTBDs/Release -F/tmp/openplane-settings-keyboard/build/Build/Products/Release -filelist /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.LinkFileList -Xlinker -rpath -Xlinker @executable_path/../Frameworks -Xlinker -object_path_lto -Xlinker /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_lto.o -Xlinker -debug_variant -Xlinker -dependency_info -Xlinker /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_dependency_info.dat -fobjc-link-runtime -fprofile-instr-generate -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.swiftmodule @/tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane-linker-args.resp -Xlinker -no_adhoc_codesign -o /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/MacOS/OpenPlane
+
+CopySwiftLibs /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-swiftStdLibTool --copy --verbose --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --scan-executable /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/MacOS/OpenPlane --scan-folder /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/Frameworks --scan-folder /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/PlugIns --scan-folder /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/Library/SystemExtensions --scan-folder /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/Extensions --platform macosx --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ExtractAppIntentsMetadata (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name OpenPlane --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk --xcode-version 17F113 --platform-family macOS --deployment-target 26.0 --bundle-identifier com.yalpani.openplane.poc --output /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/Resources --target-triple arm64-apple-macos26.0 --binary-file /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/MacOS/OpenPlane --dependency-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane_dependency_info.dat --stringsdata-file /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftFileList --metadata-file-list /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.DependencyMetadataFileList --static-metadata-file-list /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/Objects-normal/arm64/OpenPlane.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-09-06 23:25:27.605 appintentsmetadataprocessor[51572:1911875] Starting appintentsmetadataprocessor export
+2026-09-06 23:25:27.606 appintentsmetadataprocessor[51572:1911875] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+GenerateDSYMFile /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app.dSYM /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/MacOS/OpenPlane (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/dsymutil /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app/Contents/MacOS/OpenPlane -o /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app.dSYM
+
+CodeSign /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --entitlements /tmp/openplane-settings-keyboard/build/Build/Intermediates.noindex/OpenPlane.build/Release/OpenPlane.build/OpenPlane.app.xcent --timestamp\=none --generate-entitlement-der /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app
+
+RegisterExecutionPolicyException /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-RegisterExecutionPolicyException /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app
+
+Validate /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-validationUtility /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app -no-validate-extension -infoplist-subpath Contents/Info.plist
+
+Touch /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /usr/bin/touch -c /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app
+
+RegisterWithLaunchServices /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /tmp/openplane-settings-keyboard/build/Build/Products/Release/OpenPlane.app
+
+** BUILD SUCCEEDED **
+

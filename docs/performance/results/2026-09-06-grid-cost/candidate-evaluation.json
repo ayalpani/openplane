@@ -1,0 +1,16 @@
+{
+  "candidate": "tile nominal side 128 instead of 256",
+  "decision": "REJECTED; reverted before timed A/B",
+  "reason": "At zoom 0.15, raster dot edge intensities differ in same screen region. Preserve existing appearance; no demonstrated CPU/frame/GPU improvement for this candidate.",
+  "visual_region": [
+    400,
+    400,
+    528,
+    528
+  ],
+  "different_pixels": 1043,
+  "total_pixels": 16384,
+  "max_rgb_channel_delta": 30,
+  "cpu_comparison": "NOT RUN: visual gate not met",
+  "installed_final_tile_side": 256
+}

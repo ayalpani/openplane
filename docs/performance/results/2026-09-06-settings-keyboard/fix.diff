@@ -1,0 +1,26 @@
+--- CanvasView-before.swift
++++ CanvasView.swift
+@@ -1466,7 +1466,6 @@
+   }
+ 
+   func handleNavigationKey(_ event: NSEvent) -> Bool {
+-    guard settingsWorkspace?.isSettingsVisible != true else { return false }
+     guard desktopTitleField.currentEditor() == nil else { return false }
+     let modifiers = event.modifierFlags.intersection([.shift, .command, .control, .option])
+     guard modifiers.isEmpty || modifiers == [.shift] else { return false }
+@@ -3597,7 +3596,6 @@
+   }
+ 
+   private func beginSearch(with text: String = "") {
+-    dismissSettings()
+     isSearching = true
+     searchField.stringValue = text
+     setSearchControlsVisible(true)
+@@ -3811,7 +3809,6 @@
+     }
+     window?.makeFirstResponder(self)
+     dismissSearch()
+-    dismissSettings()
+     stopKeyboardZoom(completingTap: false)
+     stopKeyboardTapZoom()
+     stopNativeCameraTravel()

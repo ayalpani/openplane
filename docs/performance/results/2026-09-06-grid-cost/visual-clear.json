@@ -1,0 +1,53 @@
+{
+  "images": [
+    {
+      "tile_side": 256,
+      "zoom": 0.15,
+      "path": "/tmp/openplane-grid/grid-clear-256-0.15.png",
+      "sha256": "322fa2996c62284293479be0985909adf7c9856876f36746692b223a98927b13"
+    },
+    {
+      "tile_side": 256,
+      "zoom": 0.31,
+      "path": "/tmp/openplane-grid/grid-clear-256-0.31.png",
+      "sha256": "9fde0ce8c7e4684ed6c80206f4cc809ab1058a375801d5a0402d4662eb33d55f"
+    },
+    {
+      "tile_side": 256,
+      "zoom": 0.73,
+      "path": "/tmp/openplane-grid/grid-clear-256-0.73.png",
+      "sha256": "04a4dfcd2c41f170f8a2c2aaf912f89a90a7c022b6363584243ee7d0cab44c3b"
+    },
+    {
+      "tile_side": 256,
+      "zoom": 1.25,
+      "path": "/tmp/openplane-grid/grid-clear-256-1.25.png",
+      "sha256": "c950da19f0a6d2fcedba4a700ae433bf1b80bb2acba0f2117b4e178ceaef2f97"
+    },
+    {
+      "tile_side": 128,
+      "zoom": 0.15,
+      "path": "/tmp/openplane-grid/grid-clear-128-0.15.png",
+      "sha256": "a2fa5d8f3ad4134bb215ce78aa230fac8704fa87795260e0e7cec696c3dc53c9"
+    },
+    {
+      "tile_side": 128,
+      "zoom": 0.31,
+      "path": "/tmp/openplane-grid/grid-clear-128-0.31.png",
+      "sha256": "7be28a2b54d9d22c1c4bb2ec20c7b223cc652af5da426df110a6cc13fb538bed"
+    },
+    {
+      "tile_side": 128,
+      "zoom": 0.73,
+      "path": "/tmp/openplane-grid/grid-clear-128-0.73.png",
+      "sha256": "440055e188b87a9ee4112d5435d08b2c228bd671eede66e9e8c2c99526924917"
+    },
+    {
+      "tile_side": 128,
+      "zoom": 1.25,
+      "path": "/tmp/openplane-grid/grid-clear-128-1.25.png",
+      "sha256": "4318422f355b4f5d76c44a54734ee4fa7b855c93fd67d9d46e62b87ae88038b2"
+    }
+  ],
+  "restored": true
+}

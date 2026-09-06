@@ -1,0 +1,3 @@
+{
+  "error": "Command '['osascript', '-e', 'tell application \"System Events\" to tell process \"OpenPlane\" to click (first button of window 1 whose description is \"Close settings\")']' returned non-zero exit status 1."
+}

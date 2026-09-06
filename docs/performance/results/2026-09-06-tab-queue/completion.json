@@ -1,0 +1,10 @@
+{
+  "checked_at": 1788652943.592265,
+  "installed_binary_sha256": "c4ed64eac3544e0a7c8d3c97a14eaf6a3d7b8f2a3ec0ff7bf866fe6dae4547bc",
+  "signature_verified": true,
+  "targeted_tests_passed": 9,
+  "live_completed_candidate_steps": 9,
+  "preferences_restored": true,
+  "remaining_test_jobs": [],
+  "full_performance": "NOT RUN: scheduled overnight"
+}

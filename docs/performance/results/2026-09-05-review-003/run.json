@@ -1,0 +1,149 @@
+{
+  "id": "2026-09-05-review-003",
+  "title": "Pilot preflight attempt",
+  "category": "Performance",
+  "brief": "Measure the current live app, expose coverage gaps and propose the next decisions. Preserve full product behavior.",
+  "created_at": "2026-09-05T20:07:08.136354+00:00",
+  "status": "cancelled",
+  "scope": "Single-build live pilot; no A/B claim and no full 14-case certification.",
+  "cases": [
+    {
+      "id": "P01",
+      "title": "Arrow navigation",
+      "status": "blocked",
+      "reason": "Cancelled by the operator.",
+      "samples": []
+    },
+    {
+      "id": "P02",
+      "title": "Zoom",
+      "status": "not_run",
+      "reason": "Waiting for this pilot phase.",
+      "samples": []
+    },
+    {
+      "id": "P03",
+      "title": "Activate and return",
+      "status": "not_run",
+      "reason": "Waiting for this pilot phase.",
+      "samples": []
+    },
+    {
+      "id": "P04",
+      "title": "Launch closed apps",
+      "status": "blocked",
+      "reason": "A disposable multi-app fixture and per-app ready criteria are not available. No personal apps were quit.",
+      "samples": []
+    },
+    {
+      "id": "P05",
+      "title": "OpenPlane startup",
+      "status": "not_run",
+      "reason": "Waiting for this pilot phase.",
+      "samples": []
+    },
+    {
+      "id": "P06",
+      "title": "Desktop switching",
+      "status": "not_run",
+      "reason": "Waiting for this pilot phase.",
+      "samples": []
+    },
+    {
+      "id": "P07",
+      "title": "Pan, minimap and saved view",
+      "status": "blocked",
+      "reason": "Repeatable pointer/trackpad routes and camera end-state observer are missing.",
+      "samples": []
+    },
+    {
+      "id": "P08",
+      "title": "Move and group cards",
+      "status": "blocked",
+      "reason": "A disposable layout plus group/drag end-state observer is missing. Personal arrangements were preserved.",
+      "samples": []
+    },
+    {
+      "id": "P09",
+      "title": "Search",
+      "status": "not_run",
+      "reason": "Waiting for this pilot phase.",
+      "samples": []
+    },
+    {
+      "id": "P10",
+      "title": "Window discovery and previews",
+      "status": "blocked",
+      "reason": "A controlled changing-window source and preview-freshness observer are missing.",
+      "samples": []
+    },
+    {
+      "id": "P11",
+      "title": "Quit selected app",
+      "status": "blocked",
+      "reason": "Safe disposable app/document fixture is missing. Personal apps were not quit.",
+      "samples": []
+    },
+    {
+      "id": "P12",
+      "title": "Edit and persist desktops",
+      "status": "blocked",
+      "reason": "A disposable profile and persistence assertions are missing. Personal desktops were not edited.",
+      "samples": []
+    },
+    {
+      "id": "P13",
+      "title": "Settings and shortcuts",
+      "status": "blocked",
+      "reason": "The settings variant manifest and visual expectations are not yet implemented.",
+      "samples": []
+    },
+    {
+      "id": "P14",
+      "title": "Idle and sustained use",
+      "status": "not_run",
+      "reason": "Waiting for this pilot phase.",
+      "samples": []
+    }
+  ],
+  "proposals": [],
+  "events": [
+    {
+      "at": "2026-09-05T20:07:08.136586+00:00",
+      "message": "Preparing live pilot; seven case families have executable subsets."
+    },
+    {
+      "at": "2026-09-05T20:07:10.032824+00:00",
+      "message": "P01 \u00b7 Arrow navigation"
+    },
+    {
+      "at": "2026-09-05T20:07:46.572622+00:00",
+      "message": "Pilot stopped: Cancelled by the operator."
+    },
+    {
+      "at": "2026-09-05T20:07:46.806247+00:00",
+      "message": "Report ready for human review. No proposals have been accepted automatically."
+    }
+  ],
+  "artifacts": [],
+  "environment": {
+    "binary_sha256": "e7980cfbca7204c752b0d6527e09d37027ee8b9d7bf092010c74555937142277",
+    "commit": "09707146f1e93862bfb9e7b734681f28cd1e7020",
+    "source_diff_sha256": "4091b5196da0c44eb542cbad817dffb8b58751e4e00247827d13af431e7c1031",
+    "os": "26.6.2",
+    "machine": "Mac14,10",
+    "cpu_units": "100% = one CPU core; OpenPlane process only",
+    "observer": "Mach CPU counters at phase boundaries; AX polling for coarse foreground/start availability.",
+    "limitations": [
+      "No candidate build or A/B pairs.",
+      "Live personal scene, not a frozen S/R/L fixture.",
+      "No presented-frame or first-pixel latency observer.",
+      "Background user apps remain running; no claim of isolated system load.",
+      "Trials are current-process samples; explicit cold/warm control is not complete."
+    ],
+    "fixture_sha256": "c30d084c57c55057fdc7700ae1e4efbb470efc4c1b4c2f1c23ef34d8d49e2638"
+  },
+  "error": "Cancelled by the operator.",
+  "restored": true,
+  "finished_at": "2026-09-05T20:07:46.806202+00:00"
+}

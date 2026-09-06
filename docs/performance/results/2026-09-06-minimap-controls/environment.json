@@ -1,0 +1,11 @@
+{
+  "commit": "09707146f1e93862bfb9e7b734681f28cd1e7020",
+  "source_diff_sha256": "40115a330022846e527ae80161064123da43c5180865c065b6821b0be945449f",
+  "fix_diff_sha256": "fc1fc81b6a8ca2a85fdd7a996b3a800d4f8150c396690c05e01bb7d57d7a8555",
+  "baseline_binary_sha256": "bb302e3a3fd63f604187a4bae134797690b59949489b39d37531baa867a34516",
+  "candidate_binary_sha256": "20e4440712d7f2e2f903357dff3074ef7a97771f3706a62d5bc7f28b132b9ec7",
+  "signed_release_verified": true,
+  "tests_passed": 2,
+  "settings_unchanged": true,
+  "owned_jobs_ended": true
+}

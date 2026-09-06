@@ -1,0 +1,5 @@
+{
+  "binary_sha256": "85438ef576d000129aec16070f28d2f7539639e5f0b05f30d09b1b175deda19b",
+  "source_diff_sha256": "8ad3c4cae3862ff3f6fb10e07419fdde294a62e7c4e76e36c5f1fb5951c86223",
+  "change": "Settings icon 22x22 points, same as search and lock; all hit targets remain 40x40."
+}

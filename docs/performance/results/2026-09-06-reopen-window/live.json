@@ -1,0 +1,20 @@
+{
+  "variants": [
+    {
+      "variant": "before",
+      "binary_sha256": "e49253c534551a7fd71bd7103c188b8ec73d8093d90031446c7e458208819828",
+      "requested_return": 1,
+      "chrome_windows_after": 0,
+      "front_bundle_after": "com.google.Chrome",
+      "observation_delay_seconds": 2.5090985410060966
+    },
+    {
+      "variant": "after",
+      "binary_sha256": "90a41bd9320c02fe0b059bffaf3aed35ada9bdf4c373adc68cb4ed6b7352fe0d",
+      "requested_return": 1,
+      "chrome_windows_after": 1,
+      "front_bundle_after": "com.google.Chrome",
+      "observation_delay_seconds": 2.5140898750105407
+    }
+  ]
+}
