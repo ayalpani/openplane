@@ -1,0 +1,7 @@
+# Views replace Desktop navigation
+
+Top nudge now hosts Canvas/Recent/Overview/All apps with former desktop-tab typography/translucent selected background. Lower overlay removed. Plus keyboard entry removed, old desktop controls detached; saved arrangements remain internally. Tab cycles all four with wrap, Shift-Tab reverses, repeats ignored. Text/search focus guards preserved. Fresh preferences default Overview; saved choices honored. Installed app set to Overview as requested.
+
+Eleven distinct relevant tests PASS (ten suite tests plus new cycle/default/persistence test). New cycle test first failed because an initially nil camera is materialized when leaving Canvas; fixture now explicitly initializes that camera and compares decoded persisted data, verifying no further changes over the full cycle. Synthetic rendering inspected. Signed Release build/signature and diff check PASS. Live AX Tab/reverse/click PASS, no Desktop UI exposed. No user screenshots viewed.
+
+Source/build/baseline: identity.json, raw source/test/build/live evidence here. P20, P03/P15–P17 full coverage, core smoke and matched comparisons **NOT RUN: scheduled overnight** for this source/build. Same safe fixture and measurement method, first/warm conditions. Idle/action/additional CPU and latency **NOT RUN**, calibrated observer/fixture **BLOCKED**, follow-up [PERF-025](../../backlog.md#perf-025--view-overlay-movement-policy-and-prompt-prototype-acceptance). No performance gain claimed.

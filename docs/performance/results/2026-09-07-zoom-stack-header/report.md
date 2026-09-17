@@ -1,0 +1,9 @@
+# Catalog zoom floor and shared stack header
+
+Catalog tiles reach their final visible size at zoom 0.5, but camera/tap targets previously continued to 0.06. Clamp camera, tap/held targets and pinch at 0.5; stop held input at that boundary. Other view minima unchanged.
+
+Overview renders one HUD header above each full app stack: one icon, selected window title (truncated), index/count. Per-window icons/captions hidden only in Overview. Header redraw follows selection/camera. Rank map bounds grouping/sort work; text is currently drawn by HUD, so new CPU cost requires live measurement.
+
+Twelve distinct focused tests pass across logs. Reversal test initially had no host window/display link; rerun with a real synthetic test window passes twenty outward taps then one inward tap. This tests actual keyboard handlers/animation, not only geometry. Synthetic grouped render inspected, selected title 2/3 above stack and other headers outside previews. Signed Release build/signature PASS. Installed live AX All apps entry and return PASS; initial Recent restored. Live zoom keys NOT RUN: CUA key tokens rejected before delivery; synthetic native-key test is evidence for reversal, not installed live input coverage. No user preview screenshots inspected.
+
+Source/candidate/baseline in identity.json. P16/P17 full live input, keyboard/pinch reversal, core smoke and matched comparisons **NOT RUN: scheduled overnight** for this build. Identical safe fixture/method, first and warm conditions. Idle/action/additional CPU and latency **NOT RUN**. Calibrated observer/fixtures and installed zoom input adapter **BLOCKED**, follow-up [PERF-025](../../backlog.md#perf-025--view-overlay-movement-policy-and-prompt-prototype-acceptance). No performance gain claimed. Raw logs and synthetic evidence retained.

@@ -1,0 +1,1 @@
+Signed Release AX-only live check: Settings root Views navigation row → four view rows → Overview name and two switches; AI fields absent. Configure with AI click exposes prompt/key/actions; click again hides fields. Escape returns four-row list. Back returns root. Close restores initial Overview with Settings closed. No preference changed, API call or user screenshot inspection.

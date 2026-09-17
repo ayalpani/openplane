@@ -1,0 +1,1 @@
+Installed signed Release AX: no Desktop tabs or plus, one Views group. Tab Canvas → Recent PASS; Shift-Tab Recent → Canvas PASS; click Overview PASS, left selected as requested. No user preview images inspected.

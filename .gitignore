@@ -9,3 +9,26 @@ xcuserdata/
 review-desk/.state/
 __pycache__/
 *.pyc
+
+# Local environment files (keep sanitized examples versionable)
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.sample
+!.env.template
+
+# Private keys and signing credentials
+*.key
+*.pem
+*.p12
+*.pfx
+*.p8
+*.mobileprovision
+*.provisionprofile
+*.keychain
+*.keychain-db
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519

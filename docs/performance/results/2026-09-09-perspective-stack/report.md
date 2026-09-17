@@ -1,0 +1,7 @@
+# Perspective app stacks
+
+Shared presentation frames fit centered previews in the stable stack footprint: active card full size at bottom/front; back cards scale by 0.9 per depth and rise. Display order rotates around remembered window, navigation order remains stable. Renderer and hit testing use these frames; focus camera alignment/tracking uses the same actual preview frame. Existing persistent Canvas geometry unchanged. Reference: Microsoft Windows Flip 3D stack concept, simplified flat/upright cards (https://news.microsoft.com/download/hardware/WLD6000FS_FINAL.pdf).
+
+Ten Overview tests PASS including geometry, actual perspective frame use, preview click, row navigation and MRU fallback. Native synthetic layer rendering visually checked; no Storybook for AppKit. Signed Release build/signature PASS. Installed AX launch confirmed Overview first. Down live input interrupted by user changing app; no further inputs sent. Full live perspective/activation verification incomplete. No user previews inspected.
+
+P04/P17/P20 complete live variants/core smoke/matched baseline **NOT RUN: scheduled overnight**, source/build in identity.json. Same safe fixture and first/warm cache; idle/action/additional CPU and presented latency NOT RUN. Controlled fixture/calibrated observer **BLOCKED**, follow-up [PERF-025](../../backlog.md#perf-025--view-overlay-movement-policy-and-prompt-prototype-acceptance). No measured performance gain claimed.

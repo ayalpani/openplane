@@ -1,4 +1,5 @@
 @preconcurrency import AppKit
+import Carbon
 @preconcurrency import ApplicationServices
 @preconcurrency import ScreenCaptureKit
 
@@ -525,18 +526,34 @@ struct DesktopPages: Codable, Equatable {
 }
 
 enum OpenPlanePreferences {
+  static let transitionSpeedKey = "transitionAnimationSpeed"
+  static var transitionSpeed: Double {
+    get {
+      let value = UserDefaults.standard.object(forKey: transitionSpeedKey) as? Double ?? 2
+      return value.isFinite ? min(4, max(0.5, value)) : 2
+    }
+    set { UserDefaults.standard.set(newValue.isFinite ? min(4, max(0.5, newValue)) : 2, forKey: transitionSpeedKey) }
+  }
+  static func transitionDuration(_ original: TimeInterval) -> TimeInterval {
+    original / transitionSpeed
+  }
+
   static let useCommandTabShortcut = "useCommandTabShortcut"
   static let showPrivateBrowserPreviews = "showPrivateBrowserPreviews"
 }
 
 enum ShortcutMatcher {
+  static func isOverviewSwipe(deltaX: CGFloat, deltaY: CGFloat) -> Bool {
+    deltaY > 0 && deltaY > abs(deltaX)
+  }
+
   static func isCommandTab(keyCode: Int64, flags: CGEventFlags) -> Bool {
     guard keyCode == 48 else { return false }
     let modifiers = flags.intersection([.maskCommand, .maskShift, .maskControl, .maskAlternate])
     return modifiers == [.maskCommand] || modifiers == [.maskCommand, .maskShift]
   }
 
-  static func isPlaneQuit(keyCode: UInt16, isRepeat: Bool) -> Bool {
+  static func isPlaneBackspace(keyCode: UInt16, isRepeat: Bool) -> Bool {
     keyCode == 51 && !isRepeat
   }
 }
@@ -756,7 +773,8 @@ struct WindowInventoryTracker {
     previous: Set<CGWindowID>,
     current: Set<CGWindowID>,
     existing: Set<CGWindowID> = [],
-    removalThreshold: Int = 3
+    removalThreshold: Int = 3,
+    requestedCloseIDs: Set<CGWindowID> = []
   ) -> WindowInventoryChange {
     missingScanCount = missingScanCount.filter { previous.contains($0.key) }
     for id in current.union(existing) { missingScanCount[id] = nil }
@@ -765,7 +783,7 @@ struct WindowInventoryTracker {
 
     let removed = Set(
       absent.filter {
-        missingScanCount[$0, default: 0] >= removalThreshold
+        requestedCloseIDs.contains($0) || missingScanCount[$0, default: 0] >= removalThreshold
       })
     for id in removed { missingScanCount[id] = nil }
 
@@ -817,7 +835,7 @@ enum PreviewState: Equatable {
     case .failed:
       "Preview unavailable."
     case .redacted:
-      "Preview hidden for a private browsing window."
+      "Browser preview hidden because non-private mode cannot be verified."
     }
   }
 }
@@ -832,13 +850,28 @@ actor PreviewCache {
       directoryURL
       ?? caches.appendingPathComponent(bundleIdentifier, isDirectory: true)
         .appendingPathComponent("WindowPreviews", isDirectory: true)
+    // Remove browser images left by earlier versions without loading their contents.
+    for file in (try? FileManager.default.contentsOfDirectory(at: self.directoryURL,
+      includingPropertiesForKeys: nil)) ?? []
+    where BrowserPrivacy.isBrowser(bundleIdentifier: file.lastPathComponent) {
+      try? FileManager.default.removeItem(at: file)
+    }
   }
 
   func loadData(windowID: CGWindowID, bundleIdentifier: String) -> Data? {
-    try? Data(contentsOf: fileURL(windowID: windowID, bundleIdentifier: bundleIdentifier))
+    guard !BrowserPrivacy.isBrowser(bundleIdentifier: bundleIdentifier) else {
+      remove(windowID: windowID, bundleIdentifier: bundleIdentifier)
+      return nil
+    }
+    return try? Data(contentsOf: fileURL(windowID: windowID, bundleIdentifier: bundleIdentifier))
   }
 
   func store(image: CGImage, windowID: CGWindowID, bundleIdentifier: String) {
+    // Browser images are session-only, including explicitly permitted private previews.
+    guard !BrowserPrivacy.isBrowser(bundleIdentifier: bundleIdentifier) else {
+      remove(windowID: windowID, bundleIdentifier: bundleIdentifier)
+      return
+    }
     let bitmap = NSBitmapImageRep(cgImage: image)
     guard let jpeg = bitmap.representation(
       using: .jpeg,
@@ -880,7 +913,7 @@ final class WindowNode {
   var preview: NSImage?
   var previewState: PreviewState
   var lastPreviewCacheWrite: Date?
-  var captureWindow: SCWindow
+  var captureWindow: SCWindow?
   var accessibilityElement: AXUIElement?
 
   init(discovered: DiscoveredWindow, worldFrame: CGRect, cachedPreview: NSImage? = nil) {
@@ -912,15 +945,46 @@ final class WindowNode {
   }
 
   var displayTitle: String {
-    previewState == .redacted ? "Private Window" : title
+    previewState == .redacted ? "Browser preview hidden" : title
   }
 }
 
 enum CanvasMath {
+  static let applicationMinimumZoom: CGFloat = 0.5
+  static let itemGap: CGFloat = 240
+  static func applicationTileMetrics(zoom: CGFloat) -> (icon: CGFloat, caption: CGFloat, size: CGSize) {
+    let icon = max(40, 56 * zoom)
+    let caption = min(1, max(0, (zoom - 0.55) / 0.3))
+    return (icon, caption, CGSize(width: max(icon + 24, 128 * zoom),
+      height: icon + 24 + 26 * caption))
+  }
+
+  static func applicationGridFrames(count: Int, viewport: CGSize, zoom: CGFloat = 1, topInset: CGFloat = 88) -> [CGRect] {
+    let zoom = max(0.001, zoom)
+    let size = applicationTileMetrics(zoom: zoom).size
+    let gap: CGFloat = 16
+    let columns = max(1, Int((viewport.width - 48 + gap) / (size.width + gap)))
+    let columnWidth = max(size.width + gap, (viewport.width - 48 + gap) / CGFloat(columns))
+    return (0..<count).map { index in
+      CGRect(x: (-viewport.width / 2 + 24 + CGFloat(index % columns) * columnWidth) / zoom,
+        y: (viewport.height / 2 - topInset - size.height - CGFloat(index / columns) * (size.height + gap)) / zoom,
+        width: size.width / zoom, height: size.height / zoom)
+    }
+  }
+
+  static func allAppsCardSize(at zoom: CGFloat) -> CGSize {
+    CGSize(width: max(640, 160 / max(minimumZoom, zoom)),
+      height: max(180, 48 / max(minimumZoom, zoom)))
+  }
+
   static let minimumZoom: CGFloat = 0.06
   static let maximumZoom: CGFloat = 1.25
   static let appIconSize: CGFloat = 36
   static let groupSelectionPadding: CGFloat = 12
+
+  static func previewHeaderFont(selected: Bool) -> NSFont {
+    .systemFont(ofSize: 12, weight: selected ? .bold : .medium)
+  }
 
   static func previewHeaderLayout(
     for rect: CGRect, zoom: CGFloat, titleLift: CGFloat
@@ -1087,6 +1151,11 @@ enum CanvasMath {
     let nextPosition = position + nextVelocity * CGFloat(deltaTime)
     guard distance * (target - nextPosition) > 0 else { return (targetZoom, 0) }
     return (clampedZoom(CGFloat(Foundation.exp(Double(nextPosition)))), nextVelocity)
+  }
+
+  static func focusControlsOpacity(progress: CGFloat) -> CGFloat {
+    // Hide navigation chrome before the camera flight dominates the minimap.
+    1 - easedTransition(min(1, max(0, progress * 3)))
   }
 
   static func focusBackdropOpacity(progress: CGFloat) -> CGFloat {
@@ -1359,7 +1428,7 @@ enum CanvasMath {
     }?.id
   }
 
-  static func gridFrames(for sizes: [CGSize], gap: CGFloat = 240) -> [CGRect] {
+  static func gridFrames(for sizes: [CGSize], gap: CGFloat = CanvasMath.itemGap) -> [CGRect] {
     guard !sizes.isEmpty else { return [] }
     let columns = Int(ceil(sqrt(Double(sizes.count))))
     let cellWidth = sizes.map(\.width).max()! + gap
@@ -1426,7 +1495,7 @@ enum CanvasMath {
     size: CGSize,
     centeredAt anchor: CGPoint,
     avoiding frames: [CGRect],
-    gap: CGFloat = 240,
+    gap: CGFloat = CanvasMath.itemGap,
     maximumRing: Int = 24
   ) -> CGRect {
     func frame(x: Int, y: Int) -> CGRect {
@@ -1526,7 +1595,7 @@ struct RecentWindowOrder {
     var top: CGFloat = 0
     return sizes.map { size in
       let frame = CGRect(x: -size.width / 2, y: top - size.height, width: size.width, height: size.height)
-      top = frame.minY - 100
+      top = frame.minY - CanvasMath.itemGap
       return frame
     }
   }
@@ -1558,5 +1627,278 @@ struct InstalledApp: Sendable {
       let comparison = $0.name.localizedStandardCompare($1.name)
       return comparison == .orderedSame ? $0.id < $1.id : comparison == .orderedAscending
     }
+  }
+}
+
+
+enum WindowBackspaceAction: Equatable {
+  case closeWindow
+  case quitApp
+
+  static func resolve(windowCount: Int?) -> Self {
+    // Only a confirmed last window may end the app; missing inventory closes one window.
+    windowCount == 1 ? .quitApp : .closeWindow
+  }
+}
+
+
+enum CanvasViewMode: String, CaseIterable {
+  case canvas, chronological, overview
+  var followsSelectionByDefault: Bool { self != .overview }
+}
+
+struct OverviewLayout {
+  struct Item: Equatable {
+    let id: CGWindowID
+    let application: String
+    let size: CGSize
+  }
+  let order: [CGWindowID]
+  let frames: [CGWindowID: CGRect]
+
+  static func arrange(_ items: [Item], viewport: CGSize) -> OverviewLayout {
+    guard !items.isEmpty else { return OverviewLayout(order: [], frames: [:]) }
+    var groups: [[Item]] = []
+    for item in items {
+      if let index = groups.firstIndex(where: { $0.first?.application == item.application }) {
+        groups[index].append(item)
+      } else { groups.append([item]) }
+    }
+    var bestFrames: [CGWindowID: CGRect] = [:]
+    var bestScale: CGFloat = 0
+    for columns in 1...groups.count {
+      let rows = (groups.count + columns - 1) / columns
+      let sizes = groups.map { group in
+        CGSize(width: (group.map { $0.size.width }.max() ?? 0) + CGFloat(group.count - 1) * 100,
+          height: (group.map { $0.size.height }.max() ?? 0) + CGFloat(group.count - 1) * 180)
+      }
+      var widths = Array(repeating: CGFloat(0), count: columns)
+      var heights = Array(repeating: CGFloat(0), count: rows)
+      for (index, size) in sizes.enumerated() {
+        widths[index % columns] = max(widths[index % columns], size.width)
+        heights[index / columns] = max(heights[index / columns], size.height)
+      }
+      let gap = CanvasMath.itemGap
+      let totalWidth = widths.reduce(0, +) + CGFloat(columns - 1) * gap
+      let totalHeight = heights.reduce(0, +) + CGFloat(rows - 1) * gap
+      let scale = min(max(1, viewport.width) / max(1, totalWidth),
+        max(1, viewport.height) / max(1, totalHeight + gap + 180))
+      guard scale > bestScale else { continue }
+      bestScale = scale
+      var xOffsets = Array(repeating: CGFloat(0), count: columns)
+      var yOffsets = Array(repeating: CGFloat(0), count: rows)
+      for index in 1..<columns { xOffsets[index] = xOffsets[index - 1] + widths[index - 1] + gap }
+      for index in 1..<rows { yOffsets[index] = yOffsets[index - 1] + heights[index - 1] + gap }
+      var frames: [CGWindowID: CGRect] = [:]
+      for (index, group) in groups.enumerated() {
+        let column = index % columns, row = index / columns
+        let x = xOffsets[column]
+        let y = -yOffsets[row]
+        for (offset, item) in group.enumerated() {
+          frames[item.id] = CGRect(x: x + CGFloat(offset) * 100,
+            y: y - item.size.height - CGFloat(offset) * 180,
+            width: item.size.width, height: item.size.height)
+        }
+      }
+      bestFrames = frames
+    }
+    return OverviewLayout(order: groups.flatMap { $0.map(\.id) }, frames: bestFrames)
+  }
+}
+
+
+struct OverviewShortcut: Codable, Equatable {
+  let keyCode: UInt32
+  let modifiers: UInt32
+  let label: String
+  static let standard = OverviewShortcut(keyCode: 49, modifiers: UInt32(controlKey | optionKey), label: "⌃⌥Space")
+
+  static func from(_ event: NSEvent) -> OverviewShortcut? {
+    let flags = event.modifierFlags.intersection([.command, .control, .option, .shift])
+    guard !event.isARepeat, !flags.intersection([.command, .control, .option]).isEmpty,
+      event.keyCode != 53, event.keyCode != 48 else { return nil }
+    // Keep common application commands available while recording.
+    if flags == .command, [UInt16(12), 13, 8, 9, 0, 6, 7].contains(event.keyCode) { return nil }
+    var modifiers: UInt32 = 0
+    var label = ""
+    for (flag, carbon, symbol) in [(NSEvent.ModifierFlags.control, controlKey, "⌃"),
+      (.option, optionKey, "⌥"), (.shift, shiftKey, "⇧"), (.command, cmdKey, "⌘")] {
+      if flags.contains(flag) { modifiers |= UInt32(carbon); label += symbol }
+    }
+    let names: [UInt16: String] = [49: "Space", 36: "Return", 51: "⌫", 123: "←", 124: "→", 125: "↓", 126: "↑"]
+    label += names[event.keyCode] ?? event.charactersIgnoringModifiers?.uppercased() ?? "Key \(event.keyCode)"
+    return OverviewShortcut(keyCode: UInt32(event.keyCode), modifiers: modifiers, label: label)
+  }
+}
+
+@MainActor
+final class OverviewShortcutController {
+  static let shared = OverviewShortcutController()
+  private(set) var shortcut: OverviewShortcut
+  var onActivate: (() -> Void)?
+  var isRecording = false
+  private var hotKey: EventHotKeyRef?
+  private var handler: EventHandlerRef?
+  private var held = false
+
+  private init() {
+    shortcut = UserDefaults.standard.data(forKey: "overviewShortcut")
+      .flatMap { try? JSONDecoder().decode(OverviewShortcut.self, from: $0) } ?? .standard
+  }
+
+  func start() -> Bool {
+    if handler == nil {
+      var types = [EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
+        EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased))]
+      let status = InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
+        guard let event else { return OSStatus(eventNotHandledErr) }
+        return MainActor.assumeIsolated {
+          let controller = OverviewShortcutController.shared
+          if GetEventKind(event) == UInt32(kEventHotKeyReleased) { controller.held = false }
+          else if !controller.held {
+            controller.held = true
+            if !controller.isRecording { controller.onActivate?() }
+          }
+          return noErr
+        }
+      }, types.count, &types, nil, &handler)
+      guard status == noErr else { return false }
+    }
+    return register(shortcut, persist: false)
+  }
+
+  @discardableResult
+  func register(_ candidate: OverviewShortcut, persist: Bool = true) -> Bool {
+    if hotKey != nil, candidate == shortcut { return true }
+    var replacement: EventHotKeyRef?
+    let result = RegisterEventHotKey(candidate.keyCode, candidate.modifiers,
+      EventHotKeyID(signature: 0x4F504C4E, id: 1), GetApplicationEventTarget(), 0, &replacement)
+    guard result == noErr else { return false }
+    if let hotKey { UnregisterEventHotKey(hotKey) }
+    hotKey = replacement
+    held = false
+    shortcut = candidate
+    if persist, let data = try? JSONEncoder().encode(candidate) {
+      UserDefaults.standard.set(data, forKey: "overviewShortcut")
+    }
+    return true
+  }
+
+  func pause() {
+    if let hotKey { UnregisterEventHotKey(hotKey) }; hotKey = nil
+    held = false
+  }
+
+  func stop() {
+    if let hotKey { UnregisterEventHotKey(hotKey) }; hotKey = nil
+    if let handler { RemoveEventHandler(handler) }; handler = nil
+    held = false
+  }
+}
+
+
+struct ViewPromptPlan: Codable, Equatable, Sendable {
+  let name: String
+  let layout: String
+  let canPan: Bool
+  let followSelection: Bool
+
+  func validated() throws -> Self {
+    guard ["canvas", "chronological", "overview", "allApps"].contains(layout),
+      !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, name.count <= 40 else {
+      throw ViewPromptError.invalidResponse
+    }
+    return self
+  }
+  var summary: String {
+    "\(name) · \(layout)\nCanvas movement: \(canPan ? "on" : "off") · Follow selection: \(followSelection ? "on" : "off")"
+  }
+}
+
+enum ViewPromptError: LocalizedError {
+  case missingKey, invalidResponse, requestFailed(Int)
+  var errorDescription: String? {
+    switch self {
+    case .missingKey: return "Set OPENAI_API_KEY or enter a key for this session."
+    case .invalidResponse: return "No valid view configuration returned. Nothing changed."
+    case .requestFailed(let status): return "OpenAI request failed (HTTP \(status)). Nothing changed."
+    }
+  }
+}
+
+enum ViewPromptClient {
+  static func requestBody(prompt: String) -> [String: Any] {
+    let schema: [String: Any] = ["type": "object", "additionalProperties": false,
+      "properties": ["name": ["type": "string"],
+        "layout": ["type": "string", "enum": ["canvas", "chronological", "overview", "allApps"]],
+        "canPan": ["type": "boolean"], "followSelection": ["type": "boolean"]],
+      "required": ["name", "layout", "canPan", "followSelection"]]
+    return ["model": "gpt-5-mini", "store": false, "max_output_tokens": 1200, "reasoning": ["effort": "minimal"],
+      "instructions": "Propose an OpenPlane view configuration from the user's description. Name maximum 40 characters. Canvas is free spatial layout; chronological is recent windows vertically; overview fits grouped windows on one screen; allApps is an installed app grid. Default canPan and followSelection false for overview/allApps, true otherwise. Only these settings are supported. No code, tool calls, or window data.",
+      "input": prompt,
+      "text": ["format": ["type": "json_schema", "name": "view_configuration", "strict": true, "schema": schema]]]
+  }
+  static func decodeResponse(_ data: Data) throws -> ViewPromptPlan {
+    guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+      json["status"] as? String == "completed",
+      let output = json["output"] as? [[String: Any]] else { throw ViewPromptError.invalidResponse }
+    let texts = output.flatMap { $0["content"] as? [[String: Any]] ?? [] }
+      .filter { $0["type"] as? String == "output_text" }
+      .compactMap { $0["text"] as? String }
+    guard texts.count == 1, let encoded = texts.first?.data(using: .utf8) else { throw ViewPromptError.invalidResponse }
+    return try JSONDecoder().decode(ViewPromptPlan.self, from: encoded).validated()
+  }
+  static func generate(prompt: String, key: String) async throws -> ViewPromptPlan {
+    guard !key.isEmpty else { throw ViewPromptError.missingKey }
+    var request = URLRequest(url: URL(string: "https://api.openai.com/v1/responses")!)
+    request.httpMethod = "POST"
+    request.timeoutInterval = 30
+    request.setValue("Bearer " + key, forHTTPHeaderField: "Authorization")
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = try JSONSerialization.data(withJSONObject: requestBody(prompt: prompt))
+    let session = URLSession(configuration: .ephemeral)
+    defer { session.invalidateAndCancel() }
+    let (data, response) = try await session.data(for: request)
+    guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+      throw ViewPromptError.requestFailed((response as? HTTPURLResponse)?.statusCode ?? 0)
+    }
+    return try decodeResponse(data)
+  }
+}
+
+// Only a standalone right-Command tap toggles the overview. Chords pass through.
+struct RightCommandTap {
+  private var pressed = false
+  private var candidate = false
+  mutating func handle(type: CGEventType, keyCode: Int64, flags: CGEventFlags) -> Bool {
+    if type == .flagsChanged && keyCode == 54 {
+      let down = flags.rawValue & 0x10 != 0 // NX_DEVICERCMDKEYMASK
+      if down && !pressed {
+        candidate = flags.intersection([.maskShift, .maskControl, .maskAlternate]).isEmpty
+          && flags.rawValue & 0x08 == 0 // left Command
+      }
+      let activate = pressed && !down && candidate
+      pressed = down
+      if !down { candidate = false }
+      return activate
+    }
+    if pressed && (type == .keyDown || type == .flagsChanged
+      || type == .leftMouseDown || type == .rightMouseDown || type == .otherMouseDown) {
+      candidate = false
+    }
+    return false
+  }
+}
+
+struct ToggleParityQueue {
+  private(set) var parity = 0
+
+  mutating func recordPress() { parity = (parity + 1) % 2 }
+
+  mutating func consume(isTransitioning: Bool) -> Bool {
+    guard !isTransitioning else { return false }
+    let shouldToggle = parity == 1
+    parity = 0
+    return shouldToggle
   }
 }

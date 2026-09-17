@@ -1,0 +1,1 @@
+Signed installed Release: no Temporary colors, color buttons or sliders in AX tree. Cmd-F -> search focused and Close search shown. Escape then Tab -> Canvas. Shift-Tab -> Overview restored. No user screenshots captured or inspected.

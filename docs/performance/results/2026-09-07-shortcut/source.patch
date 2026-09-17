@@ -1,0 +1,2160 @@
+diff --git a/OpenPlane/AppDelegate.swift b/OpenPlane/AppDelegate.swift
+index 28de3ef..97ee747 100644
+--- a/OpenPlane/AppDelegate.swift
++++ b/OpenPlane/AppDelegate.swift
+@@ -23,14 +23,9 @@ private func openPlaneCommandTabEventTapCallback(
+     return Unmanaged.passUnretained(event)
+   }
+ 
+-  if type == .flagsChanged {
+-    MainActor.assumeIsolated { appDelegate.commandModifiersChanged(event.flags) }
++  if MainActor.assumeIsolated({ OverviewShortcutController.shared.isRecording }) {
+     return Unmanaged.passUnretained(event)
+   }
+-  if type == .keyDown, event.getIntegerValueField(.keyboardEventKeycode) == 53 {
+-    let cancelled = MainActor.assumeIsolated { appDelegate.cancelCommandCycleForEscape() }
+-    if cancelled { return nil }
+-  }
+   guard ShortcutMatcher.isCommandTab(
+     keyCode: event.getIntegerValueField(.keyboardEventKeycode),
+     flags: event.flags
+@@ -39,7 +34,7 @@ private func openPlaneCommandTabEventTapCallback(
+   if type == .keyDown,
+     event.getIntegerValueField(.keyboardEventAutorepeat) == 0
+   {
+-    MainActor.assumeIsolated { appDelegate.handleCommandTab(backward: event.flags.contains(.maskShift)) }
++    MainActor.assumeIsolated { appDelegate.handleShortcut() }
+   }
+   return nil
+ }
+@@ -62,12 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+   private var lastFocusedByBundle: [String: CGWindowID] = [:]
+   private var appHistory = AppNavigationHistory()
+   private let windowFocusObserver = WindowFocusObserver()
+-  private var commandCycleActive = false
+-  private var commandCycleOrigin: CGWindowID?
+-  private var chronologicalOverviewReady = false
+   private var overviewGeneration = 0
+-  private var pendingCommandSteps: [Int] = []
+-  private var commandCycleReleased = false
+   private var inventoryTracker = WindowInventoryTracker()
+   private var didInitialLayout = false
+   private var isReturning = false
+@@ -78,7 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+   private var previewTask: Task<Void, Never>?
+   private var previewScheduler = PreviewRefreshScheduler()
+   private var permissionTimer: Timer?
+-  private var globalKeyMonitor: Any?
++  private var globalSwipeMonitor: Any?
+   private var localKeyMonitor: Any?
+   private var commandTabEventTap: CFMachPort?
+   private var commandTabRunLoopSource: CFRunLoopSource?
+@@ -89,8 +79,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+     configurePermissionView()
+     windowFocusObserver.onFocus = { [weak self] id in self?.canvasView.recentWindows.used(id) }
+     canvasView.onModeChange = { [weak self] in
+-      _ = self?.cancelCommandCycle()
+-      self?.chronologicalOverviewReady = true
+       self?.overviewGeneration += 1
+     }
+     observeWorkspace()
+@@ -114,7 +102,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+     canvasView.persistState()
+     stopCanvasLoops()
+     permissionTimer?.invalidate()
+-    if let globalKeyMonitor { NSEvent.removeMonitor(globalKeyMonitor) }
++    OverviewShortcutController.shared.stop()
++    if let globalSwipeMonitor { NSEvent.removeMonitor(globalSwipeMonitor) }
++    globalSwipeMonitor = nil
+     if let localKeyMonitor { NSEvent.removeMonitor(localKeyMonitor) }
+     removeCommandTabEventTap()
+     windowFocusObserver.stop()
+@@ -223,7 +213,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+   }
+ 
+   func canvasView(_ canvasView: CanvasView, setPrivateBrowserPreviews enabled: Bool) {
+-    for node in nodesByID.values where node.isPrivateBrowsing {
++    for node in nodesByID.values where node.isPrivateBrowsing
++      || BrowserPrivacy.isBrowser(bundleIdentifier: node.bundleIdentifier, applicationName: node.applicationName) {
+       if enabled {
+         guard node.previewState == .redacted else { continue }
+         node.previewState = .loading
+@@ -409,9 +400,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+       return
+     }
+     permissionTimer?.invalidate()
+-    if canvasView.isChronological {
++    if canvasView.usesAutomaticLayout {
++      if isShowingCanvas {
++        overlayWindow.makeKeyAndOrderFront(nil)
++        NSApp.activate(ignoringOtherApps: true)
++        return
++      }
+       windowFocusObserver.recordFrontmost()
+-      if commandCycleActive && !pendingCommandSteps.isEmpty && !chronologicalOverviewReady { return }
+       configureWindowForCanvas()
+       overlayWindow.contentView = workspaceView
+       canvasView.closeCatalog()
+@@ -421,21 +416,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+       overlayWindow.alphaValue = 1
+       overlayWindow.makeKeyAndOrderFront(nil)
+       NSApp.activate(ignoringOtherApps: true)
+-      chronologicalOverviewReady = false
+       overviewGeneration += 1
+       let generation = overviewGeneration
+       Task { [weak self] in
+         guard let self else { return }
+         await self.reconcileWindows()
+-        guard self.isShowingCanvas, self.canvasView.isChronological, self.overviewGeneration == generation else { return }
++        guard self.isShowingCanvas, self.canvasView.usesAutomaticLayout, self.overviewGeneration == generation else { return }
+         self.canvasView.prepareChronologicalOverview()
+-        self.chronologicalOverviewReady = true
+-        for step in self.pendingCommandSteps {
+-          self.canvasView.stepRecent(by: step, wrapping: true, windowsOnly: true)
+-        }
+-        self.pendingCommandSteps.removeAll()
+         self.startCanvasLoops()
+-        if self.commandCycleReleased { self.finishCommandCycle() }
+       }
+       return
+     }
+@@ -456,7 +444,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+ 
+   private func dismissCanvas() {
+     guard isShowingCanvas, !isDismissing else { return }
+-    _ = cancelCommandCycle()
+     overviewGeneration += 1
+     canvasView.dismissSettings()
+     isDismissing = true
+@@ -495,7 +482,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+             let preview = try await windowService.capture(window: node.captureWindow)
+             applyFreshPreview(preview, to: node)
+           } catch WindowCaptureError.privateBrowsing {
+-            node.isPrivateBrowsing = true
+             redactPrivatePreview(node)
+           } catch {
+             node.previewState = .failed
+@@ -902,7 +888,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+         applyFreshPreview(preview, to: node)
+       } catch WindowCaptureError.privateBrowsing {
+         loadingIndicatorTask.cancel()
+-        node.isPrivateBrowsing = true
+         redactPrivatePreview(node)
+       } catch {
+         loadingIndicatorTask.cancel()
+@@ -918,12 +903,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+   }
+ 
+   private func makeNode(for item: DiscoveredWindow, worldFrame: CGRect) async -> WindowNode {
+-    if item.isPrivateBrowsing && protectsPrivateBrowserPreviews {
++    if BrowserPrivacy.shouldSuppressPreview(bundleIdentifier: item.bundleIdentifier,
++      applicationName: item.applicationName, isPrivateBrowsing: item.isPrivateBrowsing,
++      allowsPrivatePreviews: !protectsPrivateBrowserPreviews) {
+       await previewCache.remove(windowID: item.id, bundleIdentifier: item.bundleIdentifier)
+       let node = WindowNode(discovered: item, worldFrame: worldFrame)
+       node.previewState = .redacted
+       return node
+     }
++    if item.isPrivateBrowsing || BrowserPrivacy.isBrowser(bundleIdentifier: item.bundleIdentifier,
++      applicationName: item.applicationName) {
++      return WindowNode(discovered: item, worldFrame: worldFrame)
++    }
+     let data = await previewCache.loadData(
+       windowID: item.id,
+       bundleIdentifier: item.bundleIdentifier
+@@ -946,6 +937,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+     )
+     node.previewState = .current
+ 
++    guard !node.isPrivateBrowsing,
++      !BrowserPrivacy.isBrowser(bundleIdentifier: node.bundleIdentifier, applicationName: node.applicationName)
++    else { return }
+     let now = Date()
+     guard
+       node.lastPreviewCacheWrite.map({ now.timeIntervalSince($0) >= 60 }) ?? true
+@@ -968,7 +962,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+   }
+ 
+   private func shouldRedactPrivatePreview(_ node: WindowNode) -> Bool {
+-    protectsPrivateBrowserPreviews && node.isPrivateBrowsing
++    BrowserPrivacy.shouldSuppressPreview(bundleIdentifier: node.bundleIdentifier,
++      applicationName: node.applicationName, isPrivateBrowsing: node.isPrivateBrowsing,
++      allowsPrivatePreviews: !protectsPrivateBrowserPreviews)
+   }
+ 
+   private func redactPrivatePreview(_ node: WindowNode) {
+@@ -1128,20 +1124,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+   }
+ 
+   private func installShortcut() {
+-    if let globalKeyMonitor { NSEvent.removeMonitor(globalKeyMonitor) }
++    OverviewShortcutController.shared.stop()
++    if let globalSwipeMonitor { NSEvent.removeMonitor(globalSwipeMonitor) }
++    globalSwipeMonitor = nil
+     if let localKeyMonitor { NSEvent.removeMonitor(localKeyMonitor) }
+-    localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) {
++    localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .swipe]) {
+       [weak self] event in
++      if event.type == .swipe {
++        let handled = MainActor.assumeIsolated { self?.handleOverviewSwipe(event) ?? false }
++        return handled ? nil : event
++      }
++      if let recorder = event.window?.firstResponder as? OverviewShortcutRecorder,
++        recorder.isRecording {
++        if event.type == .keyDown { recorder.keyDown(with: event) }
++        return nil
++      }
+       if event.type == .keyUp {
+         let handled = MainActor.assumeIsolated {
+           self?.isShowingCanvas == true && self?.canvasView.handleNavigationKeyUp(event) == true
+         }
+         return handled ? nil : event
+       }
+-      if Self.isCanvasShortcut(event) {
+-        MainActor.assumeIsolated { self?.handleShortcut() }
+-        return nil
+-      }
+       if event.keyCode == 53 {
+         let dismissed = MainActor.assumeIsolated {
+           guard self?.isShowingCanvas == true else { return false }
+@@ -1160,9 +1163,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+       if navigated { return nil }
+       return event
+     }
+-    globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+-      guard Self.isCanvasShortcut(event) else { return }
+-      Task { @MainActor in self?.handleShortcut() }
++    globalSwipeMonitor = NSEvent.addGlobalMonitorForEvents(matching: .swipe) { [weak self] event in
++      MainActor.assumeIsolated { _ = self?.handleOverviewSwipe(event) }
++    }
++    OverviewShortcutController.shared.onActivate = { [weak self] in self?.handleShortcut() }
++    if !OverviewShortcutController.shared.start() {
++      canvasView.statusMessage = "Overview shortcut is unavailable. Choose another in Settings."
+     }
+     _ = configureCommandTabEventTap(
+       enabled: UserDefaults.standard.bool(forKey: OpenPlanePreferences.useCommandTabShortcut)
+@@ -1170,13 +1176,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+   }
+ 
+   private func configureCommandTabEventTap(enabled: Bool) -> Bool {
+-    if !enabled { _ = cancelCommandCycle() }
+     removeCommandTabEventTap()
+     guard enabled else { return true }
+ 
+     let eventMask = CGEventMask(1 << CGEventType.keyDown.rawValue)
+       | CGEventMask(1 << CGEventType.keyUp.rawValue)
+-      | CGEventMask(1 << CGEventType.flagsChanged.rawValue)
+     guard
+       let eventTap = CGEvent.tapCreate(
+         tap: .cgSessionEventTap,
+@@ -1214,9 +1218,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+     }
+   }
+ 
+-  nonisolated private static func isCanvasShortcut(_ event: NSEvent) -> Bool {
+-    let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+-    return event.keyCode == 49 && modifiers == [.control, .option]
++  private func handleOverviewSwipe(_ event: NSEvent) -> Bool {
++    guard UserDefaults.standard.bool(forKey: "swipeUpOpensOverview"),
++      !OverviewShortcutController.shared.isRecording,
++      ShortcutMatcher.isOverviewSwipe(deltaX: event.deltaX, deltaY: event.deltaY) else { return false }
++    canvasView.setViewMode(.overview)
++    handleShortcut()
++    return true
+   }
+ 
+   fileprivate func handleShortcut() {
+@@ -1227,49 +1235,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+       break
+     }
+   }
+-  fileprivate func handleCommandTab(backward: Bool) {
+-    guard canvasView.isChronological else { handleShortcut(); return }
+-    let step = backward ? -1 : 1
+-    if !commandCycleActive {
+-      commandCycleActive = true
+-      commandCycleReleased = false
+-      windowFocusObserver.recordFrontmost()
+-      commandCycleOrigin = canvasView.recentWindows.history.first
+-      chronologicalOverviewReady = false
+-      showCanvas()
+-    }
+-    if chronologicalOverviewReady { canvasView.stepRecent(by: step, wrapping: true, windowsOnly: true) }
+-    else { pendingCommandSteps.append(step) }
+-  }
+-
+-  fileprivate func commandModifiersChanged(_ flags: CGEventFlags) {
+-    guard commandCycleActive, !flags.contains(.maskCommand) else { return }
+-    commandCycleReleased = true
+-    if chronologicalOverviewReady { finishCommandCycle() }
+-  }
+-
+-  private func finishCommandCycle() {
+-    guard commandCycleActive else { return }
+-    commandCycleActive = false
+-    commandCycleReleased = false
+-    pendingCommandSteps.removeAll()
+-    guard canvasView.selectedWindowID != nil else { return }
+-    canvasView.focusSelectedWindow()
+-  }
+-
+-  fileprivate func cancelCommandCycleForEscape() -> Bool {
+-    guard cancelCommandCycle() else { return false }
+-    dismissCanvas()
+-    return true
+-  }
+-
+-  @discardableResult fileprivate func cancelCommandCycle() -> Bool {
+-    guard commandCycleActive else { return false }
+-    commandCycleActive = false
+-    commandCycleReleased = false
+-    pendingCommandSteps.removeAll()
+-    if let id = commandCycleOrigin, nodesByID[id] != nil { canvasView.selectedWindowID = id }
+-    return true
+-  }
+-
+ }
+diff --git a/OpenPlane/CanvasModel.swift b/OpenPlane/CanvasModel.swift
+index 654f51b..7b4688a 100644
+--- a/OpenPlane/CanvasModel.swift
++++ b/OpenPlane/CanvasModel.swift
+@@ -1,4 +1,5 @@
+ @preconcurrency import AppKit
++import Carbon
+ @preconcurrency import ApplicationServices
+ @preconcurrency import ScreenCaptureKit
+ 
+@@ -530,13 +531,17 @@ enum OpenPlanePreferences {
+ }
+ 
+ enum ShortcutMatcher {
++  static func isOverviewSwipe(deltaX: CGFloat, deltaY: CGFloat) -> Bool {
++    deltaY > 0 && deltaY > abs(deltaX)
++  }
++
+   static func isCommandTab(keyCode: Int64, flags: CGEventFlags) -> Bool {
+     guard keyCode == 48 else { return false }
+     let modifiers = flags.intersection([.maskCommand, .maskShift, .maskControl, .maskAlternate])
+     return modifiers == [.maskCommand] || modifiers == [.maskCommand, .maskShift]
+   }
+ 
+-  static func isPlaneQuit(keyCode: UInt16, isRepeat: Bool) -> Bool {
++  static func isPlaneBackspace(keyCode: UInt16, isRepeat: Bool) -> Bool {
+     keyCode == 51 && !isRepeat
+   }
+ }
+@@ -817,7 +822,7 @@ enum PreviewState: Equatable {
+     case .failed:
+       "Preview unavailable."
+     case .redacted:
+-      "Preview hidden for a private browsing window."
++      "Browser preview hidden because non-private mode cannot be verified."
+     }
+   }
+ }
+@@ -832,13 +837,28 @@ actor PreviewCache {
+       directoryURL
+       ?? caches.appendingPathComponent(bundleIdentifier, isDirectory: true)
+         .appendingPathComponent("WindowPreviews", isDirectory: true)
++    // Remove browser images left by earlier versions without loading their contents.
++    for file in (try? FileManager.default.contentsOfDirectory(at: self.directoryURL,
++      includingPropertiesForKeys: nil)) ?? []
++    where BrowserPrivacy.isBrowser(bundleIdentifier: file.lastPathComponent) {
++      try? FileManager.default.removeItem(at: file)
++    }
+   }
+ 
+   func loadData(windowID: CGWindowID, bundleIdentifier: String) -> Data? {
+-    try? Data(contentsOf: fileURL(windowID: windowID, bundleIdentifier: bundleIdentifier))
++    guard !BrowserPrivacy.isBrowser(bundleIdentifier: bundleIdentifier) else {
++      remove(windowID: windowID, bundleIdentifier: bundleIdentifier)
++      return nil
++    }
++    return try? Data(contentsOf: fileURL(windowID: windowID, bundleIdentifier: bundleIdentifier))
+   }
+ 
+   func store(image: CGImage, windowID: CGWindowID, bundleIdentifier: String) {
++    // Browser images are session-only, including explicitly permitted private previews.
++    guard !BrowserPrivacy.isBrowser(bundleIdentifier: bundleIdentifier) else {
++      remove(windowID: windowID, bundleIdentifier: bundleIdentifier)
++      return
++    }
+     let bitmap = NSBitmapImageRep(cgImage: image)
+     guard let jpeg = bitmap.representation(
+       using: .jpeg,
+@@ -880,7 +900,7 @@ final class WindowNode {
+   var preview: NSImage?
+   var previewState: PreviewState
+   var lastPreviewCacheWrite: Date?
+-  var captureWindow: SCWindow
++  var captureWindow: SCWindow?
+   var accessibilityElement: AXUIElement?
+ 
+   init(discovered: DiscoveredWindow, worldFrame: CGRect, cachedPreview: NSImage? = nil) {
+@@ -912,11 +932,37 @@ final class WindowNode {
+   }
+ 
+   var displayTitle: String {
+-    previewState == .redacted ? "Private Window" : title
++    previewState == .redacted ? "Browser preview hidden" : title
+   }
+ }
+ 
+ enum CanvasMath {
++  static let itemGap: CGFloat = 240
++  static func applicationTileMetrics(zoom: CGFloat) -> (icon: CGFloat, caption: CGFloat, size: CGSize) {
++    let icon = max(40, 56 * zoom)
++    let caption = min(1, max(0, (zoom - 0.55) / 0.3))
++    return (icon, caption, CGSize(width: max(icon + 24, 128 * zoom),
++      height: icon + 24 + 26 * caption))
++  }
++
++  static func applicationGridFrames(count: Int, viewport: CGSize, zoom: CGFloat = 1) -> [CGRect] {
++    let zoom = max(0.001, zoom)
++    let size = applicationTileMetrics(zoom: zoom).size
++    let gap: CGFloat = 16
++    let columns = max(1, Int((viewport.width - 48 + gap) / (size.width + gap)))
++    let columnWidth = max(size.width + gap, (viewport.width - 48 + gap) / CGFloat(columns))
++    return (0..<count).map { index in
++      CGRect(x: (-viewport.width / 2 + 24 + CGFloat(index % columns) * columnWidth) / zoom,
++        y: (viewport.height / 2 - 88 - size.height - CGFloat(index / columns) * (size.height + gap)) / zoom,
++        width: size.width / zoom, height: size.height / zoom)
++    }
++  }
++
++  static func allAppsCardSize(at zoom: CGFloat) -> CGSize {
++    CGSize(width: max(640, 160 / max(minimumZoom, zoom)),
++      height: max(180, 48 / max(minimumZoom, zoom)))
++  }
++
+   static let minimumZoom: CGFloat = 0.06
+   static let maximumZoom: CGFloat = 1.25
+   static let appIconSize: CGFloat = 36
+@@ -1359,7 +1405,7 @@ enum CanvasMath {
+     }?.id
+   }
+ 
+-  static func gridFrames(for sizes: [CGSize], gap: CGFloat = 240) -> [CGRect] {
++  static func gridFrames(for sizes: [CGSize], gap: CGFloat = CanvasMath.itemGap) -> [CGRect] {
+     guard !sizes.isEmpty else { return [] }
+     let columns = Int(ceil(sqrt(Double(sizes.count))))
+     let cellWidth = sizes.map(\.width).max()! + gap
+@@ -1426,7 +1472,7 @@ enum CanvasMath {
+     size: CGSize,
+     centeredAt anchor: CGPoint,
+     avoiding frames: [CGRect],
+-    gap: CGFloat = 240,
++    gap: CGFloat = CanvasMath.itemGap,
+     maximumRing: Int = 24
+   ) -> CGRect {
+     func frame(x: Int, y: Int) -> CGRect {
+@@ -1526,7 +1572,7 @@ struct RecentWindowOrder {
+     var top: CGFloat = 0
+     return sizes.map { size in
+       let frame = CGRect(x: -size.width / 2, y: top - size.height, width: size.width, height: size.height)
+-      top = frame.minY - 100
++      top = frame.minY - CanvasMath.itemGap
+       return frame
+     }
+   }
+@@ -1560,3 +1606,169 @@ struct InstalledApp: Sendable {
+     }
+   }
+ }
++
++
++enum WindowBackspaceAction: Equatable {
++  case closeWindow
++  case quitApp
++
++  static func resolve(windowCount: Int?) -> Self {
++    // Only a confirmed last window may end the app; missing inventory closes one window.
++    windowCount == 1 ? .quitApp : .closeWindow
++  }
++}
++
++
++enum CanvasViewMode: String, CaseIterable {
++  case canvas, chronological, overview
++  var followsSelectionByDefault: Bool { self != .overview }
++}
++
++struct OverviewLayout {
++  struct Item: Equatable {
++    let id: CGWindowID
++    let application: String
++    let size: CGSize
++  }
++  let order: [CGWindowID]
++  let frames: [CGWindowID: CGRect]
++
++  static func arrange(_ items: [Item], viewport: CGSize) -> OverviewLayout {
++    guard !items.isEmpty else { return OverviewLayout(order: [], frames: [:]) }
++    var groups: [[Item]] = []
++    for item in items {
++      if let index = groups.firstIndex(where: { $0.first?.application == item.application }) {
++        groups[index].append(item)
++      } else { groups.append([item]) }
++    }
++    var bestFrames: [CGWindowID: CGRect] = [:]
++    var bestScale: CGFloat = 0
++    for columns in 1...groups.count {
++      let rows = (groups.count + columns - 1) / columns
++      let sizes = groups.map { group in
++        CGSize(width: (group.map { $0.size.width }.max() ?? 0) + CGFloat(group.count - 1) * 100,
++          height: (group.map { $0.size.height }.max() ?? 0) + CGFloat(group.count - 1) * 180)
++      }
++      var widths = Array(repeating: CGFloat(0), count: columns)
++      var heights = Array(repeating: CGFloat(0), count: rows)
++      for (index, size) in sizes.enumerated() {
++        widths[index % columns] = max(widths[index % columns], size.width)
++        heights[index / columns] = max(heights[index / columns], size.height)
++      }
++      let gap = CanvasMath.itemGap
++      let totalWidth = widths.reduce(0, +) + CGFloat(columns - 1) * gap
++      let totalHeight = heights.reduce(0, +) + CGFloat(rows - 1) * gap
++      let scale = min(max(1, viewport.width) / max(1, totalWidth),
++        max(1, viewport.height) / max(1, totalHeight + gap + 180))
++      guard scale > bestScale else { continue }
++      bestScale = scale
++      var xOffsets = Array(repeating: CGFloat(0), count: columns)
++      var yOffsets = Array(repeating: CGFloat(0), count: rows)
++      for index in 1..<columns { xOffsets[index] = xOffsets[index - 1] + widths[index - 1] + gap }
++      for index in 1..<rows { yOffsets[index] = yOffsets[index - 1] + heights[index - 1] + gap }
++      var frames: [CGWindowID: CGRect] = [:]
++      for (index, group) in groups.enumerated() {
++        let column = index % columns, row = index / columns
++        let x = xOffsets[column]
++        let y = -yOffsets[row]
++        for (offset, item) in group.enumerated() {
++          frames[item.id] = CGRect(x: x + CGFloat(offset) * 100,
++            y: y - item.size.height - CGFloat(offset) * 180,
++            width: item.size.width, height: item.size.height)
++        }
++      }
++      bestFrames = frames
++    }
++    return OverviewLayout(order: groups.flatMap { $0.map(\.id) }, frames: bestFrames)
++  }
++}
++
++
++struct OverviewShortcut: Codable, Equatable {
++  let keyCode: UInt32
++  let modifiers: UInt32
++  let label: String
++  static let standard = OverviewShortcut(keyCode: 49, modifiers: UInt32(controlKey | optionKey), label: "⌃⌥Space")
++
++  static func from(_ event: NSEvent) -> OverviewShortcut? {
++    let flags = event.modifierFlags.intersection([.command, .control, .option, .shift])
++    guard !event.isARepeat, !flags.intersection([.command, .control, .option]).isEmpty,
++      event.keyCode != 53, event.keyCode != 48 else { return nil }
++    // Keep common application commands available while recording.
++    if flags == .command, [UInt16(12), 13, 8, 9, 0, 6, 7].contains(event.keyCode) { return nil }
++    var modifiers: UInt32 = 0
++    var label = ""
++    for (flag, carbon, symbol) in [(NSEvent.ModifierFlags.control, controlKey, "⌃"),
++      (.option, optionKey, "⌥"), (.shift, shiftKey, "⇧"), (.command, cmdKey, "⌘")] {
++      if flags.contains(flag) { modifiers |= UInt32(carbon); label += symbol }
++    }
++    let names: [UInt16: String] = [49: "Space", 36: "Return", 51: "⌫", 123: "←", 124: "→", 125: "↓", 126: "↑"]
++    label += names[event.keyCode] ?? event.charactersIgnoringModifiers?.uppercased() ?? "Key \(event.keyCode)"
++    return OverviewShortcut(keyCode: UInt32(event.keyCode), modifiers: modifiers, label: label)
++  }
++}
++
++@MainActor
++final class OverviewShortcutController {
++  static let shared = OverviewShortcutController()
++  private(set) var shortcut: OverviewShortcut
++  var onActivate: (() -> Void)?
++  var isRecording = false
++  private var hotKey: EventHotKeyRef?
++  private var handler: EventHandlerRef?
++  private var held = false
++
++  private init() {
++    shortcut = UserDefaults.standard.data(forKey: "overviewShortcut")
++      .flatMap { try? JSONDecoder().decode(OverviewShortcut.self, from: $0) } ?? .standard
++  }
++
++  func start() -> Bool {
++    if handler == nil {
++      var types = [EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
++        EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased))]
++      let status = InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
++        guard let event else { return OSStatus(eventNotHandledErr) }
++        return MainActor.assumeIsolated {
++          let controller = OverviewShortcutController.shared
++          if GetEventKind(event) == UInt32(kEventHotKeyReleased) { controller.held = false }
++          else if !controller.held {
++            controller.held = true
++            if !controller.isRecording { controller.onActivate?() }
++          }
++          return noErr
++        }
++      }, types.count, &types, nil, &handler)
++      guard status == noErr else { return false }
++    }
++    return register(shortcut, persist: false)
++  }
++
++  @discardableResult
++  func register(_ candidate: OverviewShortcut, persist: Bool = true) -> Bool {
++    if hotKey != nil, candidate == shortcut { return true }
++    var replacement: EventHotKeyRef?
++    let result = RegisterEventHotKey(candidate.keyCode, candidate.modifiers,
++      EventHotKeyID(signature: 0x4F504C4E, id: 1), GetApplicationEventTarget(), 0, &replacement)
++    guard result == noErr else { return false }
++    if let hotKey { UnregisterEventHotKey(hotKey) }
++    hotKey = replacement
++    held = false
++    shortcut = candidate
++    if persist, let data = try? JSONEncoder().encode(candidate) {
++      UserDefaults.standard.set(data, forKey: "overviewShortcut")
++    }
++    return true
++  }
++
++  func pause() {
++    if let hotKey { UnregisterEventHotKey(hotKey) }; hotKey = nil
++    held = false
++  }
++
++  func stop() {
++    if let hotKey { UnregisterEventHotKey(hotKey) }; hotKey = nil
++    if let handler { RemoveEventHandler(handler) }; handler = nil
++    held = false
++  }
++}
+diff --git a/OpenPlane/CanvasView.swift b/OpenPlane/CanvasView.swift
+index 1cd0267..9e1def2 100644
+--- a/OpenPlane/CanvasView.swift
++++ b/OpenPlane/CanvasView.swift
+@@ -1,6 +1,7 @@
+ @preconcurrency import AppKit
+ @preconcurrency import QuartzCore
+ @preconcurrency import ApplicationServices
++import OSLog
+ 
+ private func drawOpenPlaneLaunchMessage(in bounds: CGRect) {
+   let title = "OpenPlane"
+@@ -329,12 +330,25 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   private static let previewFadeDuration: TimeInterval = 0.25
+   static let selectionTransitionDuration: TimeInterval = 0.18
+ 
+-  private(set) var isChronological = UserDefaults.standard.bool(forKey: "chronologicalMode")
++  private(set) var viewMode = CanvasViewMode(rawValue: UserDefaults.standard.string(forKey: "viewMode") ?? "")
++    ?? (UserDefaults.standard.bool(forKey: "chronologicalMode") ? .chronological : .canvas)
++  var usesAutomaticLayout: Bool { viewMode != .canvas }
++  var isChronological: Bool { viewMode == .chronological }
++  var isOverview: Bool { viewMode == .overview }
++  private var overviewOrder: [CGWindowID] = []
++  private var overviewViewport: CGRect = .zero
++  private var overviewItems: [OverviewLayout.Item] = []
++  private let followSelectionMenuItem = NSMenuItem()
++  private weak var currentSettingsPanel: CanvasSettingsPanel?
++  var followsSelection: Bool {
++    UserDefaults.standard.object(forKey: "cameraFollowsSelection.\(viewMode.rawValue)") as? Bool
++      ?? viewMode.followsSelectionByDefault
++  }
+   var onModeChange: (() -> Void)?
+   var recentWindows = RecentWindowOrder()
+   private var freeFrames: [CGWindowID: CGRect] = [:]
+   private var chronologicalCamera = CameraState(center: .zero, zoom: 0.45)
+-  private let modeControl = NSSegmentedControl(labels: ["Canvas", "Chronological"], trackingMode: .selectOne, target: nil, action: nil)
++  private let modeControl = NSSegmentedControl(labels: ["Canvas", "Chronological", "Overview"], trackingMode: .selectOne, target: nil, action: nil)
+   private static let allAppsID = "openplane:all-apps"
+   private var catalog: [InstalledApp] = []
+   private var catalogTask: Task<Void, Never>?
+@@ -342,7 +356,14 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   private var catalogReturnCamera: CameraState?
+   private var catalogReturnSelection: CGWindowID?
+   private let catalogBackButton = NSButton(title: "← Back to windows", target: nil, action: nil)
+-  private var displayedNodes: [WindowNode] { showingAllApps ? [] : nodes }
++  private var displayedNodes: [WindowNode] {
++    if showingAllApps { return [] }
++    if isOverview {
++      let byID = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0) })
++      return overviewOrder.compactMap { byID[$0] }
++    }
++    return nodes
++  }
+ 
+   weak var delegate: CanvasViewDelegate?
+   var nodes: [WindowNode] = [] {
+@@ -370,7 +391,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+           groupSelectionIDs.insert("app:\(oldNode.bundleIdentifier)")
+         }
+       }
+-      if isChronological {
++      if usesAutomaticLayout {
+         for node in nodes where freeFrames[node.id] == nil { freeFrames[node.id] = node.worldFrame }
+         freeFrames = freeFrames.filter { nodeIDs.contains($0.key) }
+         arrangeRecentWindows(reorder: recentWindows.visible.isEmpty)
+@@ -416,6 +437,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       rememberCamera(newValue)
+       scheduleCameraMaintenance()
+       if oldValue.zoom != newValue.zoom {
++        if showingAllApps { refreshRecentPlaceholders() }
++        if isChronological && !showingAllApps { refreshRecentPlaceholders(preservingCenter: true) }
+         synchronizeScene()
+       } else {
+         updateSceneCamera()
+@@ -621,6 +644,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   private let centerGuideMenuItem = NSMenuItem()
+   private let lightClosedCardsMenuItem = NSMenuItem()
+   private let commandTabShortcutMenuItem = NSMenuItem()
++  private let swipeOverviewMenuItem = NSMenuItem()
+   private let privateBrowserPreviewsMenuItem = NSMenuItem()
+   private var isSearching = false
+   private var expandsLandscapePreviews = true
+@@ -677,7 +701,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     }
+     if let data = defaults.data(forKey: "chronologicalCamera"),
+       let saved = try? JSONDecoder().decode(CameraState.self, from: data) { chronologicalCamera = saved }
+-    if isChronological { cameraState = chronologicalCamera }
++    if viewMode == .chronological { cameraState = chronologicalCamera }
+     super.init(frame: frameRect)
+     if defaults.object(forKey: Self.expandLandscapePreviewsPreferenceKey) != nil {
+       expandsLandscapePreviews = defaults.bool(
+@@ -703,7 +727,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     configureSettingsButton()
+     modeControl.target = self
+     modeControl.action = #selector(changeMode(_:))
+-    modeControl.selectedSegment = isChronological ? 1 : 0
++    modeControl.selectedSegment = CanvasViewMode.allCases.firstIndex(of: viewMode) ?? 0
+     modeControl.setAccessibilityLabel("View mode")
+     catalogBackButton.target = self
+     catalogBackButton.action = #selector(backFromCatalog(_:))
+@@ -731,8 +755,10 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     if nativeCameraTravel, nativeCameraBounds != bounds {
+       let destination = cameraAnimation?.target
+       stopNativeCameraTravel()
+-      if isChronological, let destination { camera = destination }
++      if usesAutomaticLayout, let destination { camera = destination }
+     }
++    if isOverview, !showingAllApps, overviewViewport != overviewAvailableFrame { arrangeOverview() }
++    if showingAllApps { refreshRecentPlaceholders() }
+     catalogBackButton.frame = CGRect(x: bounds.midX - 100, y: bounds.maxY - 64, width: 200, height: 32)
+     updateModeControls()
+     sceneView.frame = bounds
+@@ -932,7 +958,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func updateGrid(camera: CameraState, travel: CGPoint = .zero) {
+-    let opacity = showsGrid ? CanvasMath.gridOpacity(at: camera.zoom) : 0
++    let opacity = showsGrid && !showingAllApps ? CanvasMath.gridOpacity(at: camera.zoom) : 0
+     gridLayer.isHidden = opacity == 0
+     guard opacity > 0 else {
+       if gridZoom != camera.zoom {
+@@ -1027,7 +1053,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     sceneView.layer?.backgroundColor = background.color.withAlphaComponent(
+       CanvasMath.focusCanvasBackgroundOpacity(progress: focusTransitionProgress)).cgColor
+     gridLayer.opacity = Float(backdrop)
+-    centerGuideLayer.isHidden = !showsCenterGuide && !isChronological
++    centerGuideLayer.isHidden = showingAllApps || isOverview || (!showsCenterGuide && !usesAutomaticLayout)
+     centerGuideLayer.opacity = Float(backdrop)
+     let guide = CGMutablePath()
+     guide.move(to: CGPoint(x: bounds.midX, y: bounds.minY))
+@@ -1057,7 +1083,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+         cameraLayer.addSublayer(card)
+       }
+       updateCard(card, target: target, selectedPID: selectedPID, backdrop: backdrop)
+-      card.zPosition = CGFloat(index) + (card.zPosition > 0 ? CGFloat(targets.count) : 0)
++      card.zPosition = CGFloat(index) + (!isOverview && card.zPosition > 0 ? CGFloat(targets.count) : 0)
+     }
+     updateSceneCamera()
+     if let projection = miniMapProjection() { synchronizeMiniMap(projection) }
+@@ -1123,6 +1149,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+         ?? (placeholder.isLaunching ? "Opening…" : placeholder.bundleIdentifier == Self.allAppsID
+           ? "Browse installed apps" : showingAllApps ? placeholder.applicationName
+           : placeholder.isAvailable ? "Closed" : "App unavailable")
++      if placeholder.bundleIdentifier == Self.allAppsID || showingAllApps { statusText = nil }
+       if placeholder.errorMessage != nil || !placeholder.isAvailable {
+         statusColor = NSColor.systemRed.withAlphaComponent(0.86)
+       }
+@@ -1164,6 +1191,64 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       card.privateSize = nil
+       card.preview.contents = preview?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+     }
++    if showingAllApps, case .placeholder(let placeholder) = target {
++      card.surface.backgroundColor = NSColor.white.withAlphaComponent(selected ? 0.08 : 0.025).cgColor
++      let metrics = CanvasMath.applicationTileMetrics(zoom: zoom)
++      let iconSize = metrics.icon
++      card.icon.frame = CGRect(x: (rect.width - iconSize) / 2, y: rect.height - iconSize - 12,
++        width: iconSize, height: iconSize)
++      if card.iconImage !== icon || card.icon.contents == nil {
++        card.iconImage = icon
++        card.icon.contents = icon?.cgImage(forProposedRect: nil, context: nil, hints: nil)
++      }
++      let label = NSAttributedString(string: placeholder.errorMessage.map { "\(title): \($0)" } ?? title,
++        attributes: [.font: NSFont.systemFont(ofSize: 13, weight: .medium),
++          .foregroundColor: placeholder.errorMessage == nil ? NSColor.white : NSColor.systemRed])
++      card.status.isHidden = false
++      card.status.fontSize = 13
++      card.status.isWrapped = false
++      card.status.truncationMode = .end
++      card.status.opacity = Float(metrics.caption)
++      if card.statusValue != label { card.status.string = label; card.statusValue = label; sceneContentUpdates += 1 }
++      card.status.contentsScale = scale
++      card.status.frame = CGRect(x: 8, y: 8, width: rect.width - 16, height: 18)
++      card.header.isHidden = true
++      card.activeHeader.isHidden = true
++      updateSelectionAppearance(card, target: target, selectedPID: selectedPID)
++      return
++    }
++    if case .placeholder(let placeholder) = target, placeholder.bundleIdentifier == Self.allAppsID {
++      // The catalog entry is a button, with its label inside the card.
++      let fontSize: CGFloat = 18
++      let font = NSFont.systemFont(ofSize: fontSize, weight: .medium)
++      let label = NSAttributedString(string: "All apps", attributes: [
++        .font: font, .foregroundColor: NSColor.white.withAlphaComponent(0.9)])
++      let labelSize = label.size()
++      let iconSize = fontSize * 1.2
++      let gap = fontSize * 0.6
++      let startX = (rect.width - iconSize - gap - labelSize.width) / 2
++      card.status.isHidden = false
++      if card.statusValue != label {
++        card.status.string = label; card.statusValue = label; sceneContentUpdates += 1
++      }
++      card.status.contentsScale = scale
++      card.status.frame = CGRect(x: startX + iconSize + gap,
++        y: (rect.height - labelSize.height) / 2, width: labelSize.width + 1, height: labelSize.height)
++      card.icon.frame = CGRect(x: startX, y: (rect.height - iconSize) / 2,
++        width: iconSize, height: iconSize)
++      if card.iconImage !== icon || card.icon.contents == nil {
++        card.iconImage = icon
++        card.icon.contents = sceneImage(size: CGSize(width: 32, height: 32)) { bounds in
++          icon?.draw(in: bounds)
++          NSColor.white.withAlphaComponent(0.9).setFill()
++          bounds.fill(using: .sourceIn)
++        }
++      }
++      card.header.isHidden = true
++      card.activeHeader.isHidden = true
++      updateSelectionAppearance(card, target: target, selectedPID: selectedPID)
++      return
++    }
+     let (_, titleLift) = previewTitlePresentation(for: target)
+     let layout = CanvasMath.previewHeaderLayout(for: rect, zoom: zoom, titleLift: titleLift)
+     card.icon.frame = layout.icon.insetBy(dx: -21 * layout.icon.width / 36, dy: -21 * layout.icon.width / 36)
+@@ -1221,7 +1306,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     switch target {
+     case .window(let node):
+       selected = node.id == selectedWindowID
+-      let sameApp = selectedPID == node.processID
++      let sameApp = !isOverview && selectedPID == node.processID
+       let phases = CanvasMath.selectionAnimationPhases(
+         progress: selectionProgress(for: node.id) ?? (selected ? 1 : 0))
+       if selectionStaysWithinApplication && sameApp {
+@@ -1239,6 +1324,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     case .placeholder(let placeholder):
+       selected = selectedPlaceholderBundleIdentifier == placeholder.bundleIdentifier
+       borderProgress = selected ? 1 : 0
++      if placeholder.bundleIdentifier == Self.allAppsID { borderWidth = 2 }
+       secondary = grouped && !selected
+     }
+     let inset: CGFloat = secondary ? 4 : 2 + borderWidth / 2
+@@ -1373,7 +1459,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   func initialCamera(fitting fallback: CameraState) -> CameraState {
+-    isChronological ? chronologicalCamera : desktopPages.selectedPage.camera ?? fallback
++    isOverview ? fallback : isChronological ? chronologicalCamera : desktopPages.selectedPage.camera ?? fallback
+   }
+ 
+   func applyPreviewSizePreference(fitAll: Bool) {
+@@ -1390,10 +1476,11 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       changed = true
+     }
+     guard changed else { return }
+-    if isChronological { arrangeRecentWindows(reorder: false) }
++    if usesAutomaticLayout { arrangeRecentWindows(reorder: false) }
+     needsDisplay = true
+     schedulePreviewToolTipUpdate()
+     synchronizeManifestedPlacements()
++    if fitAll, isOverview { arrangeOverview(force: true); return }
+     if fitAll, !canvasItemFrames.isEmpty {
+       animateCamera(to: CanvasMath.fitCamera(frames: canvasItemFrames, in: bounds)) {}
+     }
+@@ -1497,24 +1584,36 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     persistDesktopPages()
+   }
+ 
++  private static let navigationLogger = Logger(subsystem: "com.yalpani.openplane", category: "navigation")
++  private let tracesNavigation = UserDefaults.standard.bool(forKey: "traceArrowNavigation")
++
++  private func traceNavigation(_ phase: String, event: NSEvent) {
++    guard tracesNavigation, (123...126).contains(event.keyCode) else { return }
++    let index = selectedWindowID.flatMap { recentWindows.visible.firstIndex(of: $0) } ?? -1
++    Self.navigationLogger.notice("arrow phase=\(phase, privacy: .public) timestamp=\(event.timestamp, privacy: .public) type=\(event.type.rawValue, privacy: .public) code=\(event.keyCode, privacy: .public) modifiers=\(event.modifierFlags.rawValue, privacy: .public) repeat=\(event.type == .keyDown && event.isARepeat, privacy: .public) index=\(index, privacy: .public) cameraY=\(self.camera.center.y, privacy: .public) targetY=\(self.selectedNavigationTarget?.center.y ?? 0, privacy: .public)")
++  }
++
+   func handleNavigationKey(_ event: NSEvent) -> Bool {
++    traceNavigation("before", event: event)
++    defer { traceNavigation("after", event: event) }
++    guard event.type == .keyDown else { return false }
+     guard desktopTitleField.currentEditor() == nil else { return false }
+     let modifiers = event.modifierFlags.intersection([.shift, .command, .control, .option])
+-    if modifiers == [.command], event.keyCode == 13, isChronological, !isSearching {
+-      closeSelectedWindow(nil)
++    if modifiers == [.command], event.keyCode == 13, usesAutomaticLayout, !isSearching {
++      if !event.isARepeat { closeSelectedWindow(nil) }
+       return true
+     }
+     guard modifiers.isEmpty || modifiers == [.shift] else { return false }
+ 
+     if isSearching { return false }
+ 
+-    if event.characters == "+", !isChronological {
++    if event.characters == "+", !usesAutomaticLayout {
+       if !event.isARepeat { addDesktopPage(nil) }
+       return true
+     }
+ 
+     if event.keyCode == 48 {
+-      if isChronological { stepRecent(by: modifiers == [.shift] ? -1 : 1, wrapping: false); return true }
++      if usesAutomaticLayout { stepRecent(by: modifiers == [.shift] ? -1 : 1, wrapping: false); return true }
+       guard !event.isARepeat, desktopPages.pages.count > 1 else { return true }
+       let offset = modifiers == [.shift] ? -1 : 1
+       transitionDesktop(direction: offset) { [weak self] in
+@@ -1558,8 +1657,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     case 36, 76:
+       focusSelectedWindow()
+     case 51:
+-      if ShortcutMatcher.isPlaneQuit(keyCode: event.keyCode, isRepeat: event.isARepeat) {
+-        quitSelectedApplication()
++      if ShortcutMatcher.isPlaneBackspace(keyCode: event.keyCode, isRepeat: event.isARepeat) {
++        closeOrQuitSelectedWindow()
+       }
+     default:
+       guard let text = event.characters,
+@@ -1571,6 +1670,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   func handleNavigationKeyUp(_ event: NSEvent) -> Bool {
++    traceNavigation("release", event: event)
+     guard keyboardZoomGesture != nil, event.keyCode == 125 || event.keyCode == 126 else {
+       return false
+     }
+@@ -1971,6 +2071,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     let previouslyAnimated = Set(selectionStartProgress.keys)
+     if let oldID, current[oldID] == nil { current[oldID] = 1 }
+     selectionStaysWithinApplication = {
++      guard !isOverview else { return false }
+       guard let oldID, let newID,
+         let oldNode = nodes.first(where: { $0.id == oldID }),
+         let newNode = nodes.first(where: { $0.id == newID }) else { return false }
+@@ -2275,7 +2376,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     guard bounds.contains(point) else { return nil }
+     let bundleIdentifier = hitNode(at: point)?.bundleIdentifier
+       ?? hitPlaceholder(at: point)?.bundleIdentifier
+-    if isChronological, let node = hitNode(at: point) {
++    if usesAutomaticLayout, let node = hitNode(at: point) {
+       selectedWindowID = node.id
+       let menu = NSMenu()
+       for (title, action) in [("Close Window", #selector(closeSelectedWindow(_:))),
+@@ -2476,7 +2577,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     CATransaction.begin()
+     CATransaction.setDisableActions(true)
+     defer { CATransaction.commit() }
+-    if isChronological, direction == .up || direction == .down {
++    if isChronological, !showingAllApps, direction == .up || direction == .down {
+       stepRecent(by: direction == .up ? -1 : 1, wrapping: false)
+       return
+     }
+@@ -2494,7 +2595,23 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       return
+     }
+ 
+-    let candidates = targets.filter { $0.key != selected.key }.map {
++    if isOverview, !showingAllApps, case .window(let node) = selected {
++      let siblings = targets.filter { if case .window(let other) = $0 { return other.bundleIdentifier == node.bundleIdentifier }; return false }
++      if direction == .up || direction == .down,
++        let index = siblings.firstIndex(where: { $0.key == selected.key }) {
++        let next = index + (direction == .up ? -1 : 1)
++        if siblings.indices.contains(next) {
++          selectNavigationTarget(siblings[next]); centerCamera(on: siblings[next]); return
++        }
++      }
++    }
++    let candidates = targets.filter { candidate in
++      guard candidate.key != selected.key else { return false }
++      if isOverview, case .window(let a) = selected, case .window(let b) = candidate {
++        return a.bundleIdentifier != b.bundleIdentifier
++      }
++      return true
++    }.map {
+       (id: $0.key, frame: $0.worldFrame)
+     }
+     guard
+@@ -2511,6 +2628,14 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func centerCamera(on target: NavigationTarget) {
++    if showingAllApps {
++      let rect = CanvasMath.viewRect(for: target.worldFrame, camera: camera, bounds: bounds)
++      let visible = bounds.insetBy(dx: 24, dy: 112)
++      if rect.minY < visible.minY { camera.center.y -= (visible.minY - rect.minY) / camera.zoom }
++      else if rect.maxY > visible.maxY { camera.center.y += (rect.maxY - visible.maxY) / camera.zoom }
++      return
++    }
++    guard followsSelection else { return }
+     let targetCamera = CanvasMath.cameraCentered(
+       on: target.worldFrame,
+       preserving: camera
+@@ -2525,9 +2650,9 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private var navigationTargets: [NavigationTarget] {
+-    if isChronological {
++    if usesAutomaticLayout {
+       let byID = Dictionary(uniqueKeysWithValues: displayedNodes.map { ($0.id, $0) })
+-      return recentWindows.visible.compactMap { byID[$0].map(NavigationTarget.window) }
++      return (isOverview ? overviewOrder : recentWindows.visible).compactMap { byID[$0].map(NavigationTarget.window) }
+         + appPlaceholders.map(NavigationTarget.placeholder)
+     }
+     return nodes.map(NavigationTarget.window) + appPlaceholders.map(NavigationTarget.placeholder)
+@@ -2561,6 +2686,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     let itemBounds = itemBounds ?? canvasItemFrames.reduce(CGRect.null) { $0.union($1) }
+     guard !itemBounds.isNull, bounds.width >= 480, bounds.height >= 320 else { return nil }
+ 
++    guard !showingAllApps && !isOverview else { return nil }
+     let panel = navigatorPanelFrame
+     let frame = CGRect(
+       x: panel.minX + 12,
+@@ -2687,7 +2813,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func drawPrivatePreview(in rect: CGRect) {
+-    let title = "PRIVATE WINDOW" as NSString
++    let title = "BROWSER PREVIEW HIDDEN" as NSString
+     let subtitle = "Preview hidden" as NSString
+     let titleFont = NSFont.systemFont(
+       ofSize: max(8, min(15, rect.height * 0.08)),
+@@ -2733,7 +2859,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       return (progress, CanvasMath.selectionTitleLift(progress: progress, isPrimary: isSelected))
+     case .window(let node):
+       let isSelected = node.id == selectedWindowID
+-      let isSelectedApplication =
++      let isSelectedApplication = !isOverview &&
+         nodes.first(where: { $0.id == selectedWindowID })?.processID == node.processID
+       if selectionStaysWithinApplication && isSelectedApplication {
+         let progress = selectionProgress(for: node.id) ?? (isSelected ? 1 : 0)
+@@ -3005,14 +3131,29 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     )
+   }
+ 
+-  private var navigatorPanelFrame: CGRect {
++  private var currentNavigatorPanelSize: CGSize {
++    showingAllApps || isOverview ? CGSize(width: 300, height: 88) : Self.navigatorPanelSize
++  }
++
++  private var navigatorAvailableFrame: CGRect {
++    var visible = bounds
++    if let window, let screen = window.screen {
++      visible = bounds.intersection(convert(window.convertFromScreen(screen.visibleFrame), from: nil))
++    }
++    // Keep a grab margin even when the Dock automatically hides.
++    let bottom = max(bounds.minY + 96, visible.minY + 24)
++    return CGRect(x: visible.minX + 24, y: bottom,
++      width: max(0, visible.width - 48), height: max(0, visible.maxY - 48 - bottom))
++  }
++
++  var navigatorPanelFrame: CGRect {
+     let fallback = CGPoint(
+-      x: bounds.maxX - 24 - Self.navigatorPanelSize.width,
+-      y: bounds.minY + 96
++      x: navigatorAvailableFrame.maxX - currentNavigatorPanelSize.width,
++      y: navigatorAvailableFrame.minY
+     )
+     return CGRect(
+       origin: clampedNavigatorPanelOrigin(navigatorPanelOrigin ?? fallback),
+-      size: Self.navigatorPanelSize
++      size: currentNavigatorPanelSize
+     )
+   }
+ 
+@@ -3022,17 +3163,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func clampedNavigatorPanelOrigin(_ origin: CGPoint) -> CGPoint {
+-    let availableFrame = CGRect(
+-      x: bounds.minX + 24,
+-      y: bounds.minY + 96,
+-      width: max(0, bounds.width - 48),
+-      height: max(0, bounds.height - 144)
+-    )
+-    return CanvasMath.clampedOrigin(
+-      origin,
+-      size: Self.navigatorPanelSize,
+-      in: availableFrame
+-    )
++    CanvasMath.clampedOrigin(origin, size: currentNavigatorPanelSize, in: navigatorAvailableFrame)
+   }
+ 
+   private func moveNavigatorPanel(to origin: CGPoint) {
+@@ -3343,8 +3474,13 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     lightClosedCardsMenuItem.target = self
+     lightClosedCardsMenuItem.action = #selector(toggleLightClosedCards(_:))
+     privateBrowserPreviewsMenuItem.title = "Show Private Browser Previews"
++    privateBrowserPreviewsMenuItem.toolTip = "When off, browser previews are hidden if non-private mode cannot be verified. Browser previews are never saved to disk."
+     privateBrowserPreviewsMenuItem.target = self
+     privateBrowserPreviewsMenuItem.action = #selector(togglePrivateBrowserPreviews(_:))
++    swipeOverviewMenuItem.title = "Swipe up opens Overview"
++    swipeOverviewMenuItem.target = self
++    swipeOverviewMenuItem.action = #selector(toggleOverviewSwipe(_:))
++    swipeOverviewMenuItem.state = UserDefaults.standard.bool(forKey: "swipeUpOpensOverview") ? .on : .off
+     commandTabShortcutMenuItem.title = "Use ⌘Tab for OpenPlane"
+     commandTabShortcutMenuItem.target = self
+     commandTabShortcutMenuItem.action = #selector(toggleCommandTabShortcut(_:))
+@@ -3773,6 +3909,16 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     delegate?.canvasView(self, setPrivateBrowserPreviews: showsPrivateBrowserPreviews)
+   }
+ 
++  @objc private func toggleOverviewSwipe(_ sender: NSMenuItem) {
++    let enabled = !UserDefaults.standard.bool(forKey: "swipeUpOpensOverview")
++    UserDefaults.standard.set(enabled, forKey: "swipeUpOpensOverview")
++    sender.state = enabled ? .on : .off
++    currentSettingsPanel?.refreshControls()
++    if enabled {
++      statusMessage = "For swipe up: turn off Mission Control’s gesture in macOS Trackpad settings."
++    }
++  }
++
+   @objc private func toggleCommandTabShortcut(_ sender: NSMenuItem) {
+     let enabled = !usesCommandTabShortcut
+     guard delegate?.canvasView(self, setCommandTabShortcut: enabled) == true else {
+@@ -3802,7 +3948,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   @objc private func fitAllWindows(_ sender: NSButton) {
+-    if !isChronological, let lockedCamera = desktopPages.selectedPage.lockedCamera {
++    if isOverview && !showingAllApps { arrangeOverview(force: true); return }
++    if !usesAutomaticLayout, let lockedCamera = desktopPages.selectedPage.lockedCamera {
+       animateCamera(to: lockedCamera) {}
+       return
+     }
+@@ -3819,14 +3966,14 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   @objc private func toggleLockedView(_ sender: NSButton) {
+-    guard !isChronological else { return }
++    guard !usesAutomaticLayout else { return }
+     desktopPages.toggleSelectedPageLock(at: camera)
+     persistDesktopPages()
+     updateLockViewButton()
+   }
+ 
+   @objc private func addDesktopPage(_ sender: Any?) {
+-    guard !isChronological else { return }
++    guard !usesAutomaticLayout else { return }
+     transitionDesktop { [weak self] in
+       guard let self else { return }
+       // Desktops are independent arrangements, not adjacent regions of one plane.
+@@ -3837,7 +3984,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func selectDesktop(id: UUID) {
+-    guard !isChronological else { return }
++    guard !usesAutomaticLayout else { return }
+     guard desktopPages.pages.contains(where: { $0.id == id }) else { return }
+     guard id != desktopPages.selectedID || desktopTransitionStartedAt != nil else { return }
+     transitionDesktop { [weak self] in
+@@ -3960,7 +4107,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     lockViewButton.image = Self.lockViewImage(locked: locked)
+     lockViewButton.toolTip = locked ? "Unlock desktop view" : "Lock current desktop view"
+     lockViewButton.setAccessibilityLabel(lockViewButton.toolTip ?? "Lock desktop view")
+-    fitAllButton.toolTip = locked && !isChronological ? "Return to locked view" : "Fit all windows"
++    fitAllButton.toolTip = locked && !usesAutomaticLayout ? "Return to locked view" : "Fit all windows"
+     fitAllButton.setAccessibilityLabel(fitAllButton.toolTip ?? "Fit all windows")
+   }
+ 
+@@ -3987,7 +4134,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func synchronizeManifestedPlacements() {
+-    guard !isChronological else { return }
++    guard !usesAutomaticLayout else { return }
+     let snapshots = currentWindowSnapshots()
+     let placements = desktopPages.selectedAppPlacements
+     guard !snapshots.isEmpty, !placements.isEmpty else { return }
+@@ -4009,7 +4156,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func manifestMovedItems(originalFrames: [String: CGRect], primaryTarget: NavigationTarget?) {
+-    guard !isChronological else { return }
++    guard !usesAutomaticLayout else { return }
+     // Save closed homes before refreshing placeholders as part of window persistence.
+     for placeholder in appPlaceholders
+     where originalFrames[NavigationTarget.placeholder(placeholder).key] != nil {
+@@ -4106,7 +4253,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func refreshPlaceholders() {
+-    if isChronological { refreshRecentPlaceholders(); return }
++    if usesAutomaticLayout { refreshRecentPlaceholders(); return }
+     for placeholder in appPlaceholders
+     where groupSelectionIDs.contains(NavigationTarget.placeholder(placeholder).key) {
+       if let node = nodes.first(where: { $0.bundleIdentifier == placeholder.bundleIdentifier }) {
+@@ -4188,6 +4335,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   func showLaunchError(for bundleIdentifier: String, message: String) {
+     launchingPlaceholderBundles.remove(bundleIdentifier)
+     placeholderErrors[bundleIdentifier] = message
++    if showingAllApps { statusMessage = message }
+     refreshPlaceholders()
+   }
+ 
+@@ -4276,6 +4424,14 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     }
+   }
+ 
++  private func closeOrQuitSelectedWindow() {
++    guard let id = selectedWindowID, let node = nodes.first(where: { $0.id == id }) else { return }
++    switch WindowService.backspaceAction(for: node) {
++    case .closeWindow: closeSelectedWindow(nil)
++    case .quitApp: quitSelectedApplication()
++    }
++  }
++
+   private func quitSelectedApplication() {
+     guard let selectedWindowID,
+       let node = nodes.first(where: { $0.id == selectedWindowID })
+@@ -4284,17 +4440,20 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func rememberCamera(_ value: CameraState) {
+-    if isChronological {
++    if isOverview { return }
++    if usesAutomaticLayout {
+       if !showingAllApps, focusTransitionWindowID == nil { chronologicalCamera = value }
+     } else { desktopPages.updateSelectedCamera(value) }
+   }
+ 
+   @objc private func changeMode(_ sender: NSSegmentedControl) {
+-    setChronological(sender.selectedSegment == 1)
++    setViewMode(CanvasViewMode.allCases[sender.selectedSegment])
+   }
+ 
+-  func setChronological(_ enabled: Bool) {
+-    guard enabled != isChronological else { return }
++  func setChronological(_ enabled: Bool) { setViewMode(enabled ? .chronological : .canvas) }
++
++  func setViewMode(_ mode: CanvasViewMode) {
++    guard mode != viewMode else { return }
+     onModeChange?()
+     dismissSearch()
+     if showingAllApps { _ = closeCatalog() }
+@@ -4302,34 +4461,90 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     cancelLayoutAnimation()
+     clearGroupSelection()
+     interaction = nil
+-    if enabled {
++    if viewMode == .canvas {
+       synchronizeManifestedPlacements()
+       persistDesktopPages()
+       freeFrames = Dictionary(uniqueKeysWithValues: nodes.map { ($0.id, $0.worldFrame) })
+-      isChronological = true
+-      camera = chronologicalCamera
+-      arrangeRecentWindows(reorder: true, selectFirst: true)
+-    } else {
+-      chronologicalCamera = camera
+-      isChronological = false
++    } else if isChronological { chronologicalCamera = camera }
++    viewMode = mode
++    if mode == .canvas {
+       for node in nodes { if let frame = freeFrames[node.id] { node.worldFrame = frame } }
+       camera = desktopPages.selectedPage.camera ?? CameraState()
+       refreshPlaceholders()
+-    }
+-    modeControl.selectedSegment = enabled ? 1 : 0
+-    UserDefaults.standard.set(enabled, forKey: "chronologicalMode")
++    } else if mode == .chronological {
++      camera = chronologicalCamera
++      arrangeRecentWindows(reorder: true, selectFirst: true)
++    } else { arrangeOverview(force: true) }
++    modeControl.selectedSegment = CanvasViewMode.allCases.firstIndex(of: mode) ?? 0
++    UserDefaults.standard.set(mode.rawValue, forKey: "viewMode")
++    UserDefaults.standard.set(mode == .chronological, forKey: "chronologicalMode")
+     updateModeControls()
+     displayedLockState = nil
+     updateLockViewButton()
+     persistDesktopPages()
+     needsDisplay = true
++    needsLayout = true
++  }
++
++  @objc private func toggleFollowSelection(_ sender: NSMenuItem) {
++    setCameraFollowsSelection(!followsSelection)
++  }
++
++  func setCameraFollowsSelection(_ enabled: Bool) {
++    UserDefaults.standard.set(enabled, forKey: "cameraFollowsSelection.\(viewMode.rawValue)")
++    updateModeControls()
++  }
++
++  var overviewAvailableFrame: CGRect {
++    let top = bounds.maxY - desktopTitleNudgeLayout.depth - 24
++    let bottom = navigatorAvailableFrame.minY
++    let panel = navigatorPanelFrame
++    let above = CGRect(x: bounds.minX + 48, y: panel.maxY + 20,
++      width: max(1, bounds.width - 96), height: max(1, top - panel.maxY - 20))
++    let below = CGRect(x: bounds.minX + 48, y: bottom,
++      width: above.width, height: max(1, min(top, panel.minY - 20) - bottom))
++    return above.height >= below.height ? above : below
++  }
++
++  private func arrangeOverview(force: Bool = false) {
++    guard isOverview, !showingAllApps else { return }
++    let items = nodes.map {
++      OverviewLayout.Item(id: $0.id, application: $0.bundleIdentifier, size: $0.worldFrame.size)
++    }
++    guard force || items != overviewItems || overviewViewport != overviewAvailableFrame else { return }
++    let previousIndex = selectedWindowID.flatMap { overviewOrder.firstIndex(of: $0) } ?? 0
++    overviewItems = items
++    overviewViewport = overviewAvailableFrame
++    cancelLayoutAnimation()
++    let usable = overviewAvailableFrame
++    let layout = OverviewLayout.arrange(items, viewport: usable.insetBy(dx: 32, dy: 32).size)
++    overviewOrder = layout.order
++    for node in nodes { if let frame = layout.frames[node.id] { node.worldFrame = frame } }
++    refreshRecentPlaceholders()
++    if selectedWindowID == nil || !overviewOrder.contains(selectedWindowID!) {
++      selectedWindowID = overviewOrder.isEmpty ? nil : overviewOrder[min(previousIndex, overviewOrder.count - 1)]
++      if overviewOrder.isEmpty { selectPlaceholder(Self.allAppsID) }
++    }
++    let union = canvasItemFrames.reduce(CGRect.null) { $0.union($1) }
++    guard !union.isNull else { return }
++    let zoom = max(0.001, min(1, (usable.width - 64) / max(1, union.width),
++      (usable.height - 64) / max(1, union.height)))
++    let fitted = CameraState(center: CGPoint(x: union.midX, y: union.midY), zoom: zoom)
++    camera = CameraState(center: CGPoint(x: fitted.center.x,
++      y: fitted.center.y + (bounds.midY - usable.midY) / fitted.zoom), zoom: fitted.zoom)
++    needsDisplay = true
+   }
+ 
+   private func updateModeControls() {
+-    desktopTabsScrollView.isHidden = isChronological
+-    desktopTitleField.isHidden = isChronological
+-    addDesktopButton.isHidden = isChronological
+-    lockViewButton.isHidden = isChronological
++    followSelectionMenuItem.title = "Camera follows selection"
++    followSelectionMenuItem.target = self
++    followSelectionMenuItem.action = #selector(toggleFollowSelection(_:))
++    followSelectionMenuItem.state = followsSelection ? .on : .off
++    currentSettingsPanel?.refreshControls()
++    desktopTabsScrollView.isHidden = usesAutomaticLayout
++    desktopTitleField.isHidden = usesAutomaticLayout
++    addDesktopButton.isHidden = usesAutomaticLayout
++    lockViewButton.isHidden = usesAutomaticLayout
+   }
+ 
+   func cancelLayoutAnimation() {
+@@ -4344,13 +4559,14 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   func restoreChronologicalCamera() {
++    if isOverview { arrangeOverview(force: true); return }
+     let saved = chronologicalCamera
+     cancelLayoutAnimation()
+     camera = saved
+   }
+ 
+   func prepareChronologicalOverview() {
+-    guard isChronological else { return }
++    guard usesAutomaticLayout else { return }
+     if showingAllApps { _ = closeCatalog() }
+     restoreChronologicalCamera()
+     arrangeRecentWindows(reorder: true, selectFirst: true)
+@@ -4358,6 +4574,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func arrangeRecentWindows(reorder: Bool, selectFirst: Bool = false) {
++    if isOverview { arrangeOverview(); return }
+     let previousIndex = selectedWindowID.flatMap { recentWindows.visible.firstIndex(of: $0) } ?? 0
+     let selectedBefore = selectedNavigationTarget
+     let oldCenter = selectedBefore?.center
+@@ -4402,20 +4619,26 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     centerCamera(on: targets[next])
+   }
+ 
+-  private func refreshRecentPlaceholders() {
++  private func refreshRecentPlaceholders(preservingCenter: Bool = false) {
++    let previousCenter = appPlaceholders.first?.worldFrame.midY
+     let query = isSearching ? searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) : ""
+     let matchingApps = catalog.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) }
+     let entries: [(String, String, URL?)] = showingAllApps
+       ? matchingApps.map { ($0.id, $0.name, Optional($0.url)) }
+       : [(Self.allAppsID, "All apps", nil)]
+-    let size = showingAllApps ? CGSize(width: 640, height: 180) : CGSize(width: 800, height: 260)
+-    let start = showingAllApps ? CGFloat(0) : (nodes.map { $0.worldFrame.minY }.min() ?? 100) - 100
++    let size = showingAllApps || isOverview ? CGSize(width: 640, height: 180) : CanvasMath.allAppsCardSize(at: camera.zoom)
++    let start = showingAllApps ? CGFloat(0) : (nodes.map { $0.worldFrame.minY }.min() ?? CanvasMath.itemGap) - CanvasMath.itemGap
++    let footerY = preservingCenter && !showingAllApps
++      ? (previousCenter.map { $0 - size.height / 2 } ?? start - size.height) : start - size.height
++    let overviewCenterX = isOverview ? nodes.map(\.worldFrame).reduce(CGRect.null) { $0.union($1) }.midX : 0
++    let footerX = overviewCenterX.isFinite ? overviewCenterX : 0
++    let grid = showingAllApps ? CanvasMath.applicationGridFrames(count: entries.count, viewport: bounds.size, zoom: camera.zoom) : []
+     appPlaceholders = entries.enumerated().map { index, entry in
+       let icon = appIconsByBundle[entry.0] ?? entry.2.map { NSWorkspace.shared.icon(forFile: $0.path) }
+         ?? NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: entry.1)
+       if let icon { appIconsByBundle[entry.0] = icon }
+       return AppPlaceholder(bundleIdentifier: entry.0, applicationName: entry.1,
+-        worldFrame: CGRect(x: -size.width / 2, y: start - size.height - CGFloat(index) * (size.height + 100),
++        worldFrame: showingAllApps ? grid[index] : CGRect(x: footerX - size.width / 2, y: footerY - CGFloat(index) * (size.height + CanvasMath.itemGap),
+           width: size.width, height: size.height), icon: icon,
+         isAvailable: true, isLaunching: launchingPlaceholderBundles.contains(entry.0),
+         errorMessage: placeholderErrors[entry.0])
+@@ -4433,20 +4656,25 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     selectedWindowID = nil
+     selectedPlaceholderBundleIdentifier = nil
+     catalogBackButton.isHidden = false
++    camera = CameraState(center: .zero, zoom: 1)
+     refreshRecentPlaceholders()
+-    camera = CameraState(center: CGPoint(x: 0, y: -90), zoom: 0.7)
++    needsLayout = true
+     if let first = catalog.first { selectPlaceholder(first.id) }
+     catalogTask?.cancel()
+     catalogTask = Task { [weak self] in
+       let apps = await Task.detached(priority: .userInitiated) { InstalledApp.catalog() }.value
+       guard let self, !Task.isCancelled else { return }
+-      self.catalog = apps
+-      guard self.showingAllApps else { return }
+-      self.refreshRecentPlaceholders()
+-      if let first = apps.first { self.selectPlaceholder(first.id) }
++      self.updateCatalog(apps)
+     }
+   }
+ 
++  func updateCatalog(_ apps: [InstalledApp]) {
++    catalog = apps
++    guard showingAllApps else { return }
++    refreshRecentPlaceholders()
++    if let first = apps.first { selectPlaceholder(first.id) }
++  }
++
+   @objc private func backFromCatalog(_ sender: NSButton) { _ = closeCatalog() }
+ 
+   @discardableResult func closeCatalog() -> Bool {
+@@ -4455,6 +4683,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     cancelLayoutAnimation()
+     catalogTask?.cancel()
+     showingAllApps = false
++    needsLayout = true
+     catalogBackButton.isHidden = true
+     selectedWindowID = catalogReturnSelection.flatMap { id in nodes.contains { $0.id == id } ? id : nil }
+     refreshRecentPlaceholders()
+@@ -4492,6 +4721,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     }
+ 
+     updateNavigatorPanel()
++    updateModeControls()
+     let panel = CanvasSettingsPanel(modeControl: modeControl, palette: paletteView, groups: [
+       ("Appearance", [
+         ("Expand previews", "rectangle.expand.vertical", expandLandscapePreviewsMenuItem),
+@@ -4500,7 +4730,9 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+         ("Light closed cards", "rectangle", lightClosedCardsMenuItem),
+       ]),
+       ("Navigation", [
++        ("Camera follows selection", "viewfinder", followSelectionMenuItem),
+         ("Use ⌘Tab for OpenPlane", "command", commandTabShortcutMenuItem),
++        ("Swipe up opens Overview", "hand.draw", swipeOverviewMenuItem),
+       ]),
+       ("Privacy", [
+         ("Private browser previews", "eye", privateBrowserPreviewsMenuItem),
+@@ -4509,6 +4741,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+         ("Debug information", "waveform.path", debugInformationMenuItem),
+       ]),
+     ])
++    currentSettingsPanel = panel
+     panel.onClose = { [weak self] in self?.dismissSettings() }
+     host.showSettings(panel)
+   }
+@@ -4873,6 +5106,8 @@ private final class SettingsToggleRow: NSView {
+     return hit === control ? control : rowButton
+   }
+ 
++  func refreshControl() { control.state = item.state }
++
+   @objc private func toggle(_ sender: Any?) {
+     if let action = item.action { NSApp.sendAction(action, to: item.target, from: item) }
+     control.state = item.state
+@@ -4881,7 +5116,55 @@ private final class SettingsToggleRow: NSView {
+ }
+ 
+ @MainActor
++final class OverviewShortcutRecorder: NSButton {
++  private(set) var isRecording = false
++  var onMessage: ((String) -> Void)?
++  override var acceptsFirstResponder: Bool { true }
++
++  init() {
++    super.init(frame: .zero)
++    bezelStyle = .rounded
++    title = OverviewShortcutController.shared.shortcut.label
++    target = self; action = #selector(beginRecording)
++    setAccessibilityLabel("Overview shortcut")
++  }
++  required init?(coder: NSCoder) { nil }
++  @objc func beginRecording() {
++    guard window?.makeFirstResponder(self) == true else { return }
++    isRecording = true
++    OverviewShortcutController.shared.pause()
++    OverviewShortcutController.shared.isRecording = true
++    title = "Press shortcut…"
++    onMessage?("Use ⌃, ⌥ or ⌘ with a key. Escape cancels.")
++  }
++  override func keyDown(with event: NSEvent) {
++    guard isRecording else { super.keyDown(with: event); return }
++    if event.keyCode == 53 { finish(); return }
++    guard let candidate = OverviewShortcut.from(event) else {
++      onMessage?("Choose a modified key; Tab and common app commands are reserved."); return
++    }
++    guard OverviewShortcutController.shared.register(candidate) else {
++      onMessage?("That shortcut is unavailable. Try another."); return
++    }
++    finish()
++  }
++  override func resignFirstResponder() -> Bool { finish(); return super.resignFirstResponder() }
++  private func finish() {
++    isRecording = false
++    OverviewShortcutController.shared.isRecording = false
++    _ = OverviewShortcutController.shared.register(OverviewShortcutController.shared.shortcut, persist: false)
++    title = OverviewShortcutController.shared.shortcut.label
++    onMessage?("Opens your selected view from any app.")
++  }
++  @objc func restoreDefault() {
++    if OverviewShortcutController.shared.register(.standard) { finish() }
++    else { onMessage?("The default shortcut is unavailable.") }
++  }
++}
++
+ private final class CanvasSettingsPanel: NSView {
++  private var toggleRows: [SettingsToggleRow] = []
++  func refreshControls() { toggleRows.forEach { $0.refreshControl() } }
+   var onClose: (() -> Void)?
+   private let scroll = NSScrollView()
+   private let closeButton = NSButton()
+@@ -4921,6 +5204,22 @@ private final class CanvasSettingsPanel: NSView {
+     modeControl.frame = CGRect(x: 24, y: y, width: 350, height: 30)
+     document.addSubview(modeControl)
+     y += 52
++    section("Open overview")
++    let shortcut = OverviewShortcutRecorder()
++    shortcut.frame = CGRect(x: 24, y: y, width: 218, height: 32)
++    document.addSubview(shortcut)
++    let reset = NSButton(title: "Reset", target: shortcut, action: #selector(OverviewShortcutRecorder.restoreDefault))
++    reset.bezelStyle = .rounded
++    reset.frame = CGRect(x: 252, y: y, width: 100, height: 32)
++    document.addSubview(reset)
++    y += 38
++    let shortcutHelp = NSTextField(wrappingLabelWithString: "Opens your selected view from any app.")
++    shortcutHelp.font = .systemFont(ofSize: 12)
++    shortcutHelp.textColor = .secondaryLabelColor
++    shortcutHelp.frame = CGRect(x: 24, y: y, width: 368, height: 42)
++    document.addSubview(shortcutHelp)
++    shortcut.onMessage = { [weak shortcutHelp] in shortcutHelp?.stringValue = $0 }
++    y += 58
+     section("Background")
+     palette.frame.origin = CGPoint(x: 4, y: y)
+     document.addSubview(palette)
+@@ -4930,9 +5229,18 @@ private final class CanvasSettingsPanel: NSView {
+       for (title, symbol, item) in rows {
+         let row = SettingsToggleRow(title: title, symbol: symbol, item: item, width: 392)
+         row.frame.origin.y = y
++        toggleRows.append(row)
+         document.addSubview(row)
+         y += row.frame.height
+       }
++      if heading == "Navigation" {
++        let hint = NSTextField(wrappingLabelWithString: "Swipe up is experimental. Disable Mission Control’s gesture in macOS Trackpad settings first.")
++        hint.font = .systemFont(ofSize: 12)
++        hint.textColor = .secondaryLabelColor
++        hint.frame = CGRect(x: 24, y: y + 4, width: 368, height: 42)
++        document.addSubview(hint)
++        y += 52
++      }
+       y += 20
+     }
+     document.frame = CGRect(x: 0, y: 0, width: 440, height: y + 12)
+diff --git a/OpenPlane/WindowService.swift b/OpenPlane/WindowService.swift
+index 044d431..1105839 100644
+--- a/OpenPlane/WindowService.swift
++++ b/OpenPlane/WindowService.swift
+@@ -12,7 +12,7 @@ struct DiscoveredWindow {
+   let isPrivateBrowsing: Bool
+   let frame: CGRect
+   let icon: NSImage?
+-  let captureWindow: SCWindow
++  let captureWindow: SCWindow?
+   let accessibilityElement: AXUIElement?
+ }
+ 
+@@ -35,16 +35,28 @@ enum BrowserPrivacy {
+     "シークレット", "プライベートブラウズ", "无痕", "無痕", "시크릿",
+   ]
+ 
++  static func isBrowser(bundleIdentifier: String, applicationName: String = "") -> Bool {
++    let bundle = normalized(bundleIdentifier)
++    let application = normalized(applicationName)
++    return browserBundleMarkers.contains(where: bundle.contains)
++      || browserNameMarkers.contains(where: application.contains)
++  }
++
++  // A page title cannot prove that a browser window is non-private. Until a
++  // browser supplies a verified mode, the disabled preference must fail closed.
++  static func shouldSuppressPreview(bundleIdentifier: String, applicationName: String,
++    isPrivateBrowsing: Bool = false, allowsPrivatePreviews: Bool) -> Bool {
++    !allowsPrivatePreviews && (isPrivateBrowsing
++      || isBrowser(bundleIdentifier: bundleIdentifier, applicationName: applicationName))
++  }
++
+   static func isPrivateWindow(
+     bundleIdentifier: String,
+     applicationName: String,
+     title: String
+   ) -> Bool {
+-    let bundle = normalized(bundleIdentifier)
+-    let application = normalized(applicationName)
+-    let isBrowser = browserBundleMarkers.contains(where: bundle.contains)
+-      || browserNameMarkers.contains(where: application.contains)
+-    guard isBrowser else { return false }
++    guard isBrowser(bundleIdentifier: bundleIdentifier, applicationName: applicationName)
++    else { return false }
+     let title = normalized(title)
+     return privateTitleMarkers.contains(where: title.contains)
+   }
+@@ -160,8 +172,9 @@ private actor AccessibilityInventory {
+ }
+ 
+ private enum AccessibilityWindowMatching {
+-  static func windows(processID: pid_t) -> [AXUIElement] {
++  static func windows(processID: pid_t, includingMinimized: Bool = false) -> [AXUIElement] {
+     let application = AXUIElementCreateApplication(processID)
++    AXUIElementSetMessagingTimeout(application, 0.2)
+     guard let windows: [AXUIElement] = attribute(kAXWindowsAttribute, of: application) else {
+       return []
+     }
+@@ -170,7 +183,7 @@ private enum AccessibilityWindowMatching {
+       let minimized: Bool = attribute(kAXMinimizedAttribute, of: element) ?? false
+       let role: String = attribute(kAXRoleAttribute, of: element) ?? ""
+       let subrole: String = attribute(kAXSubroleAttribute, of: element) ?? ""
+-      return !minimized
++      return (includingMinimized || !minimized)
+         && role == (kAXWindowRole as String)
+         && subrole == (kAXStandardWindowSubrole as String)
+     }
+@@ -345,19 +358,18 @@ final class WindowService {
+   }
+ 
+   func capture(
+-    window: SCWindow,
++    window: SCWindow?,
+     targetLongEdgePixels: Int = 1_200
+   ) async throws -> CapturedPreview {
+-    if let application = window.owningApplication,
+-      BrowserPrivacy.isPrivateWindow(
+-        bundleIdentifier: application.bundleIdentifier,
+-        applicationName: application.applicationName,
+-        title: window.title ?? ""
+-      ),
+-      !UserDefaults.standard.bool(forKey: OpenPlanePreferences.showPrivateBrowserPreviews)
+-    {
++    guard let window, let application = window.owningApplication else {
+       throw WindowCaptureError.privateBrowsing
+     }
++    func suppressed() -> Bool {
++      BrowserPrivacy.shouldSuppressPreview(bundleIdentifier: application.bundleIdentifier,
++        applicationName: application.applicationName,
++        allowsPrivatePreviews: UserDefaults.standard.bool(forKey: OpenPlanePreferences.showPrivateBrowserPreviews))
++    }
++    guard !suppressed() else { throw WindowCaptureError.privateBrowsing }
+     let size = window.frame.size
+     let longEdge = max(size.width, size.height)
+     let scale = min(2, CGFloat(targetLongEdgePixels) / max(1, longEdge))
+@@ -373,6 +385,7 @@ final class WindowService {
+       contentFilter: filter,
+       configuration: configuration
+     )
++    guard !suppressed() else { throw WindowCaptureError.privateBrowsing }
+     guard let image = output.sdrImage else {
+       throw NSError(
+         domain: "OpenPlane.WindowCapture",
+@@ -437,6 +450,13 @@ final class WindowService {
+     )
+   }
+ 
++  static func backspaceAction(for node: WindowNode) -> WindowBackspaceAction {
++    guard let selected = node.accessibilityElement else { return .closeWindow }
++    let windows = AccessibilityWindowMatching.windows(processID: node.processID, includingMinimized: true)
++    let includesSelected = windows.contains { CFEqual($0, selected) }
++    return WindowBackspaceAction.resolve(windowCount: includesSelected ? windows.count : nil)
++  }
++
+   func frontmostWindowID(among nodes: [WindowNode]) -> CGWindowID? {
+     let candidateIDs = Set(nodes.map(\.id))
+     guard
+diff --git a/OpenPlaneTests/CanvasMathTests.swift b/OpenPlaneTests/CanvasMathTests.swift
+index b549963..221f3b4 100644
+--- a/OpenPlaneTests/CanvasMathTests.swift
++++ b/OpenPlaneTests/CanvasMathTests.swift
+@@ -308,9 +308,9 @@ final class CanvasMathTests: XCTestCase {
+   }
+ 
+   func testBackspaceQuitsOnlyOncePerKeyPress() {
+-    XCTAssertTrue(ShortcutMatcher.isPlaneQuit(keyCode: 51, isRepeat: false))
+-    XCTAssertFalse(ShortcutMatcher.isPlaneQuit(keyCode: 51, isRepeat: true))
+-    XCTAssertFalse(ShortcutMatcher.isPlaneQuit(keyCode: 117, isRepeat: false))
++    XCTAssertTrue(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: false))
++    XCTAssertFalse(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: true))
++    XCTAssertFalse(ShortcutMatcher.isPlaneBackspace(keyCode: 117, isRepeat: false))
+   }
+ 
+   func testPendingPlaceholderLaunchIgnoresAnotherActivatedApplication() {
+@@ -581,6 +581,13 @@ final class CanvasMathTests: XCTestCase {
+       bundleIdentifier: "com.example.app"
+     )
+     XCTAssertNotNil(cachedData.flatMap(NSImage.init(data:)))
++    await cache.store(image: cgImage, windowID: 43, bundleIdentifier: "com.google.Chrome")
++    let browserData = await cache.loadData(windowID: 43, bundleIdentifier: "com.google.Chrome")
++    XCTAssertNil(browserData)
++    let legacy = directory.appendingPathComponent("com.google.Chrome-44.jpg")
++    try Data("synthetic legacy cache".utf8).write(to: legacy)
++    _ = PreviewCache(directoryURL: directory)
++    XCTAssertFalse(FileManager.default.fileExists(atPath: legacy.path))
+   }
+ 
+   func testCoordinateRoundTrip() {
+@@ -1023,10 +1030,21 @@ final class CanvasMathTests: XCTestCase {
+     XCTAssertEqual(PreviewState.failed.toolTip(hasPreview: false), "Preview unavailable.")
+     XCTAssertEqual(
+       PreviewState.redacted.toolTip(hasPreview: false),
+-      "Preview hidden for a private browsing window."
++      "Browser preview hidden because non-private mode cannot be verified."
+     )
+   }
+ 
++  func testUnmarkedBrowserWindowsFailClosedWithoutSuppressingOtherApps() {
++    for browser in ["com.google.Chrome", "com.apple.Safari", "org.mozilla.firefox", "com.microsoft.edgemac", "company.thebrowser.Browser"] {
++      XCTAssertTrue(BrowserPrivacy.shouldSuppressPreview(bundleIdentifier: browser,
++        applicationName: "", allowsPrivatePreviews: false))
++      XCTAssertFalse(BrowserPrivacy.shouldSuppressPreview(bundleIdentifier: browser,
++        applicationName: "", allowsPrivatePreviews: true))
++    }
++    XCTAssertFalse(BrowserPrivacy.shouldSuppressPreview(bundleIdentifier: "com.apple.TextEdit",
++      applicationName: "TextEdit", allowsPrivatePreviews: false))
++  }
++
+   func testPrivateBrowserWindowsAreDetectedWithoutRedactingUnrelatedApps() {
+     XCTAssertTrue(
+       BrowserPrivacy.isPrivateWindow(
+@@ -1304,13 +1322,43 @@ final class RecentWindowOrderTests: XCTestCase {
+     XCTAssertEqual(order.visible, [2, 1])
+   }
+ 
++  func testApplicationGridUsesWidthAndRowMajorOrder() {
++    let frames = CanvasMath.applicationGridFrames(count: 20, viewport: CGSize(width: 1200, height: 800))
++    XCTAssertEqual(frames.count, 20)
++    XCTAssertEqual(frames[0].minY, frames[7].minY)
++    XCTAssertGreaterThan(frames[7].minX, frames[0].minX)
++    XCTAssertLessThan(frames[8].minY, frames[0].minY)
++    XCTAssertEqual(frames[8].minX, frames[0].minX)
++    XCTAssertTrue(frames.allSatisfy { $0.minX >= -600 && $0.maxX <= 600 })
++  }
++
++  func testCatalogZoomKeepsIconsAndMinimumGap() {
++    for zoom: CGFloat in [0.06, 0.3, 0.55, 0.7, 1, 1.25] {
++      let metrics = CanvasMath.applicationTileMetrics(zoom: zoom)
++      XCTAssertGreaterThanOrEqual(metrics.icon, 40)
++      if zoom <= 0.55 { XCTAssertEqual(metrics.caption, 0) }
++      let frames = CanvasMath.applicationGridFrames(count: 100,
++        viewport: CGSize(width: 1200, height: 800), zoom: zoom)
++      XCTAssertGreaterThanOrEqual((frames[1].minX - frames[0].maxX) * zoom, 16 - 0.001)
++      XCTAssertEqual(frames[0].height * zoom, metrics.size.height, accuracy: 0.001)
++    }
++  }
++
++  func testAllAppsCardKeepsRoomForFixedScreenSizeLabel() {
++    for zoom: CGFloat in [0.06, 0.2, 0.45, 1, 2] {
++      let size = CanvasMath.allAppsCardSize(at: zoom)
++      XCTAssertGreaterThanOrEqual(size.width * zoom, 160 - 0.001)
++      XCTAssertGreaterThanOrEqual(size.height * zoom, 48 - 0.001)
++    }
++  }
++
+   func testVerticalFramesHaveSharedAxisAndFixedGapWithMixedSizes() {
+     let sizes = [CGSize(width: 1000, height: 700), CGSize(width: 450, height: 900), CGSize(width: 800, height: 180)]
+     let frames = RecentWindowOrder.frames(sizes: sizes)
+     XCTAssertEqual(frames.map(\.size), sizes)
+     XCTAssertEqual(frames.map(\.midX), [0, 0, 0])
+-    XCTAssertEqual(frames[0].minY - frames[1].maxY, 100)
+-    XCTAssertEqual(frames[1].minY - frames[2].maxY, 100)
++    XCTAssertEqual(frames[0].minY - frames[1].maxY, CanvasMath.itemGap)
++    XCTAssertEqual(frames[1].minY - frames[2].maxY, CanvasMath.itemGap)
+     XCTAssertTrue(RecentWindowOrder.frames(sizes: []).isEmpty)
+   }
+ }
+@@ -1319,9 +1367,10 @@ final class RecentWindowOrderTests: XCTestCase {
+ final class ChronologicalModeTests: XCTestCase {
+   func testModeAndAnimatedCameraNeverOverwriteFreeDesktop() throws {
+     let defaults = UserDefaults.standard
+-    let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera"]
++    let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera", "viewMode"]
+     let backup = keys.map { defaults.object(forKey: $0) }
+     defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
++    defaults.removeObject(forKey: "viewMode")
+     defaults.set(false, forKey: "chronologicalMode")
+     let original = DesktopPages(pages: [DesktopPage(title: "Keep me",
+       camera: CameraState(center: CGPoint(x: 1600, y: -700), zoom: 0.3),
+@@ -1348,11 +1397,99 @@ final class ChronologicalModeTests: XCTestCase {
+     reopened.setChronological(false)
+     XCTAssertEqual(reopened.camera, original.selectedPage.camera)
+   }
++  func testApplicationGridRendersSyntheticAppsAcrossViewport() throws {
++    let defaults = UserDefaults.standard
++    let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera", "viewMode"]
++    let backup = keys.map { defaults.object(forKey: $0) }
++    defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
++    defaults.removeObject(forKey: "viewMode")
++    defaults.set(true, forKey: "chronologicalMode")
++    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 800, height: 600))
++    defer { _ = canvas.closeCatalog(); canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
++    canvas.prepareChronologicalOverview()
++    canvas.focusSelectedWindow()
++    canvas.updateCatalog((0..<15).map { InstalledApp(id: "synthetic.\($0)", name: "Example application with a very long name \($0 + 1)",
++      url: URL(fileURLWithPath: "/System/Applications/Calculator.app")) })
++    canvas.synchronizeScene()
++    XCTAssertEqual(canvas.camera.zoom, 1)
++    let cards = try XCTUnwrap(canvas.cameraLayer.sublayers)
++    XCTAssertEqual(cards.count, 15)
++    let expected = CanvasMath.applicationGridFrames(count: 15, viewport: canvas.bounds.size)
++    for (card, frame) in zip(cards, expected) { XCTAssertEqual(card.position, frame.origin) }
++    let bitmap = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 800,
++      pixelsHigh: 600, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
++      isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
++    let context = try XCTUnwrap(NSGraphicsContext(bitmapImageRep: bitmap))
++    context.cgContext.setFillColor(NSColor.darkGray.cgColor)
++    context.cgContext.fill(canvas.bounds)
++    context.cgContext.translateBy(x: 400, y: 300)
++    canvas.cameraLayer.render(in: context.cgContext)
++    try bitmap.representation(using: .png, properties: [:])?.write(
++      to: URL(fileURLWithPath: "/tmp/openplane-appgrid-synthetic.png"))
++    canvas.camera = CameraState(center: .zero, zoom: 0.3)
++    canvas.synchronizeScene()
++    for card in canvas.cameraLayer.sublayers ?? [] {
++      let surface = try XCTUnwrap(card.sublayers?.first)
++      let text = try XCTUnwrap(surface.sublayers?.compactMap { $0 as? CATextLayer }.first)
++      XCTAssertFalse(text.isWrapped)
++      XCTAssertEqual(text.truncationMode, .end)
++      XCTAssertEqual(text.opacity, 0)
++      XCTAssertEqual(surface.bounds.height, 64, accuracy: 0.01)
++    }
++    let compact = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 800,
++      pixelsHigh: 600, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
++      isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
++    let compactContext = try XCTUnwrap(NSGraphicsContext(bitmapImageRep: compact))
++    compactContext.cgContext.setFillColor(NSColor.darkGray.cgColor)
++    compactContext.cgContext.fill(canvas.bounds)
++    compactContext.cgContext.translateBy(x: 400, y: 300)
++    compactContext.cgContext.scaleBy(x: 0.3, y: 0.3)
++    canvas.cameraLayer.render(in: compactContext.cgContext)
++    try compact.representation(using: .png, properties: [:])?.write(
++      to: URL(fileURLWithPath: "/tmp/openplane-appgrid-compact-synthetic.png"))
++  }
++
++  func testAllAppsLabelRemainsFixedWhileZooming() throws {
++    let defaults = UserDefaults.standard
++    let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera", "viewMode"]
++    let backup = keys.map { defaults.object(forKey: $0) }
++    defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
++    defaults.removeObject(forKey: "viewMode")
++    defaults.set(true, forKey: "chronologicalMode")
++    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 800, height: 400))
++    defer { canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
++    canvas.prepareChronologicalOverview()
++    for zoom: CGFloat in [0.06, 0.2, 0.8] {
++      canvas.camera = CameraState(center: canvas.camera.center, zoom: zoom)
++      canvas.synchronizeScene()
++      let card = try XCTUnwrap(canvas.cameraLayer.sublayers?.first)
++      let surface = try XCTUnwrap(card.sublayers?.first)
++      let text = try XCTUnwrap(surface.sublayers?.compactMap { $0 as? CATextLayer }.first)
++      let label = try XCTUnwrap(text.string as? NSAttributedString)
++      XCTAssertEqual(label.string, "All apps")
++      let font = try XCTUnwrap(label.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
++      XCTAssertEqual(font.pointSize, 18)
++      XCTAssertGreaterThanOrEqual(surface.bounds.width, 160 - 0.001)
++      let bitmap = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 800,
++        pixelsHigh: 400, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
++        isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
++      let context = try XCTUnwrap(NSGraphicsContext(bitmapImageRep: bitmap))
++      context.cgContext.setFillColor(NSColor.darkGray.cgColor)
++      context.cgContext.fill(CGRect(x: 0, y: 0, width: 800, height: 400))
++      context.cgContext.translateBy(x: 400 - surface.bounds.width / 2,
++        y: 200 - surface.bounds.height / 2)
++      card.render(in: context.cgContext)
++      try bitmap.representation(using: .png, properties: [:])?.write(
++        to: URL(fileURLWithPath: "/tmp/openplane-allapps-synthetic-\(zoom).png"))
++    }
++  }
++
+   func testCatalogBackAndViewportChangeKeepSelectionCamera() {
+     let defaults = UserDefaults.standard
+-    let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera"]
++    let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera", "viewMode"]
+     let backup = keys.map { defaults.object(forKey: $0) }
+     defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
++    defaults.removeObject(forKey: "viewMode")
+     defaults.set(true, forKey: "chronologicalMode")
+     let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1600, height: 1000))
+     defer { canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
+@@ -1375,3 +1512,219 @@ final class ChronologicalModeTests: XCTestCase {
+   }
+ 
+ }
++
++final class WindowBackspaceActionTests: XCTestCase {
++  func testOnlyConfirmedLastWindowQuitsApplication() {
++    XCTAssertEqual(WindowBackspaceAction.resolve(windowCount: 1), .quitApp)
++    for count in [nil, 0, 2, 3, 20] as [Int?] {
++      XCTAssertEqual(WindowBackspaceAction.resolve(windowCount: count), .closeWindow)
++    }
++  }
++
++  func testBackspaceDoesNotRepeatAndDoesNotAcceptForwardDelete() {
++    XCTAssertTrue(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: false))
++    XCTAssertFalse(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: true))
++    XCTAssertFalse(ShortcutMatcher.isPlaneBackspace(keyCode: 117, isRepeat: false))
++  }
++}
++
++
++@MainActor
++final class OverviewModeTests: XCTestCase {
++  func testCompactNavigatorDragClampsAndPersists() throws {
++    let defaults = UserDefaults.standard
++    let keys = ["viewMode", "chronologicalMode", "desktopPages", "navigatorPanelX", "navigatorPanelY"]
++    let backup = keys.map { defaults.object(forKey: $0) }
++    defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
++    for key in keys { defaults.removeObject(forKey: key) }
++    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1200, height: 800))
++    defer { canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
++    canvas.setViewMode(.overview)
++    canvas.layout()
++    let original = canvas.navigatorPanelFrame
++    XCTAssertGreaterThanOrEqual(original.minY, 96)
++    func drag(by delta: CGPoint) throws {
++      let frame = canvas.navigatorPanelFrame
++      let start = CGPoint(x: frame.midX, y: frame.maxY - 24)
++      let end = CGPoint(x: start.x + delta.x, y: start.y + delta.y)
++      func event(_ type: NSEvent.EventType, _ point: CGPoint) throws -> NSEvent {
++        try XCTUnwrap(NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
++          timestamp: 0, windowNumber: 0, context: nil, eventNumber: 0, clickCount: 1, pressure: 0))
++      }
++      XCTAssertTrue(canvas.hitTest(start) === canvas)
++      canvas.mouseDown(with: try event(.leftMouseDown, start))
++      canvas.mouseDragged(with: try event(.leftMouseDragged, end))
++      canvas.mouseUp(with: try event(.leftMouseUp, end))
++    }
++    try drag(by: CGPoint(x: -140, y: 150))
++    XCTAssertEqual(canvas.navigatorPanelFrame.minX, original.minX - 140, accuracy: 0.1)
++    XCTAssertEqual(canvas.navigatorPanelFrame.minY, original.minY + 150, accuracy: 0.1)
++    XCTAssertFalse(canvas.overviewAvailableFrame.intersects(canvas.navigatorPanelFrame))
++    let reopened = CanvasView(frame: canvas.frame)
++    defer { reopened.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: reopened) }
++    XCTAssertEqual(reopened.navigatorPanelFrame, canvas.navigatorPanelFrame)
++    try drag(by: CGPoint(x: 0, y: 1000))
++    XCTAssertLessThanOrEqual(canvas.navigatorPanelFrame.maxY, canvas.bounds.maxY - 48)
++    XCTAssertFalse(canvas.overviewAvailableFrame.intersects(canvas.navigatorPanelFrame))
++    try drag(by: CGPoint(x: 0, y: -1000))
++    XCTAssertEqual(canvas.navigatorPanelFrame.minY, 96, accuracy: 0.1)
++  }
++
++  func testShortcutValidationAndSerialization() throws {
++    XCTAssertTrue(ShortcutMatcher.isOverviewSwipe(deltaX: 0, deltaY: 1))
++    XCTAssertFalse(ShortcutMatcher.isOverviewSwipe(deltaX: 0, deltaY: -1))
++    XCTAssertFalse(ShortcutMatcher.isOverviewSwipe(deltaX: 1, deltaY: 0))
++    XCTAssertFalse(ShortcutMatcher.isOverviewSwipe(deltaX: 1, deltaY: 1))
++    func key(_ code: UInt16, _ flags: NSEvent.ModifierFlags, repeated: Bool = false) throws -> NSEvent {
++      try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: flags,
++        timestamp: 0, windowNumber: 0, context: nil, characters: "p", charactersIgnoringModifiers: "p",
++        isARepeat: repeated, keyCode: code))
++    }
++    XCTAssertNil(OverviewShortcut.from(try key(35, [])))
++    XCTAssertNil(OverviewShortcut.from(try key(35, [.shift])))
++    XCTAssertNil(OverviewShortcut.from(try key(48, [.command])))
++    XCTAssertNil(OverviewShortcut.from(try key(12, [.command])))
++    XCTAssertNil(OverviewShortcut.from(try key(35, [.control], repeated: true)))
++    let candidate = try XCTUnwrap(OverviewShortcut.from(try key(35, [.control, .option, .shift])))
++    XCTAssertEqual(candidate.label, "⌃⌥⇧P")
++    XCTAssertEqual(candidate, try JSONDecoder().decode(OverviewShortcut.self, from: JSONEncoder().encode(candidate)))
++  }
++
++  func testVisibleCameraSwitchTracksModeChanges() throws {
++    let defaults = UserDefaults.standard
++    let keys = ["viewMode", "chronologicalMode", "desktopPages", "chronologicalCamera",
++      "cameraFollowsSelection.overview", "cameraFollowsSelection.canvas"]
++    let backup = keys.map { defaults.object(forKey: $0) }
++    defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
++    for key in keys { defaults.removeObject(forKey: key) }
++    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1200, height: 800))
++    let host = CanvasWorkspaceView(canvas: canvas)
++    defer { _ = canvas.dismissSettings(); canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
++    XCTAssertTrue(NSApp.sendAction(NSSelectorFromString("showSettings:"), to: canvas, from: NSButton()))
++    func find(_ view: NSView) -> NSButton? {
++      if view.identifier?.rawValue == "Camera follows selection" { return view as? NSButton }
++      for child in view.subviews { if let result = find(child) { return result } }
++      return nil
++    }
++    let control = try XCTUnwrap(find(host))
++    XCTAssertEqual(control.state, .on)
++    func recorder(_ view: NSView) -> OverviewShortcutRecorder? {
++      if let result = view as? OverviewShortcutRecorder { return result }
++      return view.subviews.compactMap { recorder($0) }.first
++    }
++    XCTAssertNotNil(recorder(host))
++    host.frame = CGRect(x: 0, y: 0, width: 1200, height: 800)
++    host.layoutSubtreeIfNeeded()
++    if let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
++      host.cacheDisplay(in: host.bounds, to: bitmap)
++      try bitmap.representation(using: .png, properties: [:])?.write(
++        to: URL(fileURLWithPath: "/tmp/openplane-shortcut-settings-synthetic.png"))
++    }
++    canvas.setViewMode(.overview)
++    XCTAssertEqual(control.state, .off)
++    canvas.setViewMode(.canvas)
++    XCTAssertEqual(control.state, .on)
++  }
++
++  func testGroupedWindowsNavigationCameraAndCanvasRestoration() throws {
++    let defaults = UserDefaults.standard
++    let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera", "viewMode",
++      "cameraFollowsSelection.overview", "cameraFollowsSelection.canvas", "cameraFollowsSelection.chronological"]
++    let backup = keys.map { defaults.object(forKey: $0) }
++    defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
++    for key in keys { defaults.removeObject(forKey: key) }
++    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1200, height: 800))
++    defer { canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
++    let nodes = (0..<7).map { index -> WindowNode in
++      let size = CGSize(width: index == 5 ? 600 : 1000, height: 700)
++      let item = DiscoveredWindow(id: CGWindowID(index + 1), processID: pid_t(index / 3 + 90000),
++        bundleIdentifier: "synthetic.\(index / 3)", applicationName: "Example App \(index / 3 + 1)",
++        title: "Example window \(index + 1)", isPrivateBrowsing: false,
++        frame: CGRect(origin: .zero, size: size), icon: nil, captureWindow: nil, accessibilityElement: nil)
++      let preview = NSImage(size: size, flipped: false) { rect in
++        NSColor(calibratedHue: CGFloat(index) / 9, saturation: 0.35, brightness: 0.65, alpha: 1).setFill()
++        rect.fill()
++        ("Synthetic window \(index + 1)" as NSString).draw(at: CGPoint(x: 60, y: 100),
++          withAttributes: [.font: NSFont.systemFont(ofSize: 36), .foregroundColor: NSColor.white])
++        return true
++      }
++      return WindowNode(discovered: item,
++        worldFrame: CGRect(x: CGFloat(index) * 1300, y: 250, width: size.width, height: size.height),
++        cachedPreview: preview)
++    }
++    canvas.nodes = nodes
++    let original = nodes.map(\.worldFrame)
++    canvas.setViewMode(.overview)
++    XCTAssertFalse(canvas.followsSelection)
++    let overviewCamera = canvas.camera
++    let frames = nodes.map(\.worldFrame)
++    for frame in frames {
++      let displayed = CanvasMath.viewRect(for: frame, camera: canvas.camera, bounds: canvas.bounds)
++      XCTAssertTrue(canvas.overviewAvailableFrame.contains(displayed))
++      let decorated = CanvasMath.previewVisualBounds(for: displayed, zoom: canvas.camera.zoom,
++        titleLift: 0, borderOutset: 6)
++      XCTAssertTrue(canvas.overviewAvailableFrame.contains(decorated), "Headers and selection border must clear the nudge too")
++    }
++    XCTAssertLessThanOrEqual(canvas.overviewAvailableFrame.maxY,
++      canvas.bounds.maxY - CanvasMath.desktopTitleNudgeLayout(safeAreaTop: 32).depth)
++    XCTAssertGreaterThan(frames[1].minX, frames[0].minX)
++    XCTAssertLessThan(frames[1].maxY, frames[0].maxY)
++    func press(_ code: UInt16) throws {
++      let event = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
++        timestamp: 0, windowNumber: 0, context: nil, characters: "", charactersIgnoringModifiers: "",
++        isARepeat: false, keyCode: code))
++      XCTAssertTrue(canvas.handleNavigationKey(event))
++    }
++    try press(125)
++    XCTAssertEqual(canvas.selectedWindowID, 2)
++    XCTAssertEqual(canvas.camera, overviewCamera)
++    try press(125)
++    XCTAssertEqual(canvas.selectedWindowID, 3)
++    try press(126)
++    XCTAssertEqual(canvas.selectedWindowID, 2)
++    XCTAssertEqual(canvas.camera, overviewCamera)
++    canvas.synchronizeScene()
++    let bitmap = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 1200,
++      pixelsHigh: 800, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
++      isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
++    let context = try XCTUnwrap(NSGraphicsContext(bitmapImageRep: bitmap))
++    context.cgContext.setFillColor(NSColor.darkGray.cgColor); context.cgContext.fill(canvas.bounds)
++    context.cgContext.concatenate(CGAffineTransform(a: canvas.camera.zoom, b: 0, c: 0,
++      d: canvas.camera.zoom, tx: 600 - canvas.camera.center.x * canvas.camera.zoom,
++      ty: 400 - canvas.camera.center.y * canvas.camera.zoom))
++    canvas.cameraLayer.render(in: context.cgContext)
++    try bitmap.representation(using: .png, properties: [:])?.write(
++      to: URL(fileURLWithPath: "/tmp/openplane-overview-synthetic.png"))
++    try press(124)
++    XCTAssertNotEqual(canvas.selectedWindowID, 2)
++    XCTAssertEqual(canvas.camera, overviewCamera)
++    canvas.setCameraFollowsSelection(true)
++    XCTAssertTrue(canvas.followsSelection)
++    canvas.setViewMode(.chronological)
++    XCTAssertTrue(canvas.followsSelection)
++    canvas.setViewMode(.canvas)
++    XCTAssertEqual(nodes.map(\.worldFrame), original)
++    canvas.setViewMode(.overview)
++    XCTAssertTrue(canvas.followsSelection)
++    canvas.setCameraFollowsSelection(false)
++    canvas.setFrameSize(CGSize(width: 800, height: 600)); canvas.layout()
++    for node in nodes {
++      XCTAssertTrue(canvas.overviewAvailableFrame.contains(CanvasMath.viewRect(for: node.worldFrame, camera: canvas.camera, bounds: canvas.bounds)))
++    }
++    canvas.applyPreviewSizePreference(fitAll: true)
++    for node in nodes {
++      XCTAssertTrue(canvas.overviewAvailableFrame.contains(
++        CanvasMath.viewRect(for: node.worldFrame, camera: canvas.camera, bounds: canvas.bounds)))
++    }
++    let stableCamera = canvas.camera
++    canvas.nodes = nodes
++    XCTAssertEqual(canvas.camera, stableCamera, "Unchanged inventory must not refit the view")
++    canvas.persistState()
++    let reopened = CanvasView(frame: canvas.frame)
++    defer { reopened.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: reopened) }
++    XCTAssertEqual(reopened.viewMode, .overview)
++    XCTAssertFalse(reopened.followsSelection)
++    canvas.nodes = []
++    XCTAssertTrue(canvas.hasCanvasSelection)
++  }
++}
+diff --git a/OpenPlaneTests/CanvasSelectionTests.swift b/OpenPlaneTests/CanvasSelectionTests.swift
+index 162074c..bed7482 100644
+--- a/OpenPlaneTests/CanvasSelectionTests.swift
++++ b/OpenPlaneTests/CanvasSelectionTests.swift
+@@ -76,6 +76,25 @@ final class CanvasSelectionTests: XCTestCase {
+     }
+   }
+ 
++  func testArrowReleaseDoesNotAdvanceSelectionAgain() throws {
++    try withCanvas { canvas, delegate in
++      func key(_ type: NSEvent.EventType, _ code: UInt16) -> NSEvent {
++        NSEvent.keyEvent(with: type, location: .zero, modifierFlags: [], timestamp: 1,
++          windowNumber: 0, context: nil, characters: "", charactersIgnoringModifiers: "",
++          isARepeat: false, keyCode: code)!
++      }
++      XCTAssertTrue(canvas.handleNavigationKey(key(.keyDown, 124))) // nearest: TextEdit
++      XCTAssertFalse(canvas.handleNavigationKey(key(.keyUp, 124)))
++      XCTAssertFalse(canvas.handleNavigationKeyUp(key(.keyUp, 124)))
++      canvas.focusSelectedWindow()
++      XCTAssertEqual(delegate.launched, [bundles[1]])
++      XCTAssertTrue(canvas.handleNavigationKey(key(.keyDown, 124))) // next: Preview
++      XCTAssertFalse(canvas.handleNavigationKey(key(.keyUp, 124)))
++      canvas.focusSelectedWindow()
++      XCTAssertEqual(delegate.launched, [bundles[1], bundles[2]])
++    }
++  }
++
+   func testArrowSelectionDoesNotRefreshUnrelatedCardsOrInvalidateWholeCanvas() throws {
+     try withCanvas { canvas, _ in
+       canvas.synchronizeScene()

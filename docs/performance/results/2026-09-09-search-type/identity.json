@@ -1,0 +1,11 @@
+{
+  "head": "3d976d068ea1db08457d64dd71ad0f2b298248d8",
+  "source_patch_sha256": "bc6afe284da33be6304e515ce917ec76e15ee76c47303a5451946e8c1aca8fcf",
+  "binary_sha256": "770d247bfeb772c8feae9229d15717df25d1000db00fdea853b55c62fd489d4f",
+  "baseline_binary_sha256": "89e3a1337646f1cdc43f0f94e6293006e874e5f0b2b509deba0bb83e74274bce",
+  "configuration": "Release",
+  "cases": [
+    "P07",
+    "P20"
+  ]
+}

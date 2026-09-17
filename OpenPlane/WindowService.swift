@@ -12,7 +12,7 @@ struct DiscoveredWindow {
   let isPrivateBrowsing: Bool
   let frame: CGRect
   let icon: NSImage?
-  let captureWindow: SCWindow
+  let captureWindow: SCWindow?
   let accessibilityElement: AXUIElement?
 }
 
@@ -35,16 +35,27 @@ enum BrowserPrivacy {
     "シークレット", "プライベートブラウズ", "无痕", "無痕", "시크릿",
   ]
 
+  static func isBrowser(bundleIdentifier: String, applicationName: String = "") -> Bool {
+    let bundle = normalized(bundleIdentifier)
+    let application = normalized(applicationName)
+    return browserBundleMarkers.contains(where: bundle.contains)
+      || browserNameMarkers.contains(where: application.contains)
+  }
+
+  // Preview filtering was removed. Ignore the legacy preference at every capture
+  // and refresh gate, including installations where it was previously disabled.
+  static func shouldSuppressPreview(bundleIdentifier: String, applicationName: String,
+    isPrivateBrowsing: Bool = false, allowsPrivatePreviews: Bool) -> Bool {
+    false
+  }
+
   static func isPrivateWindow(
     bundleIdentifier: String,
     applicationName: String,
     title: String
   ) -> Bool {
-    let bundle = normalized(bundleIdentifier)
-    let application = normalized(applicationName)
-    let isBrowser = browserBundleMarkers.contains(where: bundle.contains)
-      || browserNameMarkers.contains(where: application.contains)
-    guard isBrowser else { return false }
+    guard isBrowser(bundleIdentifier: bundleIdentifier, applicationName: applicationName)
+    else { return false }
     let title = normalized(title)
     return privateTitleMarkers.contains(where: title.contains)
   }
@@ -160,8 +171,9 @@ private actor AccessibilityInventory {
 }
 
 private enum AccessibilityWindowMatching {
-  static func windows(processID: pid_t) -> [AXUIElement] {
+  static func windows(processID: pid_t, includingMinimized: Bool = false) -> [AXUIElement] {
     let application = AXUIElementCreateApplication(processID)
+    AXUIElementSetMessagingTimeout(application, 0.2)
     guard let windows: [AXUIElement] = attribute(kAXWindowsAttribute, of: application) else {
       return []
     }
@@ -170,7 +182,7 @@ private enum AccessibilityWindowMatching {
       let minimized: Bool = attribute(kAXMinimizedAttribute, of: element) ?? false
       let role: String = attribute(kAXRoleAttribute, of: element) ?? ""
       let subrole: String = attribute(kAXSubroleAttribute, of: element) ?? ""
-      return !minimized
+      return (includingMinimized || !minimized)
         && role == (kAXWindowRole as String)
         && subrole == (kAXStandardWindowSubrole as String)
     }
@@ -345,19 +357,18 @@ final class WindowService {
   }
 
   func capture(
-    window: SCWindow,
+    window: SCWindow?,
     targetLongEdgePixels: Int = 1_200
   ) async throws -> CapturedPreview {
-    if let application = window.owningApplication,
-      BrowserPrivacy.isPrivateWindow(
-        bundleIdentifier: application.bundleIdentifier,
-        applicationName: application.applicationName,
-        title: window.title ?? ""
-      ),
-      !UserDefaults.standard.bool(forKey: OpenPlanePreferences.showPrivateBrowserPreviews)
-    {
+    guard let window, let application = window.owningApplication else {
       throw WindowCaptureError.privateBrowsing
     }
+    func suppressed() -> Bool {
+      BrowserPrivacy.shouldSuppressPreview(bundleIdentifier: application.bundleIdentifier,
+        applicationName: application.applicationName,
+        allowsPrivatePreviews: UserDefaults.standard.bool(forKey: OpenPlanePreferences.showPrivateBrowserPreviews))
+    }
+    guard !suppressed() else { throw WindowCaptureError.privateBrowsing }
     let size = window.frame.size
     let longEdge = max(size.width, size.height)
     let scale = min(2, CGFloat(targetLongEdgePixels) / max(1, longEdge))
@@ -373,6 +384,7 @@ final class WindowService {
       contentFilter: filter,
       configuration: configuration
     )
+    guard !suppressed() else { throw WindowCaptureError.privateBrowsing }
     guard let image = output.sdrImage else {
       throw NSError(
         domain: "OpenPlane.WindowCapture",
@@ -435,6 +447,13 @@ final class WindowService {
       screenFrame: CGRect(x: localX, y: localBottomY, width: size.width, height: size.height),
       size: size
     )
+  }
+
+  static func backspaceAction(for node: WindowNode) -> WindowBackspaceAction {
+    guard let selected = node.accessibilityElement else { return .closeWindow }
+    let windows = AccessibilityWindowMatching.windows(processID: node.processID, includingMinimized: true)
+    let includesSelected = windows.contains { CFEqual($0, selected) }
+    return WindowBackspaceAction.resolve(windowCount: includesSelected ? windows.count : nil)
   }
 
   func frontmostWindowID(among nodes: [WindowNode]) -> CGWindowID? {
@@ -540,5 +559,121 @@ final class WindowFocusObserver {
     if let observer { CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes) }
     observer = nil
     observedPID = nil
+  }
+}
+
+// Chrome's scripting IDs are session IDs, not CGWindowIDs. Match only a unique
+// window title + bounds pair; never guess between indistinguishable windows.
+struct ChromeTabWindow: Sendable {
+  let title: String
+  let frame: CGRect
+  let count: Int
+
+  static func count(for title: String, frame: CGRect, in windows: [Self]) -> Int? {
+    let matches = windows.filter {
+      $0.title == title && abs($0.frame.minX - frame.minX) <= 2
+        && abs($0.frame.minY - frame.minY) <= 2
+        && abs($0.frame.width - frame.width) <= 2 && abs($0.frame.height - frame.height) <= 2
+    }
+    return matches.count == 1 ? matches[0].count : nil
+  }
+}
+
+actor ChromeTabCounter {
+  static let shared = ChromeTabCounter()
+  static let preferenceKey = "showChromeTabCounts"
+
+  func permission(request: Bool) -> Bool {
+    let target = NSAppleEventDescriptor(bundleIdentifier: "com.google.Chrome")
+    return AEDeterminePermissionToAutomateTarget(target.aeDesc, typeWildCard,
+      typeWildCard, request) == noErr
+  }
+
+  func read() -> [ChromeTabWindow]? {
+    // A background refresh must never open a permission dialog.
+    guard permission(request: false) else { return nil }
+    let source = """
+    with timeout of 2 seconds
+      tell application id "com.google.Chrome"
+        set resultRows to {}
+        repeat with w in windows
+          set end of resultRows to {name of w, bounds of w, count of tabs of w}
+        end repeat
+        return resultRows
+      end tell
+    end timeout
+    """
+    var error: NSDictionary?
+    guard let script = NSAppleScript(source: source) else { return nil }
+    let result = script.executeAndReturnError(&error)
+    guard error == nil else { return nil }
+    guard result.numberOfItems > 0 else { return [] }
+    return (1...result.numberOfItems).compactMap { index in
+      guard let row = result.atIndex(index), row.numberOfItems == 3,
+        let title = row.atIndex(1)?.stringValue,
+        let bounds = row.atIndex(2), bounds.numberOfItems == 4,
+        let count = row.atIndex(3)?.int32Value, count >= 0 else { return nil }
+      let x = CGFloat(bounds.atIndex(1)!.int32Value), y = CGFloat(bounds.atIndex(2)!.int32Value)
+      return ChromeTabWindow(title: title,
+        frame: CGRect(x: x, y: y, width: CGFloat(bounds.atIndex(3)!.int32Value) - x,
+          height: CGFloat(bounds.atIndex(4)!.int32Value) - y), count: Int(count))
+    }
+  }
+}
+
+// Close/quit confirmations must be visible above the overview, never auto-accepted.
+actor CloseDialogObserver {
+  enum State: Sendable { case present, absent, unavailable }
+
+  func state(processID: pid_t) -> State {
+    let app = AXUIElementCreateApplication(processID)
+    AXUIElementSetMessagingTimeout(app, 0.2)
+    var raw: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &raw) == .success,
+      let windows = raw as? [AXUIElement] else { return .unavailable }
+    let present = windows.contains { window in
+      var modal: CFTypeRef?
+      AXUIElementCopyAttributeValue(window, kAXModalAttribute as CFString, &modal)
+      if modal as? Bool == true { return true }
+      var sheets: CFTypeRef?
+      AXUIElementCopyAttributeValue(window, kAXChildrenAttribute as CFString, &sheets)
+      return (sheets as? [AXUIElement] ?? []).contains { child in
+        var role: CFTypeRef?
+        AXUIElementCopyAttributeValue(child, kAXRoleAttribute as CFString, &role)
+        return role as? String == kAXSheetRole as String
+      }
+    }
+    return present ? .present : .absent
+  }
+}
+
+struct ClosingWindowReference: @unchecked Sendable {
+  let id: CGWindowID
+  let processID: pid_t
+  let element: AXUIElement
+}
+
+actor ClosedWindowProbe {
+  func confirmedClosed(_ references: [ClosingWindowReference]) -> Set<CGWindowID> {
+    var closed = Set<CGWindowID>()
+    for (pid, refs) in Dictionary(grouping: references, by: \.processID) {
+      let application = AXUIElementCreateApplication(pid)
+      AXUIElementSetMessagingTimeout(application, 0.2)
+      var raw: CFTypeRef?
+      let result = AXUIElementCopyAttributeValue(application, kAXWindowsAttribute as CFString, &raw)
+      if result == .success, let windows = raw as? [AXUIElement] {
+        for ref in refs where !windows.contains(where: { CFEqual($0, ref.element) }) {
+          closed.insert(ref.id)
+        }
+      } else {
+        for ref in refs {
+          var role: CFTypeRef?
+          if AXUIElementCopyAttributeValue(ref.element, kAXRoleAttribute as CFString, &role) == .invalidUIElement {
+            closed.insert(ref.id)
+          }
+        }
+      }
+    }
+    return closed
   }
 }

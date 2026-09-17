@@ -1,0 +1,9 @@
+Bounded CUA functional observations; not a timed run.
+Baseline: one plain Down selected the adjacent WhatsApp window after ChatGPT.
+Candidate: one plain Down selected adjacent Google Chrome after Input Fixture A.
+Fixture before Backspace, own NSApp visibility probe: Input Fixture A; Input Fixture B; Window.
+After first Backspace: Input Fixture B; Window. Fixture process PID 62966 remained running.
+Search Input Fixture B, Escape, Backspace: pgrep InputFixture exit 1 (terminated).
+Command-Tab full chord: overview and selected Wispr Flow header remained present after release.
+Repeated Command-Tab attempt: CUA timeout. Earlier sequence reported noWindowsAvailable.
+Screenshots held in tool transcript only; contain private user previews.

@@ -1,0 +1,1 @@
+Signed installed Release AX-only check: Views exposes Canvas, Recent, Overview, All apps. Click Recent selects it; click Overview restores initial mode. No user window screenshots inspected.

@@ -1,0 +1,425 @@
+diff --git a/OpenPlane/AppDelegate.swift b/OpenPlane/AppDelegate.swift
+index 28de3ef..956de67 100644
+--- a/OpenPlane/AppDelegate.swift
++++ b/OpenPlane/AppDelegate.swift
+@@ -23,14 +23,6 @@ private func openPlaneCommandTabEventTapCallback(
+     return Unmanaged.passUnretained(event)
+   }
+ 
+-  if type == .flagsChanged {
+-    MainActor.assumeIsolated { appDelegate.commandModifiersChanged(event.flags) }
+-    return Unmanaged.passUnretained(event)
+-  }
+-  if type == .keyDown, event.getIntegerValueField(.keyboardEventKeycode) == 53 {
+-    let cancelled = MainActor.assumeIsolated { appDelegate.cancelCommandCycleForEscape() }
+-    if cancelled { return nil }
+-  }
+   guard ShortcutMatcher.isCommandTab(
+     keyCode: event.getIntegerValueField(.keyboardEventKeycode),
+     flags: event.flags
+@@ -39,7 +31,7 @@ private func openPlaneCommandTabEventTapCallback(
+   if type == .keyDown,
+     event.getIntegerValueField(.keyboardEventAutorepeat) == 0
+   {
+-    MainActor.assumeIsolated { appDelegate.handleCommandTab(backward: event.flags.contains(.maskShift)) }
++    MainActor.assumeIsolated { appDelegate.handleShortcut() }
+   }
+   return nil
+ }
+@@ -62,12 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+   private var lastFocusedByBundle: [String: CGWindowID] = [:]
+   private var appHistory = AppNavigationHistory()
+   private let windowFocusObserver = WindowFocusObserver()
+-  private var commandCycleActive = false
+-  private var commandCycleOrigin: CGWindowID?
+-  private var chronologicalOverviewReady = false
+   private var overviewGeneration = 0
+-  private var pendingCommandSteps: [Int] = []
+-  private var commandCycleReleased = false
+   private var inventoryTracker = WindowInventoryTracker()
+   private var didInitialLayout = false
+   private var isReturning = false
+@@ -89,8 +76,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+     configurePermissionView()
+     windowFocusObserver.onFocus = { [weak self] id in self?.canvasView.recentWindows.used(id) }
+     canvasView.onModeChange = { [weak self] in
+-      _ = self?.cancelCommandCycle()
+-      self?.chronologicalOverviewReady = true
+       self?.overviewGeneration += 1
+     }
+     observeWorkspace()
+@@ -410,8 +395,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+     }
+     permissionTimer?.invalidate()
+     if canvasView.isChronological {
++      if isShowingCanvas {
++        overlayWindow.makeKeyAndOrderFront(nil)
++        NSApp.activate(ignoringOtherApps: true)
++        return
++      }
+       windowFocusObserver.recordFrontmost()
+-      if commandCycleActive && !pendingCommandSteps.isEmpty && !chronologicalOverviewReady { return }
+       configureWindowForCanvas()
+       overlayWindow.contentView = workspaceView
+       canvasView.closeCatalog()
+@@ -421,7 +410,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+       overlayWindow.alphaValue = 1
+       overlayWindow.makeKeyAndOrderFront(nil)
+       NSApp.activate(ignoringOtherApps: true)
+-      chronologicalOverviewReady = false
+       overviewGeneration += 1
+       let generation = overviewGeneration
+       Task { [weak self] in
+@@ -429,13 +417,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+         await self.reconcileWindows()
+         guard self.isShowingCanvas, self.canvasView.isChronological, self.overviewGeneration == generation else { return }
+         self.canvasView.prepareChronologicalOverview()
+-        self.chronologicalOverviewReady = true
+-        for step in self.pendingCommandSteps {
+-          self.canvasView.stepRecent(by: step, wrapping: true, windowsOnly: true)
+-        }
+-        self.pendingCommandSteps.removeAll()
+         self.startCanvasLoops()
+-        if self.commandCycleReleased { self.finishCommandCycle() }
+       }
+       return
+     }
+@@ -456,7 +438,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+ 
+   private func dismissCanvas() {
+     guard isShowingCanvas, !isDismissing else { return }
+-    _ = cancelCommandCycle()
+     overviewGeneration += 1
+     canvasView.dismissSettings()
+     isDismissing = true
+@@ -1170,13 +1151,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+   }
+ 
+   private func configureCommandTabEventTap(enabled: Bool) -> Bool {
+-    if !enabled { _ = cancelCommandCycle() }
+     removeCommandTabEventTap()
+     guard enabled else { return true }
+ 
+     let eventMask = CGEventMask(1 << CGEventType.keyDown.rawValue)
+       | CGEventMask(1 << CGEventType.keyUp.rawValue)
+-      | CGEventMask(1 << CGEventType.flagsChanged.rawValue)
+     guard
+       let eventTap = CGEvent.tapCreate(
+         tap: .cgSessionEventTap,
+@@ -1227,49 +1206,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+       break
+     }
+   }
+-  fileprivate func handleCommandTab(backward: Bool) {
+-    guard canvasView.isChronological else { handleShortcut(); return }
+-    let step = backward ? -1 : 1
+-    if !commandCycleActive {
+-      commandCycleActive = true
+-      commandCycleReleased = false
+-      windowFocusObserver.recordFrontmost()
+-      commandCycleOrigin = canvasView.recentWindows.history.first
+-      chronologicalOverviewReady = false
+-      showCanvas()
+-    }
+-    if chronologicalOverviewReady { canvasView.stepRecent(by: step, wrapping: true, windowsOnly: true) }
+-    else { pendingCommandSteps.append(step) }
+-  }
+-
+-  fileprivate func commandModifiersChanged(_ flags: CGEventFlags) {
+-    guard commandCycleActive, !flags.contains(.maskCommand) else { return }
+-    commandCycleReleased = true
+-    if chronologicalOverviewReady { finishCommandCycle() }
+-  }
+-
+-  private func finishCommandCycle() {
+-    guard commandCycleActive else { return }
+-    commandCycleActive = false
+-    commandCycleReleased = false
+-    pendingCommandSteps.removeAll()
+-    guard canvasView.selectedWindowID != nil else { return }
+-    canvasView.focusSelectedWindow()
+-  }
+-
+-  fileprivate func cancelCommandCycleForEscape() -> Bool {
+-    guard cancelCommandCycle() else { return false }
+-    dismissCanvas()
+-    return true
+-  }
+-
+-  @discardableResult fileprivate func cancelCommandCycle() -> Bool {
+-    guard commandCycleActive else { return false }
+-    commandCycleActive = false
+-    commandCycleReleased = false
+-    pendingCommandSteps.removeAll()
+-    if let id = commandCycleOrigin, nodesByID[id] != nil { canvasView.selectedWindowID = id }
+-    return true
+-  }
+-
+ }
+diff --git a/OpenPlane/CanvasModel.swift b/OpenPlane/CanvasModel.swift
+index 654f51b..0b7400d 100644
+--- a/OpenPlane/CanvasModel.swift
++++ b/OpenPlane/CanvasModel.swift
+@@ -536,7 +536,7 @@ enum ShortcutMatcher {
+     return modifiers == [.maskCommand] || modifiers == [.maskCommand, .maskShift]
+   }
+ 
+-  static func isPlaneQuit(keyCode: UInt16, isRepeat: Bool) -> Bool {
++  static func isPlaneBackspace(keyCode: UInt16, isRepeat: Bool) -> Bool {
+     keyCode == 51 && !isRepeat
+   }
+ }
+@@ -1560,3 +1560,14 @@ struct InstalledApp: Sendable {
+     }
+   }
+ }
++
++
++enum WindowBackspaceAction: Equatable {
++  case closeWindow
++  case quitApp
++
++  static func resolve(windowCount: Int?) -> Self {
++    // Only a confirmed last window may end the app; missing inventory closes one window.
++    windowCount == 1 ? .quitApp : .closeWindow
++  }
++}
+diff --git a/OpenPlane/CanvasView.swift b/OpenPlane/CanvasView.swift
+index 1cd0267..1860a04 100644
+--- a/OpenPlane/CanvasView.swift
++++ b/OpenPlane/CanvasView.swift
+@@ -1,6 +1,7 @@
+ @preconcurrency import AppKit
+ @preconcurrency import QuartzCore
+ @preconcurrency import ApplicationServices
++import OSLog
+ 
+ private func drawOpenPlaneLaunchMessage(in bounds: CGRect) {
+   let title = "OpenPlane"
+@@ -1123,6 +1124,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+         ?? (placeholder.isLaunching ? "Opening…" : placeholder.bundleIdentifier == Self.allAppsID
+           ? "Browse installed apps" : showingAllApps ? placeholder.applicationName
+           : placeholder.isAvailable ? "Closed" : "App unavailable")
++      if placeholder.bundleIdentifier == Self.allAppsID { statusText = nil }
+       if placeholder.errorMessage != nil || !placeholder.isAvailable {
+         statusColor = NSColor.systemRed.withAlphaComponent(0.86)
+       }
+@@ -1164,6 +1166,38 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       card.privateSize = nil
+       card.preview.contents = preview?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+     }
++    if case .placeholder(let placeholder) = target, placeholder.bundleIdentifier == Self.allAppsID {
++      // The catalog entry is a button, with its label inside the card.
++      let fontSize = min(18, rect.height * 0.25)
++      let font = NSFont.systemFont(ofSize: fontSize, weight: .medium)
++      let label = NSAttributedString(string: "All apps", attributes: [
++        .font: font, .foregroundColor: NSColor.white.withAlphaComponent(0.9)])
++      let labelSize = label.size()
++      let iconSize = fontSize * 1.2
++      let gap = fontSize * 0.6
++      let startX = (rect.width - iconSize - gap - labelSize.width) / 2
++      card.status.isHidden = false
++      if card.statusValue != label {
++        card.status.string = label; card.statusValue = label; sceneContentUpdates += 1
++      }
++      card.status.contentsScale = scale
++      card.status.frame = CGRect(x: startX + iconSize + gap,
++        y: (rect.height - labelSize.height) / 2, width: labelSize.width + 1, height: labelSize.height)
++      card.icon.frame = CGRect(x: startX, y: (rect.height - iconSize) / 2,
++        width: iconSize, height: iconSize)
++      if card.iconImage !== icon || card.icon.contents == nil {
++        card.iconImage = icon
++        card.icon.contents = sceneImage(size: CGSize(width: 32, height: 32)) { bounds in
++          icon?.draw(in: bounds)
++          NSColor.white.withAlphaComponent(0.9).setFill()
++          bounds.fill(using: .sourceIn)
++        }
++      }
++      card.header.isHidden = true
++      card.activeHeader.isHidden = true
++      updateSelectionAppearance(card, target: target, selectedPID: selectedPID)
++      return
++    }
+     let (_, titleLift) = previewTitlePresentation(for: target)
+     let layout = CanvasMath.previewHeaderLayout(for: rect, zoom: zoom, titleLift: titleLift)
+     card.icon.frame = layout.icon.insetBy(dx: -21 * layout.icon.width / 36, dy: -21 * layout.icon.width / 36)
+@@ -1239,6 +1273,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     case .placeholder(let placeholder):
+       selected = selectedPlaceholderBundleIdentifier == placeholder.bundleIdentifier
+       borderProgress = selected ? 1 : 0
++      if placeholder.bundleIdentifier == Self.allAppsID { borderWidth = 2 }
+       secondary = grouped && !selected
+     }
+     let inset: CGFloat = secondary ? 4 : 2 + borderWidth / 2
+@@ -1497,11 +1532,23 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     persistDesktopPages()
+   }
+ 
++  private static let navigationLogger = Logger(subsystem: "com.yalpani.openplane", category: "navigation")
++  private let tracesNavigation = UserDefaults.standard.bool(forKey: "traceArrowNavigation")
++
++  private func traceNavigation(_ phase: String, event: NSEvent) {
++    guard tracesNavigation, (123...126).contains(event.keyCode) else { return }
++    let index = selectedWindowID.flatMap { recentWindows.visible.firstIndex(of: $0) } ?? -1
++    Self.navigationLogger.notice("arrow phase=\(phase, privacy: .public) timestamp=\(event.timestamp, privacy: .public) type=\(event.type.rawValue, privacy: .public) code=\(event.keyCode, privacy: .public) modifiers=\(event.modifierFlags.rawValue, privacy: .public) repeat=\(event.type == .keyDown && event.isARepeat, privacy: .public) index=\(index, privacy: .public) cameraY=\(self.camera.center.y, privacy: .public) targetY=\(self.selectedNavigationTarget?.center.y ?? 0, privacy: .public)")
++  }
++
+   func handleNavigationKey(_ event: NSEvent) -> Bool {
++    traceNavigation("before", event: event)
++    defer { traceNavigation("after", event: event) }
++    guard event.type == .keyDown else { return false }
+     guard desktopTitleField.currentEditor() == nil else { return false }
+     let modifiers = event.modifierFlags.intersection([.shift, .command, .control, .option])
+     if modifiers == [.command], event.keyCode == 13, isChronological, !isSearching {
+-      closeSelectedWindow(nil)
++      if !event.isARepeat { closeSelectedWindow(nil) }
+       return true
+     }
+     guard modifiers.isEmpty || modifiers == [.shift] else { return false }
+@@ -1558,8 +1605,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     case 36, 76:
+       focusSelectedWindow()
+     case 51:
+-      if ShortcutMatcher.isPlaneQuit(keyCode: event.keyCode, isRepeat: event.isARepeat) {
+-        quitSelectedApplication()
++      if ShortcutMatcher.isPlaneBackspace(keyCode: event.keyCode, isRepeat: event.isARepeat) {
++        closeOrQuitSelectedWindow()
+       }
+     default:
+       guard let text = event.characters,
+@@ -1571,6 +1618,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   func handleNavigationKeyUp(_ event: NSEvent) -> Bool {
++    traceNavigation("release", event: event)
+     guard keyboardZoomGesture != nil, event.keyCode == 125 || event.keyCode == 126 else {
+       return false
+     }
+@@ -4276,6 +4324,14 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     }
+   }
+ 
++  private func closeOrQuitSelectedWindow() {
++    guard let id = selectedWindowID, let node = nodes.first(where: { $0.id == id }) else { return }
++    switch WindowService.backspaceAction(for: node) {
++    case .closeWindow: closeSelectedWindow(nil)
++    case .quitApp: quitSelectedApplication()
++    }
++  }
++
+   private func quitSelectedApplication() {
+     guard let selectedWindowID,
+       let node = nodes.first(where: { $0.id == selectedWindowID })
+@@ -4408,7 +4464,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     let entries: [(String, String, URL?)] = showingAllApps
+       ? matchingApps.map { ($0.id, $0.name, Optional($0.url)) }
+       : [(Self.allAppsID, "All apps", nil)]
+-    let size = showingAllApps ? CGSize(width: 640, height: 180) : CGSize(width: 800, height: 260)
++    let size = CGSize(width: 640, height: 180)
+     let start = showingAllApps ? CGFloat(0) : (nodes.map { $0.worldFrame.minY }.min() ?? 100) - 100
+     appPlaceholders = entries.enumerated().map { index, entry in
+       let icon = appIconsByBundle[entry.0] ?? entry.2.map { NSWorkspace.shared.icon(forFile: $0.path) }
+diff --git a/OpenPlane/WindowService.swift b/OpenPlane/WindowService.swift
+index 044d431..f56f3f4 100644
+--- a/OpenPlane/WindowService.swift
++++ b/OpenPlane/WindowService.swift
+@@ -160,8 +160,9 @@ private actor AccessibilityInventory {
+ }
+ 
+ private enum AccessibilityWindowMatching {
+-  static func windows(processID: pid_t) -> [AXUIElement] {
++  static func windows(processID: pid_t, includingMinimized: Bool = false) -> [AXUIElement] {
+     let application = AXUIElementCreateApplication(processID)
++    AXUIElementSetMessagingTimeout(application, 0.2)
+     guard let windows: [AXUIElement] = attribute(kAXWindowsAttribute, of: application) else {
+       return []
+     }
+@@ -170,7 +171,7 @@ private enum AccessibilityWindowMatching {
+       let minimized: Bool = attribute(kAXMinimizedAttribute, of: element) ?? false
+       let role: String = attribute(kAXRoleAttribute, of: element) ?? ""
+       let subrole: String = attribute(kAXSubroleAttribute, of: element) ?? ""
+-      return !minimized
++      return (includingMinimized || !minimized)
+         && role == (kAXWindowRole as String)
+         && subrole == (kAXStandardWindowSubrole as String)
+     }
+@@ -437,6 +438,13 @@ final class WindowService {
+     )
+   }
+ 
++  static func backspaceAction(for node: WindowNode) -> WindowBackspaceAction {
++    guard let selected = node.accessibilityElement else { return .closeWindow }
++    let windows = AccessibilityWindowMatching.windows(processID: node.processID, includingMinimized: true)
++    let includesSelected = windows.contains { CFEqual($0, selected) }
++    return WindowBackspaceAction.resolve(windowCount: includesSelected ? windows.count : nil)
++  }
++
+   func frontmostWindowID(among nodes: [WindowNode]) -> CGWindowID? {
+     let candidateIDs = Set(nodes.map(\.id))
+     guard
+diff --git a/OpenPlaneTests/CanvasMathTests.swift b/OpenPlaneTests/CanvasMathTests.swift
+index b549963..6f91638 100644
+--- a/OpenPlaneTests/CanvasMathTests.swift
++++ b/OpenPlaneTests/CanvasMathTests.swift
+@@ -308,9 +308,9 @@ final class CanvasMathTests: XCTestCase {
+   }
+ 
+   func testBackspaceQuitsOnlyOncePerKeyPress() {
+-    XCTAssertTrue(ShortcutMatcher.isPlaneQuit(keyCode: 51, isRepeat: false))
+-    XCTAssertFalse(ShortcutMatcher.isPlaneQuit(keyCode: 51, isRepeat: true))
+-    XCTAssertFalse(ShortcutMatcher.isPlaneQuit(keyCode: 117, isRepeat: false))
++    XCTAssertTrue(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: false))
++    XCTAssertFalse(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: true))
++    XCTAssertFalse(ShortcutMatcher.isPlaneBackspace(keyCode: 117, isRepeat: false))
+   }
+ 
+   func testPendingPlaceholderLaunchIgnoresAnotherActivatedApplication() {
+@@ -1375,3 +1375,18 @@ final class ChronologicalModeTests: XCTestCase {
+   }
+ 
+ }
++
++final class WindowBackspaceActionTests: XCTestCase {
++  func testOnlyConfirmedLastWindowQuitsApplication() {
++    XCTAssertEqual(WindowBackspaceAction.resolve(windowCount: 1), .quitApp)
++    for count in [nil, 0, 2, 3, 20] as [Int?] {
++      XCTAssertEqual(WindowBackspaceAction.resolve(windowCount: count), .closeWindow)
++    }
++  }
++
++  func testBackspaceDoesNotRepeatAndDoesNotAcceptForwardDelete() {
++    XCTAssertTrue(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: false))
++    XCTAssertFalse(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: true))
++    XCTAssertFalse(ShortcutMatcher.isPlaneBackspace(keyCode: 117, isRepeat: false))
++  }
++}
+diff --git a/OpenPlaneTests/CanvasSelectionTests.swift b/OpenPlaneTests/CanvasSelectionTests.swift
+index 162074c..bed7482 100644
+--- a/OpenPlaneTests/CanvasSelectionTests.swift
++++ b/OpenPlaneTests/CanvasSelectionTests.swift
+@@ -76,6 +76,25 @@ final class CanvasSelectionTests: XCTestCase {
+     }
+   }
+ 
++  func testArrowReleaseDoesNotAdvanceSelectionAgain() throws {
++    try withCanvas { canvas, delegate in
++      func key(_ type: NSEvent.EventType, _ code: UInt16) -> NSEvent {
++        NSEvent.keyEvent(with: type, location: .zero, modifierFlags: [], timestamp: 1,
++          windowNumber: 0, context: nil, characters: "", charactersIgnoringModifiers: "",
++          isARepeat: false, keyCode: code)!
++      }
++      XCTAssertTrue(canvas.handleNavigationKey(key(.keyDown, 124))) // nearest: TextEdit
++      XCTAssertFalse(canvas.handleNavigationKey(key(.keyUp, 124)))
++      XCTAssertFalse(canvas.handleNavigationKeyUp(key(.keyUp, 124)))
++      canvas.focusSelectedWindow()
++      XCTAssertEqual(delegate.launched, [bundles[1]])
++      XCTAssertTrue(canvas.handleNavigationKey(key(.keyDown, 124))) // next: Preview
++      XCTAssertFalse(canvas.handleNavigationKey(key(.keyUp, 124)))
++      canvas.focusSelectedWindow()
++      XCTAssertEqual(delegate.launched, [bundles[1], bundles[2]])
++    }
++  }
++
+   func testArrowSelectionDoesNotRefreshUnrelatedCardsOrInvalidateWholeCanvas() throws {
+     try withCanvas { canvas, _ in
+       canvas.synchronizeScene()

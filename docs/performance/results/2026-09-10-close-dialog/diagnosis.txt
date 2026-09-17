@@ -1,0 +1,1 @@
+Read-only AX metadata: iTerm pid 21188 has AXWindow/AXDialog, AXModal=true, no close button (-25212), and AXWindow/AXStandardWindow, AXModal=false, close button supported. Dialog buttons Cancel and OK. No terminal text or images read. Existing close/quit sends request while overlay remains frontmost; no confirmation handoff previously implemented.

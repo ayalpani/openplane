@@ -1,0 +1,8 @@
+{
+  "head": "3d976d068ea1db08457d64dd71ad0f2b298248d8",
+  "patch_sha256": "bd670ffa528dbda47a207870e5e4703bb1343ffd6b1eebb9d8531de9780306ff",
+  "installed_sha256": "7d76f146937868e57b87adea04e60154f295a5ac02cea1691cafe160ecb868b8",
+  "baseline_sha256": "0a89462b110c66a989218af91a9f0fbce9e9b88000969030d6cb45a79f9e4548",
+  "configuration": "signed Release",
+  "installed_path": "/Applications/OpenPlane.app"
+}

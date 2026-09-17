@@ -23,15 +23,12 @@ private func openPlaneCommandTabEventTapCallback(
     return Unmanaged.passUnretained(event)
   }
 
-  if type == .flagsChanged {
-    MainActor.assumeIsolated { appDelegate.commandModifiersChanged(event.flags) }
+  if MainActor.assumeIsolated({ OverviewShortcutController.shared.isRecording }) {
     return Unmanaged.passUnretained(event)
   }
-  if type == .keyDown, event.getIntegerValueField(.keyboardEventKeycode) == 53 {
-    let cancelled = MainActor.assumeIsolated { appDelegate.cancelCommandCycleForEscape() }
-    if cancelled { return nil }
-  }
-  guard ShortcutMatcher.isCommandTab(
+  MainActor.assumeIsolated { appDelegate.handleRightCommand(type: type, event: event) }
+  guard UserDefaults.standard.bool(forKey: OpenPlanePreferences.useCommandTabShortcut),
+    ShortcutMatcher.isCommandTab(
     keyCode: event.getIntegerValueField(.keyboardEventKeycode),
     flags: event.flags
   ) else { return Unmanaged.passUnretained(event) }
@@ -39,7 +36,7 @@ private func openPlaneCommandTabEventTapCallback(
   if type == .keyDown,
     event.getIntegerValueField(.keyboardEventAutorepeat) == 0
   {
-    MainActor.assumeIsolated { appDelegate.handleCommandTab(backward: event.flags.contains(.maskShift)) }
+    MainActor.assumeIsolated { appDelegate.handleShortcut() }
   }
   return nil
 }
@@ -57,29 +54,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   private var stateMachine = CanvasStateMachine()
   private var lastOverviewCamera = CameraState()
   private var pendingLaunchesByBundle: [String: PendingLaunch] = [:]
+  private let closeDialogObserver = CloseDialogObserver()
+  private var closeDialogTask: Task<Void, Never>?
   private var pendingQuitSuppressions: [pid_t: PendingQuitWindowSuppression] = [:]
   private var requestedLaunchAnchors: [String: CGPoint] = [:]
   private var lastFocusedByBundle: [String: CGWindowID] = [:]
   private var appHistory = AppNavigationHistory()
   private let windowFocusObserver = WindowFocusObserver()
-  private var commandCycleActive = false
-  private var commandCycleOrigin: CGWindowID?
-  private var chronologicalOverviewReady = false
   private var overviewGeneration = 0
-  private var pendingCommandSteps: [Int] = []
-  private var commandCycleReleased = false
   private var inventoryTracker = WindowInventoryTracker()
+  private var isReconcilingWindows = false
+  private var requestedCloseIDs: Set<CGWindowID> = [] {
+    didSet { canvasView.closingWindowIDs = requestedCloseIDs }
+  }
+  private var confirmedClosedIDs: Set<CGWindowID> = []
+  private let closedWindowProbe = ClosedWindowProbe()
+  private var closeRefreshTask: Task<Void, Never>?
   private var didInitialLayout = false
   private var isReturning = false
   private var isDismissing = false
+  private var isOpeningCanvas = false
+  private var overviewReturnWindowID: CGWindowID?
+  private var overviewReturnBundleIdentifier: String?
+  private var lastActualWindowID: CGWindowID?
   private var activatedFocusWindowID: CGWindowID?
 
   private var inventoryTask: Task<Void, Never>?
   private var previewTask: Task<Void, Never>?
   private var previewScheduler = PreviewRefreshScheduler()
   private var permissionTimer: Timer?
-  private var globalKeyMonitor: Any?
+  private var globalSwipeMonitor: Any?
   private var localKeyMonitor: Any?
+  private var rightCommandTap = RightCommandTap()
+  private var rightCommandQueue = ToggleParityQueue()
+  private var chromeTabTask: Task<Void, Never>?
   private var commandTabEventTap: CFMachPort?
   private var commandTabRunLoopSource: CFRunLoopSource?
 
@@ -87,10 +95,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     buildMenu()
     buildOverlayWindow()
     configurePermissionView()
-    windowFocusObserver.onFocus = { [weak self] id in self?.canvasView.recentWindows.used(id) }
+    windowFocusObserver.onFocus = { [weak self] id in
+      self?.lastActualWindowID = id
+      self?.canvasView.recentWindows.used(id)
+    }
     canvasView.onModeChange = { [weak self] in
-      _ = self?.cancelCommandCycle()
-      self?.chronologicalOverviewReady = true
       self?.overviewGeneration += 1
     }
     observeWorkspace()
@@ -114,9 +123,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     canvasView.persistState()
     stopCanvasLoops()
     permissionTimer?.invalidate()
-    if let globalKeyMonitor { NSEvent.removeMonitor(globalKeyMonitor) }
+    OverviewShortcutController.shared.stop()
+    if let globalSwipeMonitor { NSEvent.removeMonitor(globalSwipeMonitor) }
+    globalSwipeMonitor = nil
     if let localKeyMonitor { NSEvent.removeMonitor(localKeyMonitor) }
     removeCommandTabEventTap()
+    closeDialogTask?.cancel()
     windowFocusObserver.stop()
     NSWorkspace.shared.notificationCenter.removeObserver(self)
   }
@@ -132,11 +144,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     return true
   }
 
+  func canvasViewDidCancelFocusTransition(_ canvasView: CanvasView) {
+    guard case .focusing = stateMachine.mode else { return }
+    activatedFocusWindowID = nil
+    stateMachine.returnToOverview()
+    overlayWindow.alphaValue = 1
+    overlayWindow.makeKeyAndOrderFront(nil)
+    overlayWindow.makeFirstResponder(canvasView)
+    NSApp.activate(ignoringOtherApps: true)
+    startCanvasLoops()
+    DispatchQueue.main.async { [weak self] in self?.drainRightCommandQueue() }
+  }
+
   func canvasView(_ canvasView: CanvasView, didRequestFocus node: WindowNode) {
     focus(node)
   }
 
   func canvasView(_ canvasView: CanvasView, didRequestQuit node: WindowNode) {
+    trackClosingWindows(Set(nodesByID.values.filter { $0.processID == node.processID }.map(\.id)))
+    revealCloseConfirmation(for: node.processID)
     pendingQuitSuppressions[node.processID] = PendingQuitWindowSuppression(
       knownWindowIDs: Set(nodesByID.values.lazy.filter { $0.processID == node.processID }.map(\.id)),
       deadline: Date().addingTimeInterval(5)
@@ -195,6 +221,87 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     }
   }
 
+  func canvasView(_ canvasView: CanvasView, didRequestCloseWindow id: CGWindowID) {
+    if let node = nodesByID[id] { revealCloseConfirmation(for: node.processID) }
+    trackClosingWindows([id])
+  }
+
+  private func trackClosingWindows(_ ids: Set<CGWindowID>) {
+    requestedCloseIDs.formUnion(ids)
+    closeRefreshTask?.cancel()
+    closeRefreshTask = Task { [weak self] in
+      for _ in 0..<50 {
+        guard let self, !Task.isCancelled else { return }
+        let references = requestedCloseIDs.compactMap { id -> ClosingWindowReference? in
+          guard let node = nodesByID[id], let element = node.accessibilityElement else { return nil }
+          return ClosingWindowReference(id: id, processID: node.processID, element: element)
+        }
+        let removed = await closedWindowProbe.confirmedClosed(references)
+        guard !Task.isCancelled else { return }
+        if !removed.isEmpty {
+          confirmedClosedIDs.formUnion(removed)
+          requestedCloseIDs.subtract(removed)
+          for id in removed { nodesByID[id] = nil }
+          publishNodes()
+          canvasView.applyPreviewSizePreference(fitAll: false)
+        }
+        if requestedCloseIDs.isEmpty { break }
+        try? await Task.sleep(for: .milliseconds(100))
+      }
+      guard let self, !Task.isCancelled else { return }
+      requestedCloseIDs.removeAll()
+      closeRefreshTask = nil
+    }
+  }
+
+  private func revealCloseConfirmation(for processID: pid_t) {
+    closeDialogTask?.cancel()
+    let generation = overviewGeneration
+    closeDialogTask = Task { [weak self] in
+      for _ in 0..<20 {
+        guard let self, !Task.isCancelled, generation == overviewGeneration,
+          isShowingCanvas, stateMachine.mode == .overview else { return }
+        let hasDialog = await closeDialogObserver.state(processID: processID)
+        guard !Task.isCancelled, generation == overviewGeneration,
+          isShowingCanvas, stateMachine.mode == .overview else { return }
+        if hasDialog == .present, let application = NSRunningApplication(processIdentifier: processID) {
+          overviewGeneration += 1
+          canvasView.cancelLayoutAnimation()
+          stopCanvasLoops()
+          overlayWindow.orderOut(nil)
+          application.activate(options: [])
+          let returnGeneration = overviewGeneration
+          var absentChecks = 0
+          while !Task.isCancelled {
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled, overviewGeneration == returnGeneration,
+              !isShowingCanvas else { return }
+            let running = NSRunningApplication(processIdentifier: processID)
+            let dialogState = await closeDialogObserver.state(processID: processID)
+            guard !Task.isCancelled, overviewGeneration == returnGeneration,
+              !isShowingCanvas else { return }
+            if running?.isTerminated != false {
+              absentChecks = 2
+            } else {
+              let frontmost = NSWorkspace.shared.frontmostApplication?.processIdentifier
+              guard frontmost == processID || frontmost == ProcessInfo.processInfo.processIdentifier else { return }
+              absentChecks = dialogState == .absent ? absentChecks + 1 : 0
+            }
+            if absentChecks >= 2 {
+              await reconcileWindows(allowHidden: true)
+              guard !Task.isCancelled, overviewGeneration == returnGeneration,
+                !isShowingCanvas else { return }
+              showCanvas()
+              return
+            }
+          }
+          return
+        }
+        try? await Task.sleep(for: .milliseconds(150))
+      }
+    }
+  }
+
   func canvasViewDidRequestBack(_ canvasView: CanvasView) {
     let available = Set(nodesByID.values.map(\.bundleIdentifier))
     selectHistoryTarget(appHistory.goBack(available: available))
@@ -208,22 +315,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   private func selectHistoryTarget(_ bundleIdentifier: String?) {
     updateHistoryNavigation()
     guard let bundleIdentifier, let node = preferredNode(for: bundleIdentifier) else { return }
-    canvasView.selectedWindowID = node.id
-    canvasView.animateCamera(
-      to: CameraState(
-        center: CGPoint(x: node.worldFrame.midX, y: node.worldFrame.midY),
-        zoom: canvasView.camera.zoom
-      ),
-      duration: CanvasView.selectionTransitionDuration
-    ) {}
+    canvasView.selectHistoryWindow(node.id)
   }
 
   func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool {
     configureCommandTabEventTap(enabled: enabled)
   }
 
+  func canvasView(_ canvasView: CanvasView, setRightCommandShortcut enabled: Bool) -> Bool {
+    let old = UserDefaults.standard.bool(forKey: "useRightCommandShortcut")
+    UserDefaults.standard.set(enabled, forKey: "useRightCommandShortcut")
+    let success = configureCommandTabEventTap(enabled:
+      UserDefaults.standard.bool(forKey: OpenPlanePreferences.useCommandTabShortcut))
+    if !success { UserDefaults.standard.set(old, forKey: "useRightCommandShortcut") }
+    return success
+  }
+
+  fileprivate func handleRightCommand(type: CGEventType, event: CGEvent) {
+    guard UserDefaults.standard.bool(forKey: "useRightCommandShortcut") else { return }
+    if rightCommandTap.handle(type: type,
+      keyCode: event.getIntegerValueField(.keyboardEventKeycode), flags: event.flags) {
+      DispatchQueue.main.async { [weak self] in
+        guard let self else { return }
+        rightCommandQueue.recordPress()
+        drainRightCommandQueue()
+      }
+    }
+  }
+
+  private func drainRightCommandQueue() {
+    let focusing: Bool
+    if case .focusing = stateMachine.mode { focusing = true } else { focusing = false }
+    guard rightCommandQueue.consume(isTransitioning:
+      focusing || isOpeningCanvas || isReturning || isDismissing) else { return }
+    if isShowingCanvas { returnToOverviewOrigin() }
+    else { handleShortcut() }
+  }
+
   func canvasView(_ canvasView: CanvasView, setPrivateBrowserPreviews enabled: Bool) {
-    for node in nodesByID.values where node.isPrivateBrowsing {
+    for node in nodesByID.values where node.isPrivateBrowsing
+      || BrowserPrivacy.isBrowser(bundleIdentifier: node.bundleIdentifier, applicationName: node.applicationName) {
       if enabled {
         guard node.previewState == .redacted else { continue }
         node.previewState = .loading
@@ -265,6 +396,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     appMenu.addItem(quitItem)
     appItem.submenu = appMenu
     mainMenu.addItem(appItem)
+    let editItem = NSMenuItem()
+    editItem.title = "Edit"
+    let editMenu = NSMenu(title: "Edit")
+    for (title, action, key) in [("Cut", "cut:", "x"), ("Copy", "copy:", "c"),
+      ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a")] {
+      editMenu.addItem(NSMenuItem(title: title, action: NSSelectorFromString(action), keyEquivalent: key))
+    }
+    editItem.submenu = editMenu
+    mainMenu.addItem(editItem)
     NSApp.mainMenu = mainMenu
   }
 
@@ -403,39 +543,82 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     overlayWindow.setFrame(mainScreen.frame, display: true)
   }
 
+  private func rememberOverviewOrigin() {
+    let application = NSWorkspace.shared.frontmostApplication
+    if let application, application.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+      overviewReturnBundleIdentifier = application.bundleIdentifier
+      overviewReturnWindowID = windowService.frontmostWindowID(among:
+        nodesByID.values.filter { $0.processID == application.processIdentifier })
+    } else if let id = lastActualWindowID, let node = nodesByID[id] {
+      overviewReturnWindowID = id
+      overviewReturnBundleIdentifier = node.bundleIdentifier
+    }
+  }
+
+  func canvasViewDidRequestReturnToOrigin(_ canvasView: CanvasView) {
+    returnToOverviewOrigin()
+  }
+
+  private func returnToOverviewOrigin() {
+    guard isShowingCanvas, stateMachine.mode == .overview else { return }
+    let target = overviewReturnWindowID.flatMap { nodesByID[$0] }
+      ?? overviewReturnBundleIdentifier.flatMap { preferredNode(for: $0) }
+    guard let target else {
+      canvasView.statusMessage = "The previous window is no longer open"
+      return
+    }
+    canvasView.cancelLayoutAnimation()
+    canvasView.dismissSearch()
+    focus(target, recordInHistory: false)
+  }
+
   private func showCanvas() {
+    guard !isOpeningCanvas else { return }
     guard permissionState.requiredAccessGranted else {
       showPermissions()
       return
     }
     permissionTimer?.invalidate()
-    if canvasView.isChronological {
+    if !isShowingCanvas { rememberOverviewOrigin() }
+    if canvasView.usesAutomaticLayout {
+      if isShowingCanvas {
+        overlayWindow.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        return
+      }
       windowFocusObserver.recordFrontmost()
-      if commandCycleActive && !pendingCommandSteps.isEmpty && !chronologicalOverviewReady { return }
+      isOpeningCanvas = true
+      overviewGeneration += 1
+      let generation = overviewGeneration
       configureWindowForCanvas()
       overlayWindow.contentView = workspaceView
       canvasView.closeCatalog()
-      canvasView.restoreChronologicalCamera()
-      canvasView.endFocusTransition()
+      canvasView.cancelLayoutAnimation()
       stateMachine.returnToOverview()
-      overlayWindow.alphaValue = 1
-      overlayWindow.makeKeyAndOrderFront(nil)
-      NSApp.activate(ignoringOtherApps: true)
-      chronologicalOverviewReady = false
-      overviewGeneration += 1
-      let generation = overviewGeneration
       Task { [weak self] in
         guard let self else { return }
-        await self.reconcileWindows()
-        guard self.isShowingCanvas, self.canvasView.isChronological, self.overviewGeneration == generation else { return }
-        self.canvasView.prepareChronologicalOverview()
-        self.chronologicalOverviewReady = true
-        for step in self.pendingCommandSteps {
-          self.canvasView.stepRecent(by: step, wrapping: true, windowsOnly: true)
-        }
-        self.pendingCommandSteps.removeAll()
-        self.startCanvasLoops()
-        if self.commandCycleReleased { self.finishCommandCycle() }
+        await reconcileWindows(allowHidden: true)
+        guard overviewGeneration == generation, isOpeningCanvas else { return }
+        canvasView.prepareChronologicalOverview()
+        let desktopTop = NSScreen.screens.first?.frame.maxY ?? mainScreen.frame.maxY
+        let starts = Dictionary(uniqueKeysWithValues: nodesByID.values.map { node in
+          (node.id, CGRect(x: node.sourceFrame.minX - mainScreen.frame.minX,
+            y: desktopTop - node.sourceFrame.maxY - mainScreen.frame.minY,
+            width: node.sourceFrame.width, height: node.sourceFrame.height))
+        })
+        canvasView.layoutSubtreeIfNeeded()
+        let frontToBack = (CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements],
+          kCGNullWindowID) as? [[String: Any]] ?? []).compactMap {
+            ($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value
+          }.filter { starts[$0] != nil }
+        canvasView.animateOverviewEntry(from: starts, frontToBack: frontToBack,
+          duration: OpenPlanePreferences.transitionDuration(0.45))
+        overlayWindow.alphaValue = 1
+        overlayWindow.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        isOpeningCanvas = false
+        startCanvasLoops()
+        drainRightCommandQueue()
       }
       return
     }
@@ -455,8 +638,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   private func dismissCanvas() {
+    if isOpeningCanvas {
+      overviewGeneration += 1
+      isOpeningCanvas = false
+      drainRightCommandQueue()
+      return
+    }
     guard isShowingCanvas, !isDismissing else { return }
-    _ = cancelCommandCycle()
     overviewGeneration += 1
     canvasView.dismissSettings()
     isDismissing = true
@@ -472,6 +660,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
         self.overlayWindow.alphaValue = 1
         self.isDismissing = false
         NSApp.hide(nil)
+        self.drainRightCommandQueue()
       }
     }
   }
@@ -495,7 +684,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
             let preview = try await windowService.capture(window: node.captureWindow)
             applyFreshPreview(preview, to: node)
           } catch WindowCaptureError.privateBrowsing {
-            node.isPrivateBrowsing = true
             redactPrivatePreview(node)
           } catch {
             node.previewState = .failed
@@ -513,12 +701,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       overlayWindow.alphaValue = 1
       overlayWindow.makeKeyAndOrderFront(nil)
       NSApp.activate(ignoringOtherApps: true)
-      canvasView.animateCamera(to: target) { [weak self] in
+      canvasView.animateCamera(to: target, duration: OpenPlanePreferences.transitionDuration(0.35)) { [weak self] in
         guard let self else { return }
         stateMachine.returnToOverview()
         lastOverviewCamera = target
         startCanvasLoops()
         isReturning = false
+        drainRightCommandQueue()
       }
     }
   }
@@ -538,6 +727,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       overlayWindow.orderOut(nil)
       windowService.activate(node)
       stateMachine.completeFocus(on: node.id)
+      drainRightCommandQueue()
       return
     }
 
@@ -553,8 +743,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
         )
       )
     // Keep the real window fully covered until the preview reaches its exact frame.
-    // The final 250 ms then crossfade two already aligned representations.
-    let duration: TimeInterval = 0.6
+    // The final phase crossfades two already aligned representations.
+    let duration = OpenPlanePreferences.transitionDuration(0.6)
     let cameraCompletionFraction: CGFloat = 7 / 12
     let activationLeadFraction: CGFloat = 0.04
     overlayWindow.alphaValue = 1
@@ -577,16 +767,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
           handoffStart: cameraCompletionFraction
         )
       }
-    ) { [weak self, weak node] in
-      guard let self, let node else { return }
+    ) { [weak self, node] in
+      guard let self else { return }
       if activatedFocusWindowID != node.id {
         windowService.activate(node)
       }
       activatedFocusWindowID = nil
       overlayWindow.orderOut(nil)
       overlayWindow.alphaValue = 1
-      canvasView.endFocusTransition()
+      canvasView.endFocusTransition(completed: true)
       stateMachine.completeFocus(on: node.id)
+      drainRightCommandQueue()
     }
   }
 
@@ -614,6 +805,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
         try? await Task.sleep(for: .seconds(1))
       }
     }
+    chromeTabTask = Task { [weak self] in
+      while !Task.isCancelled {
+        await self?.refreshChromeTabCounts()
+        try? await Task.sleep(for: .seconds(2))
+      }
+    }
     previewTask = Task { [weak self] in
       while !Task.isCancelled {
         await self?.refreshVisiblePreviews()
@@ -624,17 +821,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
 
   private func stopCanvasLoops() {
     inventoryTask?.cancel()
+    chromeTabTask?.cancel()
+    chromeTabTask = nil
     previewTask?.cancel()
     inventoryTask = nil
     previewTask = nil
   }
 
-  private func reconcileWindows() async {
-    guard overlayWindow.isVisible, overlayWindow.contentView === workspaceView else { return }
-    guard !canvasView.defersBackgroundWork else { return }
+  private func refreshChromeTabCounts() async {
+    guard UserDefaults.standard.bool(forKey: ChromeTabCounter.preferenceKey) else { return }
+    guard NSRunningApplication.runningApplications(withBundleIdentifier: "com.google.Chrome").count == 1
+    else { canvasView.chromeTabCounts = [:]; return }
+    let result = await ChromeTabCounter.shared.read()
+    guard !Task.isCancelled,
+      UserDefaults.standard.bool(forKey: ChromeTabCounter.preferenceKey) else { return }
+    var counts: [CGWindowID: Int] = [:]
+    if let result {
+      for node in nodesByID.values where node.bundleIdentifier == "com.google.Chrome" {
+        counts[node.id] = ChromeTabWindow.count(for: node.title, frame: node.sourceFrame, in: result)
+      }
+    } else {
+      canvasView.statusMessage = "Chrome tab count unavailable. Check Chrome’s Automation permission in System Settings."
+    }
+    canvasView.chromeTabCounts = counts
+  }
+
+  private func reconcileWindows(allowHidden: Bool = false) async {
+    guard (allowHidden || overlayWindow.isVisible), overlayWindow.contentView === workspaceView else { return }
+    guard !isReconcilingWindows, !canvasView.defersBackgroundWork || !requestedCloseIDs.isEmpty else { return }
+    isReconcilingWindows = true
+    defer { isReconcilingWindows = false }
     do {
       let allDiscovered = try await windowService.discover(on: mainScreen)
-      guard !Task.isCancelled, !canvasView.defersBackgroundWork else { return }
+      guard !Task.isCancelled, !canvasView.defersBackgroundWork || !requestedCloseIDs.isEmpty else { return }
       let now = Date()
       for (processID, var suppression) in pendingQuitSuppressions {
         let currentWindowIDs = Set(
@@ -646,20 +865,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
           pendingQuitSuppressions[processID] = nil
         }
       }
+      confirmedClosedIDs.formIntersection(Set(allDiscovered.map(\.id)))
       let discovered = allDiscovered.filter { item in
-        pendingQuitSuppressions[item.processID]?.allows(item.id) ?? true
+        !confirmedClosedIDs.contains(item.id) && (pendingQuitSuppressions[item.processID]?.allows(item.id) ?? true)
       }
       let discoveredIDs = Set(discovered.map(\.id))
       let previousIDs = Set(nodesByID.keys)
       let potentiallyMissingIDs = previousIDs.subtracting(discoveredIDs)
       let existingIDs = potentiallyMissingIDs.isEmpty
         ? Set<CGWindowID>() : await windowService.existingWindowIDs()
-      guard !Task.isCancelled, !canvasView.defersBackgroundWork else { return }
+      guard !Task.isCancelled, !canvasView.defersBackgroundWork || !requestedCloseIDs.isEmpty else { return }
       let change = inventoryTracker.change(
         previous: previousIDs,
         current: discoveredIDs,
-        existing: existingIDs
+        existing: existingIDs,
+        requestedCloseIDs: requestedCloseIDs
       )
+      requestedCloseIDs.subtract(change.removed)
       nodesByID = nodesByID.filter { !change.removed.contains($0.key) }
 
       var newWindows: [DiscoveredWindow] = []
@@ -875,6 +1097,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   private func capturePreviews(_ nodes: [WindowNode]) async -> Bool {
     var didChange = false
     for node in nodes where !Task.isCancelled {
+      guard !requestedCloseIDs.contains(node.id), nodesByID[node.id] === node else { continue }
       guard !canvasView.defersBackgroundWork else { break }
       if shouldRedactPrivatePreview(node) {
         redactPrivatePreview(node)
@@ -885,7 +1108,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       let previousState = node.previewState
       let loadingIndicatorTask = Task { [weak self, weak node] in
         try? await Task.sleep(for: .milliseconds(250))
-        guard !Task.isCancelled, let self, let node else { return }
+        guard !Task.isCancelled, let self, let node,
+          !self.requestedCloseIDs.contains(node.id), self.nodesByID[node.id] === node else { return }
         node.previewState = .loading
         canvasView.setNeedsDisplay(for: [node.id])
       }
@@ -895,6 +1119,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
           targetLongEdgePixels: canvasView.previewPixelLength(for: node)
         )
         loadingIndicatorTask.cancel()
+        guard !requestedCloseIDs.contains(node.id), nodesByID[node.id] === node else { continue }
         guard !canvasView.defersBackgroundWork else {
           node.previewState = previousState
           continue
@@ -902,10 +1127,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
         applyFreshPreview(preview, to: node)
       } catch WindowCaptureError.privateBrowsing {
         loadingIndicatorTask.cancel()
-        node.isPrivateBrowsing = true
         redactPrivatePreview(node)
       } catch {
         loadingIndicatorTask.cancel()
+        guard !requestedCloseIDs.contains(node.id), nodesByID[node.id] === node else { continue }
         if shouldRedactPrivatePreview(node) {
           redactPrivatePreview(node)
         } else {
@@ -918,11 +1143,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   private func makeNode(for item: DiscoveredWindow, worldFrame: CGRect) async -> WindowNode {
-    if item.isPrivateBrowsing && protectsPrivateBrowserPreviews {
+    if BrowserPrivacy.shouldSuppressPreview(bundleIdentifier: item.bundleIdentifier,
+      applicationName: item.applicationName, isPrivateBrowsing: item.isPrivateBrowsing,
+      allowsPrivatePreviews: !protectsPrivateBrowserPreviews) {
       await previewCache.remove(windowID: item.id, bundleIdentifier: item.bundleIdentifier)
       let node = WindowNode(discovered: item, worldFrame: worldFrame)
       node.previewState = .redacted
       return node
+    }
+    if item.isPrivateBrowsing || BrowserPrivacy.isBrowser(bundleIdentifier: item.bundleIdentifier,
+      applicationName: item.applicationName) {
+      return WindowNode(discovered: item, worldFrame: worldFrame)
     }
     let data = await previewCache.loadData(
       windowID: item.id,
@@ -936,6 +1167,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   private func applyFreshPreview(_ preview: CapturedPreview, to node: WindowNode) {
+    guard !requestedCloseIDs.contains(node.id), nodesByID[node.id] === node else { return }
     guard !shouldRedactPrivatePreview(node) else {
       redactPrivatePreview(node)
       return
@@ -946,6 +1178,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     )
     node.previewState = .current
 
+    guard !node.isPrivateBrowsing,
+      !BrowserPrivacy.isBrowser(bundleIdentifier: node.bundleIdentifier, applicationName: node.applicationName)
+    else { return }
     let now = Date()
     guard
       node.lastPreviewCacheWrite.map({ now.timeIntervalSince($0) >= 60 }) ?? true
@@ -968,7 +1203,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   private func shouldRedactPrivatePreview(_ node: WindowNode) -> Bool {
-    protectsPrivateBrowserPreviews && node.isPrivateBrowsing
+    BrowserPrivacy.shouldSuppressPreview(bundleIdentifier: node.bundleIdentifier,
+      applicationName: node.applicationName, isPrivateBrowsing: node.isPrivateBrowsing,
+      allowsPrivatePreviews: !protectsPrivateBrowserPreviews)
   }
 
   private func redactPrivatePreview(_ node: WindowNode) {
@@ -1128,26 +1365,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   private func installShortcut() {
-    if let globalKeyMonitor { NSEvent.removeMonitor(globalKeyMonitor) }
+    OverviewShortcutController.shared.stop()
+    if let globalSwipeMonitor { NSEvent.removeMonitor(globalSwipeMonitor) }
+    globalSwipeMonitor = nil
     if let localKeyMonitor { NSEvent.removeMonitor(localKeyMonitor) }
-    localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) {
+    localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .swipe]) {
       [weak self] event in
+      if event.type == .swipe {
+        let handled = MainActor.assumeIsolated { self?.handleOverviewSwipe(event) ?? false }
+        return handled ? nil : event
+      }
+      if let recorder = event.window?.firstResponder as? OverviewShortcutRecorder,
+        recorder.isRecording {
+        if event.type == .keyDown { recorder.keyDown(with: event) }
+        return nil
+      }
       if event.type == .keyUp {
         let handled = MainActor.assumeIsolated {
           self?.isShowingCanvas == true && self?.canvasView.handleNavigationKeyUp(event) == true
         }
         return handled ? nil : event
       }
-      if Self.isCanvasShortcut(event) {
-        MainActor.assumeIsolated { self?.handleShortcut() }
-        return nil
-      }
+      if self?.isShowingCanvas == true, self?.canvasView.handleInterfaceKey(event) == true { return nil }
       if event.keyCode == 53 {
         let dismissed = MainActor.assumeIsolated {
           guard self?.isShowingCanvas == true else { return false }
           if self?.canvasView.dismissSearch() == true { return true }
-          if self?.canvasView.closeCatalog() == true { return true }
+          if self?.canvasView.navigateBackInSettings() == true { return true }
           if self?.canvasView.dismissSettings() == true { return true }
+          if self?.canvasView.closeCatalog() == true { return true }
           if self?.canvasView.dismissDesktopTitleEditing() == true { return true }
           self?.dismissCanvas()
           return true
@@ -1160,9 +1406,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       if navigated { return nil }
       return event
     }
-    globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-      guard Self.isCanvasShortcut(event) else { return }
-      Task { @MainActor in self?.handleShortcut() }
+    globalSwipeMonitor = NSEvent.addGlobalMonitorForEvents(matching: .swipe) { [weak self] event in
+      MainActor.assumeIsolated { _ = self?.handleOverviewSwipe(event) }
+    }
+    OverviewShortcutController.shared.onActivate = { [weak self] in self?.handleShortcut() }
+    if !OverviewShortcutController.shared.start() {
+      canvasView.statusMessage = "Overview shortcut is unavailable. Choose another in Settings."
     }
     _ = configureCommandTabEventTap(
       enabled: UserDefaults.standard.bool(forKey: OpenPlanePreferences.useCommandTabShortcut)
@@ -1170,13 +1419,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   private func configureCommandTabEventTap(enabled: Bool) -> Bool {
-    if !enabled { _ = cancelCommandCycle() }
     removeCommandTabEventTap()
-    guard enabled else { return true }
+    guard enabled || UserDefaults.standard.bool(forKey: "useRightCommandShortcut") else { return true }
 
     let eventMask = CGEventMask(1 << CGEventType.keyDown.rawValue)
       | CGEventMask(1 << CGEventType.keyUp.rawValue)
       | CGEventMask(1 << CGEventType.flagsChanged.rawValue)
+      | CGEventMask(1 << CGEventType.leftMouseDown.rawValue)
+      | CGEventMask(1 << CGEventType.rightMouseDown.rawValue)
+      | CGEventMask(1 << CGEventType.otherMouseDown.rawValue)
     guard
       let eventTap = CGEvent.tapCreate(
         tap: .cgSessionEventTap,
@@ -1197,6 +1448,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   private func removeCommandTabEventTap() {
+    rightCommandTap = RightCommandTap()
     if let commandTabEventTap {
       CGEvent.tapEnable(tap: commandTabEventTap, enable: false)
       CFMachPortInvalidate(commandTabEventTap)
@@ -1209,14 +1461,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   }
 
   fileprivate func reenableCommandTabEventTap() {
+    rightCommandTap = RightCommandTap()
     if let commandTabEventTap {
       CGEvent.tapEnable(tap: commandTabEventTap, enable: true)
     }
   }
 
-  nonisolated private static func isCanvasShortcut(_ event: NSEvent) -> Bool {
-    let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-    return event.keyCode == 49 && modifiers == [.control, .option]
+  private func handleOverviewSwipe(_ event: NSEvent) -> Bool {
+    guard UserDefaults.standard.bool(forKey: "swipeUpOpensOverview"),
+      !OverviewShortcutController.shared.isRecording,
+      ShortcutMatcher.isOverviewSwipe(deltaX: event.deltaX, deltaY: event.deltaY) else { return false }
+    // A trailing swipe must not replace the animation handing off to a window.
+    if case .focusing = stateMachine.mode { return true }
+    canvasView.setViewMode(.overview)
+    handleShortcut()
+    return true
   }
 
   fileprivate func handleShortcut() {
@@ -1227,49 +1486,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       break
     }
   }
-  fileprivate func handleCommandTab(backward: Bool) {
-    guard canvasView.isChronological else { handleShortcut(); return }
-    let step = backward ? -1 : 1
-    if !commandCycleActive {
-      commandCycleActive = true
-      commandCycleReleased = false
-      windowFocusObserver.recordFrontmost()
-      commandCycleOrigin = canvasView.recentWindows.history.first
-      chronologicalOverviewReady = false
-      showCanvas()
-    }
-    if chronologicalOverviewReady { canvasView.stepRecent(by: step, wrapping: true, windowsOnly: true) }
-    else { pendingCommandSteps.append(step) }
-  }
-
-  fileprivate func commandModifiersChanged(_ flags: CGEventFlags) {
-    guard commandCycleActive, !flags.contains(.maskCommand) else { return }
-    commandCycleReleased = true
-    if chronologicalOverviewReady { finishCommandCycle() }
-  }
-
-  private func finishCommandCycle() {
-    guard commandCycleActive else { return }
-    commandCycleActive = false
-    commandCycleReleased = false
-    pendingCommandSteps.removeAll()
-    guard canvasView.selectedWindowID != nil else { return }
-    canvasView.focusSelectedWindow()
-  }
-
-  fileprivate func cancelCommandCycleForEscape() -> Bool {
-    guard cancelCommandCycle() else { return false }
-    dismissCanvas()
-    return true
-  }
-
-  @discardableResult fileprivate func cancelCommandCycle() -> Bool {
-    guard commandCycleActive else { return false }
-    commandCycleActive = false
-    commandCycleReleased = false
-    pendingCommandSteps.removeAll()
-    if let id = commandCycleOrigin, nodesByID[id] != nil { canvasView.selectedWindowID = id }
-    return true
-  }
-
 }

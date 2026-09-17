@@ -1,0 +1,11 @@
+{
+  "head": "3d976d068ea1db08457d64dd71ad0f2b298248d8",
+  "source_patch_sha256": "ff364f4380a1dc733e6bad8a14b34a992e0095fdf524dfa3d72be410bc0acfd1",
+  "binary_sha256": "eebea92a8420cf6467c312f788571cbc7f50491063b55426463fe40bc4970fc3",
+  "baseline_binary_sha256": "d411044595f6037903f527822f6c2867e8aa85a06bd5a1c03efad907ca32766d",
+  "configuration": "Release",
+  "cases": [
+    "P04",
+    "P17"
+  ]
+}

@@ -1,0 +1,1 @@
+Signed Release installed, signature verified. OpenPlane AX UI available. Cmd-F attempt twice reported user changed app; re-query had unchanged Canvas focus. Stopped input to avoid competing with user. No Backspace sent and no confirmation accepted. End-to-end modal reveal NOT RUN: active user interruption.

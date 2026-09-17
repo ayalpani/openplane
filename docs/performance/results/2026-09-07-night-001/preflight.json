@@ -1,0 +1,15 @@
+{
+  "time": "2026-09-07T11:49:32.828969+00:00",
+  "commit": "3d976d068ea1db08457d64dd71ad0f2b298248d8",
+  "dirty_diff_sha256": "782bd4a965d1925cc808f156710bf6e6b345492407b61e1061eed0bd988a1d28",
+  "working_tree": " M OpenPlane/AppDelegate.swift\n M OpenPlane/CanvasModel.swift\n M OpenPlane/CanvasView.swift\n M OpenPlane/WindowService.swift\n M OpenPlaneTests/CanvasMathTests.swift\n M OpenPlaneTests/CanvasSelectionTests.swift\n M README.md\n M docs/performance/runbooks.md\n?? docs/performance/results/2026-09-07-input-lifecycle/\n?? docs/performance/results/2026-09-07-night-001/\n",
+  "session": "unlocked",
+  "lock": "available",
+  "installed_binary_sha256": "8d30f3a0a0da9100a375078a2de69b0928053d838d9ef13528d6dc760f627bc6",
+  "signature_verified": true,
+  "scheduled_trigger_time": "2026-09-07T01:04:56.492Z",
+  "status": "NOT RUN",
+  "reason": "Execution reached preflight at 13:49 Europe/Berlin, outside authorized 03:00\u201307:00 desktop-input window.",
+  "live_inputs": 0,
+  "app_or_preferences_changed": false
+}

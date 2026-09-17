@@ -1,0 +1,9 @@
+# History selection responsiveness
+
+Confirmed code defect: AppDelegate history selection bypassed followsSelection and always started camera animation, even in fixed Overview. Route Back/Forward through Canvas.selectHistoryWindow: validate target, exit catalog, cancel stale camera/focus animation, normal selection and camera-follow policy, restore first responder. Navigator mouse-up releases its interaction before dispatching the button action.
+
+Nine OverviewModeTests PASS. Expanded synthetic regression drives actual navigator mouse-down/up with a history delegate into the production Canvas selection method, then arrow selection and preview mouse-down/up activation. Fixed camera unchanged, no native flight; missing history target preserves selection. Earlier intermediate assertion expecting no background deferral was incorrect: normal pointer input intentionally defers maintenance briefly; actual subsequent input/activation assertions pass.
+
+Reported permanent lockup NOT REPRODUCED. Read-only process sample found main thread waiting for events, not a busy/deadlocked stack at observation time. No claim that every source of permanent unresponsiveness is proven fixed. Signed Release build/signature PASS, installed and restarted. AX launch confirms Overview active. Live key check interrupted by external user interaction; no further input sent. Full installed Back path not exercised because fresh process has no history fixture. No user screenshot inspected.
+
+P07/P17 full live Back/Forward/reversal/focus coverage, core smoke and baseline comparisons **NOT RUN: scheduled overnight**, source/build identity in identity.json. Same safe history fixture and measurement method, first/warm conditions. Idle/action/additional CPU and latency **NOT RUN**; calibrated observer/history fixture **BLOCKED**, follow-up [PERF-025](../../backlog.md#perf-025--view-overlay-movement-policy-and-prompt-prototype-acceptance). No performance gain claimed.

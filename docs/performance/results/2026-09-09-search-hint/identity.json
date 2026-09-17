@@ -1,0 +1,7 @@
+{
+  "head": "3d976d068ea1db08457d64dd71ad0f2b298248d8",
+  "source_patch_sha256": "a21c58b4c70ffbdcef40ce6a7f604a3105082175e9969011cf02fdaf66510606",
+  "binary_sha256": "2eff33af36d2c6622adc5e08bc1ed8356d4920a4d94cae0b405cca40991827d9",
+  "case": "P07",
+  "configuration": "signed Release"
+}

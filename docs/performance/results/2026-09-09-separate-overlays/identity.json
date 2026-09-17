@@ -1,0 +1,13 @@
+{
+  "head": "3d976d068ea1db08457d64dd71ad0f2b298248d8",
+  "source_patch_sha256": "ffc11ae1f84e2eecc0723aefa1a96d3ae202f9e4c017db490e67d324ad9a38db",
+  "baseline_binary_sha256": "647244fb8337c71589f7bd9f70ad9526239abed215e13c2e48d1252a9e1b1c79",
+  "candidate_binary_sha256": "f6dd43e39eef166448dd594aa3afba902298e33196c06a5135e2ac96c4a8a786",
+  "cases": [
+    "P04",
+    "P07",
+    "P15",
+    "P20"
+  ],
+  "configuration": "signed Release"
+}

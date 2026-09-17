@@ -1,0 +1,1 @@
+Installed signed Release AX: Overview selected initially; click All apps selects catalog. No Back button exposed. Click Overview returns to initial window selection. No user screenshots inspected.

@@ -1,0 +1,20 @@
+{
+  "timestamp_utc": "2026-09-09T09:32:00.179296+00:00",
+  "trigger_utc": "2026-09-09T09:16:24.102Z",
+  "status": "NOT RUN",
+  "reason": "Outside authorized 03:00\u201307:00 Europe/Berlin input window; execution at 11:16 local.",
+  "commit": "3d976d068ea1db08457d64dd71ad0f2b298248d8",
+  "dirty_diff_sha256": "4448b8ba43c20c72024acdfcd762223bcd1879b7ba731e15b56073a51398afe3",
+  "installed_binary_sha256": "5e2549b711ba27ee63a0c35436701b66c7adc3eca33cfe4381a6562f6d2d69a5",
+  "signature_verified": true,
+  "live_inputs": 0,
+  "app_or_preferences_changed": false,
+  "session_and_permissions": "NOT RUN: time gate already failed",
+  "lock": "NOT ACQUIRED: no live work",
+  "cpu_idle": null,
+  "cpu_action": null,
+  "cpu_additional": null,
+  "latency": null,
+  "frames": null,
+  "completed_actions": 0
+}

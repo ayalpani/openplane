@@ -1,0 +1,8 @@
+Final installed Release, AX-only check under exclusive live-test lease.
+Startup Settings: Overview selected; Camera follows selection 0; Private browser previews 0.
+Switch Chronological: mode selected, camera-follow checkbox 1.
+Switch Overview: mode selected, camera-follow checkbox 0.
+Close Settings, Left: selection header changed from ChatGPT to Telegram.
+Tab: selection header changed from Telegram to ChatGPT.
+No screenshot of user windows requested or viewed. Camera stationarity is asserted
+with synthetic-window tests, not inferred from the AX header.

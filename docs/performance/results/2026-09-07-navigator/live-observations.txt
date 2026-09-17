@@ -1,0 +1,9 @@
+Signed /Applications Release. Screen geometry only, no screenshot capture/view:
+1728x1117, visibleFrame=(0,80,1728,1004). Saved baseline panel=(1404,12).
+New clamp places compact panel at (1404,104), 24 points above Dock.
+AX-only Fit all/Right: controls remained accessible, no selection change observed.
+First drag attempt rejected by CUA stale app state; subsequent raw-point attempt
+failed windowNotFoundAtPosition due to CUA coordinate scaling; neither a pass.
+After correcting that mapping, native CUA header drag changed persisted position
+to (1305.098999023438,204.35546875). Reverse drag restored (1404,104).
+Settings unchanged, except corrected safe panel position is now persisted.

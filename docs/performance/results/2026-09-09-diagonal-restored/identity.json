@@ -1,0 +1,12 @@
+{
+  "head": "3d976d068ea1db08457d64dd71ad0f2b298248d8",
+  "source_patch_sha256": "0ac30c5122e8a7cae3d23334dc1d60195db3c5b6cdd643a60aa8da5c85a5d537",
+  "binary_sha256": "d3f9b8bfd7dd6e2c733e8c23fc7507505e01571beabeb052586e406d412298c1",
+  "baseline_binary_sha256": "c8575ff3f1c5e44993bdd87c54e61b02e2390d7703e698ad334892ed7406d2e2",
+  "restored_source": "2026-09-09-stack-exit/source.patch plus caption visibility fix",
+  "configuration": "signed Release installed",
+  "cases": [
+    "P04",
+    "P20"
+  ]
+}

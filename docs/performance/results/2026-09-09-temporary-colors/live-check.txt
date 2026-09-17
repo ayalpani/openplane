@@ -1,0 +1,1 @@
+Installed signed Release; codesign --verify --deep --strict passed. AX-only check; no live screenshots. Initial Black/0.88, White/0.58. Cmd-Shift-T then Space -> text White. Space -> Black. Tab Left -> opacity 0.87 and label 87%. Right -> 0.88. Escape returned Canvas. Click Background -> Black; click again -> White. Original values restored.

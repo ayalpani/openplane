@@ -1,0 +1,8 @@
+{
+  "head": "3d976d068ea1db08457d64dd71ad0f2b298248d8",
+  "source_patch_sha256": "8593b0841f6ffcc241966934e1d729c9f107577582e10570f04744b11d867676",
+  "binary_sha256": "5a71f81d32922ee56db68a50d3d1008dfe41d4fd5884e82a5190372c9f653767",
+  "baseline_binary_sha256": "eebea92a8420cf6467c312f788571cbc7f50491063b55426463fe40bc4970fc3",
+  "configuration": "Release",
+  "signature": "codesign --verify --deep --strict PASS"
+}

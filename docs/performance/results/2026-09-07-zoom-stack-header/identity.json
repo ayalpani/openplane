@@ -1,0 +1,7 @@
+{
+  "head": "3d976d068ea1db08457d64dd71ad0f2b298248d8",
+  "patch_sha256": "ee7fc596bd2377ba39ffacd02477321ba1cbe63ab448ec9ba36625675c3a4470",
+  "installed_sha256": "2bd5de9a3476ae70e5ed4234d0ed940bc02d9e6f8995800024607d3e83a67bc6",
+  "baseline_sha256": "46a6f0a1080c76a3403fe4e33b38a1067ae6a65467a82d6b4feb3eb92181166b",
+  "configuration": "signed Release"
+}

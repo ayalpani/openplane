@@ -12,6 +12,10 @@ final class CanvasSelectionTests: XCTestCase {
   private func withCanvas(_ check: (CanvasView, SelectionDelegate) throws -> Void) throws {
     let defaults = UserDefaults.standard
     let previous = defaults.object(forKey: "desktopPages")
+    let previousMode = defaults.object(forKey: "viewMode")
+    let previousChronological = defaults.object(forKey: "chronologicalMode")
+    defaults.set("canvas", forKey: "viewMode")
+    defaults.set(false, forKey: "chronologicalMode")
     let placements = bundles.enumerated().map { index, bundle in
       AppPlacement(
         bundleIdentifier: bundle, applicationName: bundle,
@@ -30,8 +34,87 @@ final class CanvasSelectionTests: XCTestCase {
     defer {
       NSObject.cancelPreviousPerformRequests(withTarget: canvas)
       defaults.set(previous, forKey: "desktopPages")
+      defaults.set(previousMode, forKey: "viewMode")
+      defaults.set(previousChronological, forKey: "chronologicalMode")
     }
     try check(canvas, delegate)
+  }
+
+  func testQReturnsToOriginWithoutActivatingSelectionOrRepeating() throws {
+    try withCanvas { canvas, delegate in
+      func key(_ code: UInt16, repeatKey: Bool = false) -> NSEvent {
+        NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 1,
+          windowNumber: 0, context: nil, characters: "q", charactersIgnoringModifiers: "q",
+          isARepeat: repeatKey, keyCode: code)!
+      }
+      XCTAssertTrue(canvas.handleNavigationKey(key(124)))
+      XCTAssertTrue(canvas.handleNavigationKey(key(12)))
+      XCTAssertEqual(delegate.originReturns, 1)
+      XCTAssertTrue(delegate.launched.isEmpty)
+      XCTAssertTrue(canvas.handleNavigationKey(key(12, repeatKey: true)))
+      XCTAssertEqual(delegate.originReturns, 1)
+      let search = try XCTUnwrap(canvas.subviews.compactMap { $0 as? NSTextField }.first {
+        $0.action == NSSelectorFromString("openSearchResult:")
+      })
+      search.stringValue = "q"
+      canvas.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: search))
+      XCTAssertFalse(canvas.handleNavigationKey(key(12)))
+      XCTAssertEqual(delegate.originReturns, 1)
+    }
+  }
+
+  func testInterruptedFocusTransitionNotifiesOnceAndNormalCompletionDoesNot() throws {
+    try withCanvas { canvas, delegate in
+      var staleCompletion = false
+      canvas.animateCamera(to: canvas.camera, isolating: 123, duration: 10) { staleCompletion = true }
+      canvas.cancelLayoutAnimation()
+      XCTAssertEqual(delegate.cancelledFocusTransitions, 1)
+      XCTAssertFalse(staleCompletion, "Cancellation must not activate the abandoned target")
+      canvas.cancelLayoutAnimation()
+      XCTAssertEqual(delegate.cancelledFocusTransitions, 1)
+      canvas.animateCamera(to: canvas.camera, isolating: 123, duration: 10) {}
+      canvas.animateCamera(to: canvas.camera, duration: 10) {}
+      XCTAssertEqual(delegate.cancelledFocusTransitions, 2, "Replacing focus with layout must release the focus state")
+      canvas.cancelLayoutAnimation()
+      canvas.animateCamera(to: canvas.camera, isolating: 123, duration: 10) {}
+      canvas.endFocusTransition(completed: true)
+      canvas.cancelLayoutAnimation()
+      XCTAssertEqual(delegate.cancelledFocusTransitions, 2)
+    }
+  }
+
+  func testMiniMapViewportTracksPresentedCameraDuringTravel() throws {
+    let defaults = UserDefaults.standard
+    let mode = defaults.object(forKey: "viewMode")
+    defaults.set("canvas", forKey: "viewMode")
+    defer { defaults.set(mode, forKey: "viewMode") }
+    try withCanvas { canvas, _ in
+      let host = NSWindow(contentRect: canvas.bounds, styleMask: [.borderless], backing: .buffered, defer: false)
+      host.contentView = canvas
+      host.orderFront(nil)
+      defer { canvas.cancelLayoutAnimation(); host.orderOut(nil) }
+      canvas.layoutSubtreeIfNeeded()
+      canvas.synchronizeScene()
+      RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+      canvas.camera = CameraState(center: .zero, zoom: 0.45)
+      let cases = [CameraState(center: CGPoint(x: 8000, y: 3000), zoom: 0.45),
+        CameraState(center: CGPoint(x: -2000, y: -1000), zoom: 0.2),
+        CameraState(center: CGPoint(x: 3000, y: 800), zoom: 0.6)]
+      for target in cases {
+      canvas.animateCamera(to: target, duration: 0.8) {}
+      for _ in 0..<6 {
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        let main = try XCTUnwrap(canvas.cameraLayer.presentation()).affineTransform()
+        let map = try XCTUnwrap(canvas.miniMapContent.presentation()).affineTransform()
+        let actual = try XCTUnwrap(canvas.miniMapViewport.presentation()?.path).boundingBoxOfPath
+        let expected = canvas.bounds.applying(main.inverted()).applying(map)
+        let error = max(abs(actual.minX - expected.minX), abs(actual.minY - expected.minY),
+          abs(actual.maxX - expected.maxX), abs(actual.maxY - expected.maxY))
+        print("MINIMAP_SYNC zoom=\(target.zoom) error_pt=\(error)")
+        XCTAssertLessThan(error, 0.5)
+      }
+      }
+    }
   }
 
   func testCameraTranslationReusesCardContents() throws {
@@ -73,6 +156,25 @@ final class CanvasSelectionTests: XCTestCase {
       XCTAssertEqual(saved.selectedPage.camera, canvas.camera)
       canvas.camera.center.x += 1
       XCTAssertEqual(canvas.cameraMaintenanceStarts, 2)
+    }
+  }
+
+  func testArrowReleaseDoesNotAdvanceSelectionAgain() throws {
+    try withCanvas { canvas, delegate in
+      func key(_ type: NSEvent.EventType, _ code: UInt16) -> NSEvent {
+        NSEvent.keyEvent(with: type, location: .zero, modifierFlags: [], timestamp: 1,
+          windowNumber: 0, context: nil, characters: "", charactersIgnoringModifiers: "",
+          isARepeat: false, keyCode: code)!
+      }
+      XCTAssertTrue(canvas.handleNavigationKey(key(.keyDown, 124))) // nearest: TextEdit
+      XCTAssertFalse(canvas.handleNavigationKey(key(.keyUp, 124)))
+      XCTAssertFalse(canvas.handleNavigationKeyUp(key(.keyUp, 124)))
+      canvas.focusSelectedWindow()
+      XCTAssertEqual(delegate.launched, [bundles[1]])
+      XCTAssertTrue(canvas.handleNavigationKey(key(.keyDown, 124))) // next: Preview
+      XCTAssertFalse(canvas.handleNavigationKey(key(.keyUp, 124)))
+      canvas.focusSelectedWindow()
+      XCTAssertEqual(delegate.launched, [bundles[1], bundles[2]])
     }
   }
 
@@ -1022,7 +1124,11 @@ final class DesktopTabTests: XCTestCase {
 
 @MainActor
 private final class SelectionDelegate: CanvasViewDelegate {
+  var originReturns = 0
+  func canvasViewDidRequestReturnToOrigin(_ canvasView: CanvasView) { originReturns += 1 }
   var launched: [String] = []
+  var cancelledFocusTransitions = 0
+  func canvasViewDidCancelFocusTransition(_ canvasView: CanvasView) { cancelledFocusTransitions += 1 }
   func canvasView(_ canvasView: CanvasView, didRequestFocus node: WindowNode) {
     XCTFail("Selection must not activate a window")
   }

@@ -308,9 +308,9 @@ final class CanvasMathTests: XCTestCase {
   }
 
   func testBackspaceQuitsOnlyOncePerKeyPress() {
-    XCTAssertTrue(ShortcutMatcher.isPlaneQuit(keyCode: 51, isRepeat: false))
-    XCTAssertFalse(ShortcutMatcher.isPlaneQuit(keyCode: 51, isRepeat: true))
-    XCTAssertFalse(ShortcutMatcher.isPlaneQuit(keyCode: 117, isRepeat: false))
+    XCTAssertTrue(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: false))
+    XCTAssertFalse(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: true))
+    XCTAssertFalse(ShortcutMatcher.isPlaneBackspace(keyCode: 117, isRepeat: false))
   }
 
   func testPendingPlaceholderLaunchIgnoresAnotherActivatedApplication() {
@@ -581,6 +581,13 @@ final class CanvasMathTests: XCTestCase {
       bundleIdentifier: "com.example.app"
     )
     XCTAssertNotNil(cachedData.flatMap(NSImage.init(data:)))
+    await cache.store(image: cgImage, windowID: 43, bundleIdentifier: "com.google.Chrome")
+    let browserData = await cache.loadData(windowID: 43, bundleIdentifier: "com.google.Chrome")
+    XCTAssertNil(browserData)
+    let legacy = directory.appendingPathComponent("com.google.Chrome-44.jpg")
+    try Data("synthetic legacy cache".utf8).write(to: legacy)
+    _ = PreviewCache(directoryURL: directory)
+    XCTAssertFalse(FileManager.default.fileExists(atPath: legacy.path))
   }
 
   func testCoordinateRoundTrip() {
@@ -957,6 +964,13 @@ final class CanvasMathTests: XCTestCase {
     XCTAssertEqual(state.mode, .overview)
   }
 
+  func testRequestedCloseRemovesOnlyAfterWindowIsActuallyGone() {
+    var tracker = WindowInventoryTracker()
+    XCTAssertTrue(tracker.change(previous: [1, 2], current: [1, 2], existing: [1, 2], requestedCloseIDs: [1]).removed.isEmpty)
+    XCTAssertTrue(tracker.change(previous: [1, 2], current: [2], existing: [1], requestedCloseIDs: [1]).removed.isEmpty)
+    XCTAssertEqual(tracker.change(previous: [1, 2], current: [2], existing: [], requestedCloseIDs: [1]).removed, [1])
+  }
+
   func testInventoryTrackerWaitsForThreeMissesAndRestoresTransientWindows() {
     var tracker = WindowInventoryTracker()
     let previous: Set<CGWindowID> = [1, 2, 3]
@@ -1023,8 +1037,19 @@ final class CanvasMathTests: XCTestCase {
     XCTAssertEqual(PreviewState.failed.toolTip(hasPreview: false), "Preview unavailable.")
     XCTAssertEqual(
       PreviewState.redacted.toolTip(hasPreview: false),
-      "Preview hidden for a private browsing window."
+      "Browser preview hidden because non-private mode cannot be verified."
     )
+  }
+
+  func testBrowserPreviewsIgnoreRemovedPrivacyPreference() {
+    for browser in ["com.google.Chrome", "com.apple.Safari", "org.mozilla.firefox", "com.microsoft.edgemac", "company.thebrowser.Browser"] {
+      XCTAssertFalse(BrowserPrivacy.shouldSuppressPreview(bundleIdentifier: browser,
+        applicationName: "", isPrivateBrowsing: true, allowsPrivatePreviews: false))
+      XCTAssertFalse(BrowserPrivacy.shouldSuppressPreview(bundleIdentifier: browser,
+        applicationName: "", allowsPrivatePreviews: true))
+    }
+    XCTAssertFalse(BrowserPrivacy.shouldSuppressPreview(bundleIdentifier: "com.apple.TextEdit",
+      applicationName: "TextEdit", allowsPrivatePreviews: false))
   }
 
   func testPrivateBrowserWindowsAreDetectedWithoutRedactingUnrelatedApps() {
@@ -1304,13 +1329,43 @@ final class RecentWindowOrderTests: XCTestCase {
     XCTAssertEqual(order.visible, [2, 1])
   }
 
+  func testApplicationGridUsesWidthAndRowMajorOrder() {
+    let frames = CanvasMath.applicationGridFrames(count: 20, viewport: CGSize(width: 1200, height: 800))
+    XCTAssertEqual(frames.count, 20)
+    XCTAssertEqual(frames[0].minY, frames[7].minY)
+    XCTAssertGreaterThan(frames[7].minX, frames[0].minX)
+    XCTAssertLessThan(frames[8].minY, frames[0].minY)
+    XCTAssertEqual(frames[8].minX, frames[0].minX)
+    XCTAssertTrue(frames.allSatisfy { $0.minX >= -600 && $0.maxX <= 600 })
+  }
+
+  func testCatalogZoomKeepsIconsAndMinimumGap() {
+    for zoom: CGFloat in [0.06, 0.3, 0.55, 0.7, 1, 1.25] {
+      let metrics = CanvasMath.applicationTileMetrics(zoom: zoom)
+      XCTAssertGreaterThanOrEqual(metrics.icon, 40)
+      if zoom <= 0.55 { XCTAssertEqual(metrics.caption, 0) }
+      let frames = CanvasMath.applicationGridFrames(count: 100,
+        viewport: CGSize(width: 1200, height: 800), zoom: zoom)
+      XCTAssertGreaterThanOrEqual((frames[1].minX - frames[0].maxX) * zoom, 16 - 0.001)
+      XCTAssertEqual(frames[0].height * zoom, metrics.size.height, accuracy: 0.001)
+    }
+  }
+
+  func testAllAppsCardKeepsRoomForFixedScreenSizeLabel() {
+    for zoom: CGFloat in [0.06, 0.2, 0.45, 1, 2] {
+      let size = CanvasMath.allAppsCardSize(at: zoom)
+      XCTAssertGreaterThanOrEqual(size.width * zoom, 160 - 0.001)
+      XCTAssertGreaterThanOrEqual(size.height * zoom, 48 - 0.001)
+    }
+  }
+
   func testVerticalFramesHaveSharedAxisAndFixedGapWithMixedSizes() {
     let sizes = [CGSize(width: 1000, height: 700), CGSize(width: 450, height: 900), CGSize(width: 800, height: 180)]
     let frames = RecentWindowOrder.frames(sizes: sizes)
     XCTAssertEqual(frames.map(\.size), sizes)
     XCTAssertEqual(frames.map(\.midX), [0, 0, 0])
-    XCTAssertEqual(frames[0].minY - frames[1].maxY, 100)
-    XCTAssertEqual(frames[1].minY - frames[2].maxY, 100)
+    XCTAssertEqual(frames[0].minY - frames[1].maxY, CanvasMath.itemGap)
+    XCTAssertEqual(frames[1].minY - frames[2].maxY, CanvasMath.itemGap)
     XCTAssertTrue(RecentWindowOrder.frames(sizes: []).isEmpty)
   }
 }
@@ -1319,9 +1374,10 @@ final class RecentWindowOrderTests: XCTestCase {
 final class ChronologicalModeTests: XCTestCase {
   func testModeAndAnimatedCameraNeverOverwriteFreeDesktop() throws {
     let defaults = UserDefaults.standard
-    let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera"]
+    let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera", "viewMode"]
     let backup = keys.map { defaults.object(forKey: $0) }
     defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
+    defaults.removeObject(forKey: "viewMode")
     defaults.set(false, forKey: "chronologicalMode")
     let original = DesktopPages(pages: [DesktopPage(title: "Keep me",
       camera: CameraState(center: CGPoint(x: 1600, y: -700), zoom: 0.3),
@@ -1348,25 +1404,78 @@ final class ChronologicalModeTests: XCTestCase {
     reopened.setChronological(false)
     XCTAssertEqual(reopened.camera, original.selectedPage.camera)
   }
-  func testCatalogBackAndViewportChangeKeepSelectionCamera() {
+  func testApplicationGridRendersSyntheticAppsAcrossViewport() throws {
     let defaults = UserDefaults.standard
-    let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera"]
+    let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera", "viewMode"]
     let backup = keys.map { defaults.object(forKey: $0) }
     defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
+    defaults.removeObject(forKey: "viewMode")
+    defaults.set(true, forKey: "chronologicalMode")
+    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 800, height: 600))
+    defer { _ = canvas.closeCatalog(); canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
+    canvas.prepareChronologicalOverview()
+    canvas.selectPresentation(at: 3)
+    canvas.updateCatalog((0..<15).map { InstalledApp(id: "synthetic.\($0)", name: "Example application with a very long name \($0 + 1)",
+      url: URL(fileURLWithPath: "/System/Applications/Calculator.app")) })
+    canvas.synchronizeScene()
+    XCTAssertEqual(canvas.camera.zoom, 1)
+    let cards = try XCTUnwrap(canvas.cameraLayer.sublayers)
+    XCTAssertEqual(cards.count, 15)
+    let expected = CanvasMath.applicationGridFrames(count: 15, viewport: canvas.bounds.size, topInset: canvas.catalogTopInset)
+    for (card, frame) in zip(cards, expected) { XCTAssertEqual(card.position, frame.origin) }
+    let bitmap = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 800,
+      pixelsHigh: 600, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+      isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+    let context = try XCTUnwrap(NSGraphicsContext(bitmapImageRep: bitmap))
+    context.cgContext.setFillColor(NSColor.darkGray.cgColor)
+    context.cgContext.fill(canvas.bounds)
+    context.cgContext.translateBy(x: 400, y: 300)
+    canvas.cameraLayer.render(in: context.cgContext)
+    try bitmap.representation(using: .png, properties: [:])?.write(
+      to: URL(fileURLWithPath: "/tmp/openplane-appgrid-synthetic.png"))
+    canvas.camera = CameraState(center: .zero, zoom: 0.3)
+    canvas.synchronizeScene()
+    for card in canvas.cameraLayer.sublayers ?? [] {
+      let surface = try XCTUnwrap(card.sublayers?.first)
+      let text = try XCTUnwrap(surface.sublayers?.compactMap { $0 as? CATextLayer }.first)
+      XCTAssertFalse(text.isWrapped)
+      XCTAssertEqual(text.truncationMode, .end)
+      XCTAssertEqual(text.opacity, 0)
+      XCTAssertEqual(surface.bounds.height, 64, accuracy: 0.01)
+    }
+    let compact = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 800,
+      pixelsHigh: 600, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+      isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+    let compactContext = try XCTUnwrap(NSGraphicsContext(bitmapImageRep: compact))
+    compactContext.cgContext.setFillColor(NSColor.darkGray.cgColor)
+    compactContext.cgContext.fill(canvas.bounds)
+    compactContext.cgContext.translateBy(x: 400, y: 300)
+    compactContext.cgContext.scaleBy(x: 0.3, y: 0.3)
+    canvas.cameraLayer.render(in: compactContext.cgContext)
+    try compact.representation(using: .png, properties: [:])?.write(
+      to: URL(fileURLWithPath: "/tmp/openplane-appgrid-compact-synthetic.png"))
+  }
+
+  func testCatalogBackAndViewportChangeKeepSelectionCamera() {
+    let defaults = UserDefaults.standard
+    let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera", "viewMode"]
+    let backup = keys.map { defaults.object(forKey: $0) }
+    defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
+    defaults.removeObject(forKey: "viewMode")
     defaults.set(true, forKey: "chronologicalMode")
     let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1600, height: 1000))
     defer { canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
     canvas.prepareChronologicalOverview()
-    XCTAssertTrue(canvas.hasCanvasSelection) // Empty window list still has All apps.
+    XCTAssertFalse(canvas.hasCanvasSelection) // Empty window list has no redundant catalog card.
     let before = canvas.camera
     canvas.stepRecent(by: 1, wrapping: true, windowsOnly: true)
     XCTAssertEqual(canvas.camera, before)
-    canvas.focusSelectedWindow()
+    canvas.selectPresentation(at: 3)
     XCTAssertTrue(canvas.showingAllApps)
     XCTAssertTrue(canvas.closeCatalog())
     XCTAssertFalse(canvas.closeCatalog())
     XCTAssertEqual(canvas.camera, before)
-    XCTAssertTrue(canvas.hasCanvasSelection)
+    XCTAssertFalse(canvas.hasCanvasSelection)
     let target = CameraState(center: CGPoint(x: 0, y: -6000), zoom: canvas.camera.zoom)
     canvas.animateCamera(to: target) {}
     canvas.setFrameSize(CGSize(width: 1200, height: 1000))
@@ -1374,4 +1483,717 @@ final class ChronologicalModeTests: XCTestCase {
     XCTAssertEqual(canvas.camera, target)
   }
 
+}
+
+final class WindowBackspaceActionTests: XCTestCase {
+  func testUnavailableApplicationDoesNotCountAsDismissedDialog() async {
+    let state = await CloseDialogObserver().state(processID: -1)
+    XCTAssertEqual(state, .unavailable)
+  }
+
+  func testOnlyConfirmedLastWindowQuitsApplication() {
+    XCTAssertEqual(WindowBackspaceAction.resolve(windowCount: 1), .quitApp)
+    for count in [nil, 0, 2, 3, 20] as [Int?] {
+      XCTAssertEqual(WindowBackspaceAction.resolve(windowCount: count), .closeWindow)
+    }
+  }
+
+  func testBackspaceDoesNotRepeatAndDoesNotAcceptForwardDelete() {
+    XCTAssertTrue(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: false))
+    XCTAssertFalse(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: true))
+    XCTAssertFalse(ShortcutMatcher.isPlaneBackspace(keyCode: 117, isRepeat: false))
+  }
+}
+
+
+@MainActor
+final class OverviewModeTests: XCTestCase {
+  func testFocusControlsDisappearEarlyAndRestoreAtStart() {
+    XCTAssertEqual(CanvasMath.focusControlsOpacity(progress: 0), 1)
+    XCTAssertEqual(CanvasMath.focusControlsOpacity(progress: 1 / 6), 0.5, accuracy: 0.001)
+    XCTAssertEqual(CanvasMath.focusControlsOpacity(progress: 1 / 3), 0)
+    XCTAssertEqual(CanvasMath.focusControlsOpacity(progress: 1), 0)
+    XCTAssertGreaterThan(CanvasMath.focusBackdropOpacity(progress: 1 / 3), 0)
+    XCTAssertEqual(CanvasMath.focusControlsOpacity(progress: 0), 1)
+  }
+
+  func testTransitionSpeedDefaultsAndBounds() {
+    let defaults = UserDefaults.standard
+    let key = OpenPlanePreferences.transitionSpeedKey
+    let saved = defaults.object(forKey: key)
+    defer { if let saved { defaults.set(saved, forKey: key) } else { defaults.removeObject(forKey: key) } }
+    defaults.removeObject(forKey: key)
+    XCTAssertEqual(OpenPlanePreferences.transitionDuration(0.6), 0.3)
+    OpenPlanePreferences.transitionSpeed = 1
+    XCTAssertEqual(OpenPlanePreferences.transitionDuration(0.45), 0.45)
+    OpenPlanePreferences.transitionSpeed = 0
+    XCTAssertEqual(OpenPlanePreferences.transitionSpeed, 0.5)
+    OpenPlanePreferences.transitionSpeed = .infinity
+    XCTAssertEqual(OpenPlanePreferences.transitionSpeed, 2)
+  }
+
+  func testToggleParityKeepsPressesDuringTransitions() {
+    var queue = ToggleParityQueue()
+    queue.recordPress()
+    XCTAssertTrue(queue.consume(isTransitioning: false)) // start opening
+    queue.recordPress()
+    XCTAssertFalse(queue.consume(isTransitioning: true))
+    XCTAssertTrue(queue.consume(isTransitioning: false)) // return after opening
+    queue.recordPress()
+    queue.recordPress()
+    XCTAssertFalse(queue.consume(isTransitioning: true))
+    XCTAssertFalse(queue.consume(isTransitioning: false)) // two cancel
+    for _ in 0..<101 { queue.recordPress() }
+    XCTAssertFalse(queue.consume(isTransitioning: true))
+    XCTAssertTrue(queue.consume(isTransitioning: false))
+    XCTAssertFalse(queue.consume(isTransitioning: false)) // consume once
+  }
+
+  func testRightCommandOnlyTogglesOnStandaloneRelease() {
+    var tap = RightCommandTap()
+    let right = CGEventFlags(rawValue: CGEventFlags.maskCommand.rawValue | 0x10)
+    XCTAssertFalse(tap.handle(type: .flagsChanged, keyCode: 54, flags: right))
+    XCTAssertTrue(tap.handle(type: .flagsChanged, keyCode: 54, flags: []))
+    XCTAssertFalse(tap.handle(type: .flagsChanged, keyCode: 54, flags: []))
+    for event in [CGEventType.keyDown, .leftMouseDown, .flagsChanged] {
+      XCTAssertFalse(tap.handle(type: .flagsChanged, keyCode: 54, flags: right))
+      XCTAssertFalse(tap.handle(type: event, keyCode: 8, flags: right))
+      XCTAssertFalse(tap.handle(type: .flagsChanged, keyCode: 54, flags: []))
+    }
+    XCTAssertFalse(tap.handle(type: .flagsChanged, keyCode: 55, flags: .maskCommand))
+    XCTAssertFalse(tap.handle(type: .flagsChanged, keyCode: 55, flags: []))
+    XCTAssertFalse(tap.handle(type: .flagsChanged, keyCode: 54, flags: right.union(.maskShift)))
+    XCTAssertFalse(tap.handle(type: .flagsChanged, keyCode: 54, flags: []))
+  }
+
+  func testChromeTabCountsRequireUnambiguousWindowMatch() {
+    let frame = CGRect(x: 20, y: 40, width: 800, height: 600)
+    let window = ChromeTabWindow(title: "Example", frame: frame, count: 12)
+    XCTAssertEqual(ChromeTabWindow.count(for: "Example", frame: frame, in: [window]), 12)
+    XCTAssertNil(ChromeTabWindow.count(for: "Other", frame: frame, in: [window]))
+    XCTAssertNil(ChromeTabWindow.count(for: "Example", frame: frame.offsetBy(dx: 20, dy: 0), in: [window]))
+    XCTAssertNil(ChromeTabWindow.count(for: "Example", frame: frame, in: [window, window]))
+    XCTAssertNil(ChromeTabWindow.count(for: "Example", frame: frame, in: []))
+  }
+
+  func testCatalogZoomStopsAtVisibleMinimumAndReversesImmediately() throws {
+    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1200, height: 800))
+    let host = NSWindow(contentRect: canvas.bounds, styleMask: [.borderless], backing: .buffered, defer: false)
+    host.contentView = canvas
+    host.orderFront(nil)
+    defer { host.orderOut(nil) }
+    defer { _ = canvas.closeCatalog(); canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
+    canvas.selectPresentation(at: 3)
+    canvas.camera = CameraState(center: .zero, zoom: 0.06)
+    XCTAssertEqual(canvas.camera.zoom, CanvasMath.applicationMinimumZoom)
+    func tap(_ code: UInt16) throws {
+      for type: NSEvent.EventType in [.keyDown, .keyUp] {
+        let event = try XCTUnwrap(NSEvent.keyEvent(with: type, location: .zero, modifierFlags: [.shift],
+          timestamp: 0, windowNumber: 0, context: nil, characters: "", charactersIgnoringModifiers: "",
+          isARepeat: false, keyCode: code))
+        if type == .keyDown { XCTAssertTrue(canvas.handleNavigationKey(event)) }
+        else { XCTAssertTrue(canvas.handleNavigationKeyUp(event)) }
+      }
+    }
+    for _ in 0..<20 { try tap(126) }
+    XCTAssertEqual(canvas.camera.zoom, CanvasMath.applicationMinimumZoom)
+    try tap(125)
+    RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+    XCTAssertGreaterThan(canvas.camera.zoom, CanvasMath.applicationMinimumZoom)
+  }
+
+  func testTabCyclesViewsAndReverseWithoutChangingSavedDesktops() throws {
+    let defaults = UserDefaults.standard
+    let keys = ["viewMode", "chronologicalMode", "desktopPages", "chronologicalCamera"]
+    let backup = keys.map { defaults.object(forKey: $0) }
+    defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
+    defaults.removeObject(forKey: "viewMode")
+    defaults.removeObject(forKey: "chronologicalMode")
+    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1200, height: 800))
+    defer { _ = canvas.closeCatalog(); canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
+    XCTAssertEqual(canvas.viewMode, .overview)
+    canvas.selectPresentation(at: 1)
+    canvas.selectPresentation(at: 2) // Materialize the initially unset Canvas camera.
+    canvas.selectPresentation(at: 1)
+    let saved = try JSONDecoder().decode(DesktopPages.self, from: XCTUnwrap(defaults.data(forKey: "desktopPages")))
+    func tab(_ flags: NSEvent.ModifierFlags = [], repeatKey: Bool = false) throws {
+      let event = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: flags,
+        timestamp: 0, windowNumber: 0, context: nil, characters: "\t", charactersIgnoringModifiers: "\t",
+        isARepeat: repeatKey, keyCode: 48))
+      XCTAssertTrue(canvas.handleNavigationKey(event))
+    }
+    for key in ["chronological", "allApps", "overview", "canvas"] {
+      try tab()
+      XCTAssertEqual(canvas.presentationKey, key)
+    }
+    try tab([.shift])
+    XCTAssertEqual(canvas.presentationKey, "overview")
+    try tab([], repeatKey: true)
+    XCTAssertEqual(canvas.presentationKey, "overview")
+    XCTAssertEqual(try JSONDecoder().decode(DesktopPages.self, from: XCTUnwrap(defaults.data(forKey: "desktopPages"))), saved)
+  }
+
+  func testViewPillClickAndRapidReverseSettleOnSelectedButton() throws {
+    let control = ViewModeControl(labels: ["Canvas", "Recent", "Overview", "All apps"])
+    let host = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 500, height: 80),
+      styleMask: [.borderless], backing: .buffered, defer: false)
+    defer { host.orderOut(nil) }
+    control.frame = CGRect(x: 8, y: 8, width: control.preferredWidth, height: 44)
+    host.contentView!.addSubview(control)
+    host.orderFront(nil)
+    control.layoutSubtreeIfNeeded()
+    let buttons = control.subviews.compactMap { $0 as? NSButton }
+    let highlight = try XCTUnwrap(control.subviews.first)
+    buttons[3].performClick(nil)
+    XCTAssertEqual(control.selectedSegment, 3)
+    RunLoop.main.run(until: Date().addingTimeInterval(0.08))
+    buttons[0].performClick(nil)
+    RunLoop.main.run(until: Date().addingTimeInterval(0.35))
+    XCTAssertEqual(control.selectedSegment, 0)
+    XCTAssertEqual(highlight.frame, buttons[0].frame)
+    XCTAssertEqual(highlight.layer?.cornerRadius, 10)
+    XCTAssertLessThan(control.preferredWidth, 500)
+  }
+
+  func testCompactNavigatorDragClampsAndPersists() throws {
+    let defaults = UserDefaults.standard
+    let keys = ["viewMode", "chronologicalMode", "desktopPages", "navigatorPanelX", "navigatorPanelY"]
+    let backup = keys.map { defaults.object(forKey: $0) }
+    defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
+    for key in keys { defaults.removeObject(forKey: key) }
+    defaults.set("canvas", forKey: "viewMode")
+    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1200, height: 800))
+    defer { canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
+    canvas.setViewMode(.overview)
+    canvas.layout()
+    let original = canvas.navigatorPanelFrame
+    XCTAssertGreaterThanOrEqual(original.minY, 96)
+    XCTAssertLessThan(canvas.searchOverlayFrame.maxX, canvas.positionOverlayFrame.minX)
+    XCTAssertFalse(canvas.positionOverlayFrame.intersects(original))
+    let search = try XCTUnwrap(canvas.subviews.compactMap { $0 as? NSTextField }.first {
+      $0.action == NSSelectorFromString("openSearchResult:")
+    })
+    XCTAssertFalse(search.isHidden)
+    search.stringValue = "Example"
+    canvas.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: search))
+    XCTAssertTrue(canvas.dismissSearch())
+    XCTAssertFalse(search.isHidden)
+    XCTAssertEqual(search.stringValue, "")
+    func drag(by delta: CGPoint) throws {
+      let frame = canvas.navigatorPanelFrame
+      let start = CGPoint(x: frame.midX, y: frame.maxY - 24)
+      let end = CGPoint(x: start.x + delta.x, y: start.y + delta.y)
+      func event(_ type: NSEvent.EventType, _ point: CGPoint) throws -> NSEvent {
+        try XCTUnwrap(NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
+          timestamp: 0, windowNumber: 0, context: nil, eventNumber: 0, clickCount: 1, pressure: 0))
+      }
+      XCTAssertTrue(canvas.hitTest(start) === canvas)
+      canvas.mouseDown(with: try event(.leftMouseDown, start))
+      canvas.mouseDragged(with: try event(.leftMouseDragged, end))
+      canvas.mouseUp(with: try event(.leftMouseUp, end))
+    }
+    try drag(by: CGPoint(x: -140, y: 150))
+    XCTAssertEqual(canvas.navigatorPanelFrame.minX, original.minX - 140, accuracy: 0.1)
+    XCTAssertEqual(canvas.navigatorPanelFrame.minY, original.minY + 150, accuracy: 0.1)
+    XCTAssertFalse(canvas.overviewAvailableFrame.intersects(canvas.navigatorPanelFrame))
+    let reopened = CanvasView(frame: canvas.frame)
+    defer { reopened.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: reopened) }
+    XCTAssertEqual(reopened.navigatorPanelFrame, canvas.navigatorPanelFrame)
+    try drag(by: CGPoint(x: 0, y: 1000))
+    XCTAssertLessThanOrEqual(canvas.navigatorPanelFrame.maxY, canvas.bounds.maxY - 48)
+    XCTAssertFalse(canvas.overviewAvailableFrame.intersects(canvas.navigatorPanelFrame))
+    try drag(by: CGPoint(x: 0, y: -1000))
+    XCTAssertEqual(canvas.navigatorPanelFrame.minY, 96, accuracy: 0.1)
+  }
+
+  func testSeparateOverlaysAndSavedPositionStayIndependentAcrossViews() throws {
+    let defaults = UserDefaults.standard
+    let keys = ["viewMode", "desktopPages", "navigatorPanelX", "navigatorPanelY"]
+      + CanvasView.presentationKeys.map { "savedOverlayCamera.\($0)" }
+    let backup = keys.map { defaults.object(forKey: $0) }
+    defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
+    for key in keys { defaults.removeObject(forKey: key) }
+    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 800, height: 600))
+    defer { canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
+    canvas.setViewMode(.overview)
+    canvas.layout()
+    let before = defaults.data(forKey: "desktopPages")
+    XCTAssertTrue(NSApp.sendAction(NSSelectorFromString("toggleLockedView:"), to: canvas, from: NSButton()))
+    let saved = try XCTUnwrap(defaults.data(forKey: "savedOverlayCamera.overview"))
+    XCTAssertEqual(try JSONDecoder().decode(CameraState.self, from: saved), canvas.camera)
+    XCTAssertEqual(defaults.data(forKey: "desktopPages"), before)
+    canvas.setViewMode(.chronological)
+    XCTAssertNil(defaults.data(forKey: "savedOverlayCamera.chronological"))
+    XCTAssertEqual(defaults.data(forKey: "savedOverlayCamera.overview"), saved)
+    for width: CGFloat in [480, 800, 1200] {
+      canvas.setFrameSize(CGSize(width: width, height: 600))
+      canvas.layout()
+      XCTAssertFalse(canvas.searchOverlayFrame.intersects(canvas.positionOverlayFrame))
+      XCTAssertFalse(canvas.searchOverlayFrame.intersects(canvas.navigatorPanelFrame))
+      XCTAssertFalse(canvas.positionOverlayFrame.intersects(canvas.navigatorPanelFrame))
+      XCTAssertLessThanOrEqual(canvas.navigatorPanelFrame.maxX, width)
+      XCTAssertLessThanOrEqual(canvas.positionOverlayFrame.maxX, width)
+    }
+  }
+
+  func testSettingsKeyboardNavigationAndSearchShortcut() throws {
+    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1200, height: 800))
+    canvas.setViewMode(.overview)
+    let host = CanvasWorkspaceView(canvas: canvas)
+    let window = NSWindow(contentRect: host.bounds, styleMask: [.borderless], backing: .buffered, defer: false)
+    window.contentView = host
+    window.orderFront(nil)
+    defer { _ = canvas.dismissSettings(); canvas.cancelLayoutAnimation(); window.orderOut(nil); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
+    func press(_ code: UInt16, _ modifiers: NSEvent.ModifierFlags = []) throws {
+      let event = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: modifiers,
+        timestamp: 0, windowNumber: window.windowNumber, context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: code))
+      XCTAssertTrue(canvas.handleNavigationKey(event))
+    }
+    try press(43, .command)
+    XCTAssertTrue(host.isSettingsVisible)
+    RunLoop.main.run(until: Date().addingTimeInterval(0.25))
+    let mode = canvas.viewMode, camera = canvas.camera
+    try press(36) // Views
+    try press(36) // first view detail
+    XCTAssertTrue(window.firstResponder is NSTextView, "Name must be keyboard-editable on entering a view")
+    try press(48)
+    XCTAssertEqual(canvas.viewMode, mode)
+    XCTAssertEqual(canvas.camera, camera)
+    try press(48, .shift)
+    XCTAssertTrue(window.firstResponder is NSTextView)
+    try press(53) // Views
+    try press(53) // General
+    XCTAssertTrue(host.isSettingsVisible)
+    try press(48) // shortcut recorder, not a Canvas view change
+    XCTAssertTrue(window.firstResponder is OverviewShortcutRecorder)
+    try press(48, .shift) // back to Views
+    XCTAssertEqual(canvas.viewMode, mode)
+    try press(3, .command)
+    XCTAssertFalse(host.isSettingsVisible)
+    let search = try XCTUnwrap(canvas.subviews.compactMap { $0 as? NSTextField }.first { $0.action == NSSelectorFromString("openSearchResult:") })
+    XCTAssertTrue(search.currentEditor() === window.firstResponder)
+    XCTAssertTrue(canvas.dismissSearch())
+    try press(43, .command)
+    RunLoop.main.run(until: Date().addingTimeInterval(0.25))
+    if let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+      host.cacheDisplay(in: host.bounds, to: bitmap)
+      try bitmap.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "/tmp/openplane-keyboard-settings-synthetic.png"))
+    }
+    try press(43, .command)
+    XCTAssertFalse(host.isSettingsVisible)
+  }
+
+  func testSettingsTextEditorDoesNotTriggerCanvasSearch() throws {
+    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 800, height: 600))
+    let window = NSWindow(contentRect: canvas.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+    window.contentView = canvas
+    let editor = NSTextView(frame: CGRect(x: 0, y: 0, width: 200, height: 40))
+    canvas.addSubview(editor)
+    XCTAssertTrue(window.makeFirstResponder(editor))
+    defer { canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas); window.contentView = nil }
+    for code: UInt16 in [14, 36, 51, 125] {
+      let event = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+        timestamp: 0, windowNumber: window.windowNumber, context: nil, characters: "e", charactersIgnoringModifiers: "e", isARepeat: false, keyCode: code))
+      XCTAssertFalse(canvas.handleNavigationKey(event))
+    }
+  }
+
+  func testViewNamesPanDefaultsAndPromptValidation() throws {
+    let defaults = UserDefaults.standard
+    let keys = ["viewMode", "chronologicalMode", "desktopPages", "chronologicalCamera"]
+      + CanvasView.presentationKeys.flatMap { ["viewName.\($0)", "canPanCanvas.\($0)", "viewPrompt.\($0)", "cameraFollowsSelection.\($0)"] }
+    let backup = keys.map { defaults.object(forKey: $0) }
+    defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
+    for key in keys { defaults.removeObject(forKey: key) }
+    defaults.set("canvas", forKey: "viewMode")
+    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1200, height: 800))
+    defer { _ = canvas.closeCatalog(); canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
+    canvas.selectPresentation(at: 0)
+    XCTAssertFalse(canvas.canPanCanvas)
+    let fixed = canvas.camera
+    canvas.panCanvas(deltaX: 100, deltaY: 100)
+    XCTAssertEqual(canvas.camera, fixed)
+    canvas.renameCurrentPresentation("Fokus")
+    XCTAssertEqual(canvas.presentationControl.label(forSegment: 0), "Fokus")
+    canvas.setCanvasPanning(true)
+    canvas.panCanvas(deltaX: 100, deltaY: 100)
+    XCTAssertNotEqual(canvas.camera, fixed)
+    canvas.selectPresentation(at: 3)
+    XCTAssertFalse(canvas.canPanCanvas)
+    canvas.updateCatalog((0..<100).map { InstalledApp(id: "synthetic.\($0)", name: "App \($0)", url: URL(fileURLWithPath: "/tmp/nonexistent.app")) })
+    canvas.panCanvas(deltaX: 200, deltaY: -200)
+    XCTAssertEqual(canvas.camera.center.x, 0)
+    XCTAssertLessThan(canvas.camera.center.y, 0)
+    canvas.selectPresentation(at: 1)
+    XCTAssertTrue(canvas.canPanCanvas)
+    canvas.selectPresentation(at: 3)
+    XCTAssertFalse(canvas.canPanCanvas)
+    let plan = ViewPromptPlan(name: "Arbeit", layout: "overview", canPan: false, followSelection: false)
+    canvas.applyViewPrompt(plan, prompt: "Alles gleichzeitig sichtbar")
+    XCTAssertEqual(canvas.viewMode, .overview)
+    XCTAssertFalse(canvas.canPanCanvas)
+    XCTAssertEqual(canvas.presentationName("overview"), "Arbeit")
+    XCTAssertEqual(defaults.string(forKey: "viewPrompt.overview"), "Alles gleichzeitig sichtbar")
+    XCTAssertThrowsError(try ViewPromptPlan(name: "X", layout: "run code", canPan: true, followSelection: true).validated())
+    XCTAssertThrowsError(try ViewPromptClient.decodeResponse(Data("{\"status\":\"incomplete\",\"output\":[]}".utf8)))
+    let body = ViewPromptClient.requestBody(prompt: "Test")
+    XCTAssertEqual(body["store"] as? Bool, false)
+    XCTAssertEqual(body["input"] as? String, "Test")
+  }
+
+  func testShortcutValidationAndSerialization() throws {
+    XCTAssertTrue(ShortcutMatcher.isOverviewSwipe(deltaX: 0, deltaY: 1))
+    XCTAssertFalse(ShortcutMatcher.isOverviewSwipe(deltaX: 0, deltaY: -1))
+    XCTAssertFalse(ShortcutMatcher.isOverviewSwipe(deltaX: 1, deltaY: 0))
+    XCTAssertFalse(ShortcutMatcher.isOverviewSwipe(deltaX: 1, deltaY: 1))
+    func key(_ code: UInt16, _ flags: NSEvent.ModifierFlags, repeated: Bool = false) throws -> NSEvent {
+      try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: flags,
+        timestamp: 0, windowNumber: 0, context: nil, characters: "p", charactersIgnoringModifiers: "p",
+        isARepeat: repeated, keyCode: code))
+    }
+    XCTAssertNil(OverviewShortcut.from(try key(35, [])))
+    XCTAssertNil(OverviewShortcut.from(try key(35, [.shift])))
+    XCTAssertNil(OverviewShortcut.from(try key(48, [.command])))
+    XCTAssertNil(OverviewShortcut.from(try key(12, [.command])))
+    XCTAssertNil(OverviewShortcut.from(try key(35, [.control], repeated: true)))
+    let candidate = try XCTUnwrap(OverviewShortcut.from(try key(35, [.control, .option, .shift])))
+    XCTAssertEqual(candidate.label, "⌃⌥⇧P")
+    XCTAssertEqual(candidate, try JSONDecoder().decode(OverviewShortcut.self, from: JSONEncoder().encode(candidate)))
+  }
+
+  func testVisibleCameraSwitchTracksModeChanges() throws {
+    let defaults = UserDefaults.standard
+    let keys = ["viewMode", "chronologicalMode", "desktopPages", "chronologicalCamera",
+      "cameraFollowsSelection.overview", "cameraFollowsSelection.canvas"]
+    let backup = keys.map { defaults.object(forKey: $0) }
+    defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
+    for key in keys { defaults.removeObject(forKey: key) }
+    defaults.set("canvas", forKey: "viewMode")
+    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1200, height: 800))
+    let host = CanvasWorkspaceView(canvas: canvas)
+    defer { _ = canvas.dismissSettings(); canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
+    XCTAssertTrue(NSApp.sendAction(NSSelectorFromString("showSettings:"), to: canvas, from: NSButton()))
+    func find(_ view: NSView) -> NSButton? {
+      if view.identifier?.rawValue == "Camera follows selection" { return view as? NSButton }
+      for child in view.subviews { if let result = find(child) { return result } }
+      return nil
+    }
+    XCTAssertNil(find(host), "View-specific controls belong on the subpage")
+    func recorder(_ view: NSView) -> OverviewShortcutRecorder? {
+      if let result = view as? OverviewShortcutRecorder { return result }
+      return view.subviews.compactMap { recorder($0) }.first
+    }
+    XCTAssertNotNil(recorder(host))
+    func viewsButton(_ view: NSView) -> NSButton? {
+      if let button = view as? NSButton, button.action == NSSelectorFromString("openViews:") { return button }
+      return view.subviews.compactMap { viewsButton($0) }.first
+    }
+    let entry = try XCTUnwrap(viewsButton(host))
+    entry.performClick(nil)
+    XCTAssertNil(find(host), "Views list must not expose editing controls")
+    func detailButton(_ view: NSView) -> NSButton? {
+      if let button = view as? NSButton, button.action == NSSelectorFromString("openView:"), button.tag == 1 { return button }
+      return view.subviews.compactMap { detailButton($0) }.first
+    }
+    host.frame = CGRect(x: 0, y: 0, width: 1200, height: 800)
+    host.layoutSubtreeIfNeeded()
+    if let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+      host.cacheDisplay(in: host.bounds, to: bitmap)
+      try bitmap.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "/tmp/openplane-settings-list-synthetic.png"))
+    }
+    try XCTUnwrap(detailButton(host)).performClick(nil)
+    let control = try XCTUnwrap(find(host))
+    XCTAssertEqual(control.state, .on)
+    XCTAssertNil(recorder(host), "Global shortcuts stay on the main Settings page")
+    host.frame = CGRect(x: 0, y: 0, width: 1200, height: 800)
+    host.layoutSubtreeIfNeeded()
+    if let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+      host.cacheDisplay(in: host.bounds, to: bitmap)
+      try bitmap.representation(using: .png, properties: [:])?.write(
+        to: URL(fileURLWithPath: "/tmp/openplane-shortcut-settings-synthetic.png"))
+    }
+    canvas.setViewMode(.overview)
+    XCTAssertEqual(control.state, .off)
+    canvas.setViewMode(.canvas)
+    XCTAssertEqual(control.state, .on)
+    canvas.selectPresentation(at: 3)
+    XCTAssertTrue(canvas.navigateBackInSettings())
+    XCTAssertNotNil(detailButton(host))
+    XCTAssertNil(find(host))
+    XCTAssertTrue(canvas.navigateBackInSettings())
+    XCTAssertNotNil(recorder(host))
+    XCTAssertNil(find(host))
+    XCTAssertFalse(canvas.navigateBackInSettings())
+    host.layoutSubtreeIfNeeded()
+    if let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+      host.cacheDisplay(in: host.bounds, to: bitmap)
+      try bitmap.representation(using: .png, properties: [:])?.write(
+        to: URL(fileURLWithPath: "/tmp/openplane-settings-root-synthetic.png"))
+    }
+    canvas.selectPresentation(at: 1)
+  }
+
+  func testGroupedWindowsNavigationCameraAndCanvasRestoration() throws {
+    let defaults = UserDefaults.standard
+    let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera", "viewMode",
+      "cameraFollowsSelection.overview", "cameraFollowsSelection.canvas", "cameraFollowsSelection.chronological"]
+    let backup = keys.map { defaults.object(forKey: $0) }
+    defer { for (key, value) in zip(keys, backup) { defaults.set(value, forKey: key) } }
+    for key in keys { defaults.removeObject(forKey: key) }
+    defaults.set("canvas", forKey: "viewMode")
+    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1200, height: 800))
+    defer { canvas.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: canvas) }
+    let nodes = (0..<7).map { index -> WindowNode in
+      let size = CGSize(width: index == 5 ? 600 : 1000, height: 700)
+      let item = DiscoveredWindow(id: CGWindowID(index + 1), processID: pid_t(index / 3 + 90000),
+        bundleIdentifier: "synthetic.\(index / 3)", applicationName: "Example App \(index / 3 + 1)",
+        title: "Example window \(index + 1)", isPrivateBrowsing: false,
+        frame: CGRect(origin: .zero, size: size), icon: NSImage(systemSymbolName: "app.fill", accessibilityDescription: "Synthetic icon"), captureWindow: nil, accessibilityElement: nil)
+      let preview = NSImage(size: size, flipped: false) { rect in
+        NSColor(calibratedHue: CGFloat(index) / 9, saturation: 0.35, brightness: 0.65, alpha: 1).setFill()
+        rect.fill()
+        ("Synthetic window \(index + 1)" as NSString).draw(at: CGPoint(x: 60, y: 100),
+          withAttributes: [.font: NSFont.systemFont(ofSize: 36), .foregroundColor: NSColor.white])
+        return true
+      }
+      return WindowNode(discovered: item,
+        worldFrame: CGRect(x: CGFloat(index) * 1300, y: 250, width: size.width, height: size.height),
+        cachedPreview: preview)
+    }
+    canvas.nodes = nodes
+    let original = nodes.map(\.worldFrame)
+    canvas.setViewMode(.overview)
+    XCTAssertFalse(canvas.followsSelection)
+    let overviewCamera = canvas.camera
+    let frames = nodes.map(\.worldFrame)
+    let entryFrames = Dictionary(uniqueKeysWithValues: nodes.map { node in
+      (node.id, CGRect(x: CGFloat(node.id) * 20, y: 60, width: 800, height: 500))
+    })
+    canvas.animateOverviewEntry(from: entryFrames, frontToBack: nodes.map(\.id).reversed())
+    if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+      let card = try XCTUnwrap(canvas.cameraLayer.sublayers?.first { $0.name == "window:1" })
+      let animation = try XCTUnwrap(card.animation(forKey: "overviewEntry") as? CAAnimationGroup)
+      let position = try XCTUnwrap(animation.animations?.first as? CABasicAnimation)
+      let start = CanvasMath.worldRect(for: entryFrames[1]!, camera: canvas.camera, bounds: canvas.bounds)
+      XCTAssertEqual((position.fromValue as? NSValue)?.pointValue, start.origin)
+      XCTAssertEqual((position.toValue as? NSValue)?.pointValue, nodes[0].worldFrame.origin)
+      let depth = try XCTUnwrap(animation.animations?.last as? CABasicAnimation)
+      XCTAssertEqual(depth.keyPath, "zPosition")
+      XCTAssertEqual(depth.fromValue as? CGFloat, 1)
+      XCTAssertEqual(depth.toValue as? CGFloat, 1)
+      let frontCard = try XCTUnwrap(canvas.cameraLayer.sublayers?.first { $0.name == "window:7" })
+      let frontAnimation = try XCTUnwrap(frontCard.animation(forKey: "overviewEntry") as? CAAnimationGroup)
+      let frontDepth = try XCTUnwrap(frontAnimation.animations?.last as? CABasicAnimation)
+      XCTAssertEqual(frontDepth.fromValue as? CGFloat, 7)
+      let finalDepth = card.zPosition
+      XCTAssertEqual(nodes.map(\.worldFrame), frames, "Entry animation must not overwrite stored layout")
+      canvas.cancelLayoutAnimation()
+      XCTAssertNil(card.animation(forKey: "overviewEntry"))
+      XCTAssertEqual(card.zPosition, finalDepth)
+    }
+    for frame in frames {
+      let displayed = CanvasMath.viewRect(for: frame, camera: canvas.camera, bounds: canvas.bounds)
+      XCTAssertTrue(canvas.overviewAvailableFrame.contains(displayed))
+      let decorated = CanvasMath.previewVisualBounds(for: displayed, zoom: canvas.camera.zoom,
+        titleLift: 0, borderOutset: 6)
+      XCTAssertTrue(canvas.overviewAvailableFrame.contains(decorated), "Headers and selection border must clear the nudge too")
+    }
+    XCTAssertLessThanOrEqual(canvas.overviewAvailableFrame.maxY,
+      canvas.bounds.maxY - CanvasMath.desktopTitleNudgeLayout(safeAreaTop: 32).depth)
+    XCTAssertGreaterThan(frames[1].minX, frames[0].minX)
+    XCTAssertLessThan(frames[1].maxY, frames[0].maxY)
+    func press(_ code: UInt16) throws {
+      let event = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+        timestamp: 0, windowNumber: 0, context: nil, characters: "", charactersIgnoringModifiers: "",
+        isARepeat: false, keyCode: code))
+      XCTAssertTrue(canvas.handleNavigationKey(event))
+    }
+    try press(125)
+    XCTAssertEqual(canvas.selectedWindowID, 2)
+    XCTAssertEqual(canvas.camera, overviewCamera)
+    try press(125)
+    XCTAssertEqual(canvas.selectedWindowID, 3)
+    try press(126)
+    XCTAssertEqual(canvas.selectedWindowID, 2)
+    XCTAssertEqual(canvas.camera, overviewCamera)
+    func frontmost(_ id: CGWindowID, over others: [CGWindowID]) {
+      canvas.synchronizeScene()
+      let layers = canvas.cameraLayer.sublayers ?? []
+      let front = layers.first { $0.name == "window:\(id)" }!
+      for other in others {
+        XCTAssertGreaterThan(front.zPosition, layers.first { $0.name == "window:\(other)" }!.zPosition)
+      }
+    }
+    func visibleTitles(_ layer: CALayer, inheritedOpacity: Float = 1) -> [String] {
+      let opacity = inheritedOpacity * layer.opacity
+      guard !layer.isHidden, opacity > 0.9 else { return [] }
+      let own = ((layer as? CATextLayer)?.string as? NSAttributedString)?.string
+      return (own.map { [$0] } ?? []) + (layer.sublayers ?? []).flatMap {
+        visibleTitles($0, inheritedOpacity: opacity)
+      }
+    }
+    for id: CGWindowID in [1, 3, 2] {
+      canvas.selectedWindowID = id
+      canvas.synchronizeScene()
+      let header = try XCTUnwrap(canvas.cameraLayer.sublayers?.first { $0.name == "stack-header:synthetic.0" })
+      XCTAssertTrue(visibleTitles(header).contains { $0.contains("Example window \(id)") },
+        "First, last and middle window must show their title")
+    }
+    frontmost(2, over: [1, 3])
+    let selectedCard = try XCTUnwrap(canvas.cameraLayer.sublayers?.first { $0.name == "window:2" })
+    let matte = try XCTUnwrap(selectedCard.sublayers?.first { $0.name == "selection-matte" })
+    XCTAssertFalse(matte.isHidden)
+    XCTAssertEqual(matte.backgroundColor?.alpha, 1)
+    XCTAssertEqual(matte.frame.minX, -4, "Fill must preserve the original outline spacing")
+    let otherCard = try XCTUnwrap(canvas.cameraLayer.sublayers?.first { $0.name == "window:1" })
+    XCTAssertTrue(try XCTUnwrap(otherCard.sublayers?.first { $0.name == "selection-matte" }).isHidden)
+    try press(125)
+    XCTAssertEqual(canvas.selectedWindowID, 3)
+    let arranged = nodes.map(\.worldFrame)
+    for (i, node) in nodes.enumerated() {
+      node.worldFrame = CGRect(x: 0, y: i < 3 ? 2000 : i < 6 ? 1000 : 0, width: 500, height: 400)
+    }
+    try press(125)
+    XCTAssertEqual(canvas.selectedWindowID, 4, "Down exits the last sibling into the next row")
+    canvas.selectedWindowID = 7
+    try press(126)
+    XCTAssertEqual(canvas.selectedWindowID, 4, "A single-window stack must not trap vertical navigation")
+    try press(126)
+    XCTAssertEqual(canvas.selectedWindowID, 3, "Returning to a stack restores its remembered front")
+    for (node, frame) in zip(nodes, arranged) { node.worldFrame = frame }
+    canvas.selectedWindowID = 4
+    frontmost(3, over: [1, 2])
+    canvas.selectedWindowID = 2
+    let history = HistoryNavigationProbe()
+    canvas.delegate = history
+    canvas.backNavigationTarget = nodes[0]
+    canvas.layoutSubtreeIfNeeded()
+    let back = try XCTUnwrap(canvas.subviews.compactMap { $0 as? NSButton }.first {
+      $0.action == NSSelectorFromString("openPreviousApp:")
+    })
+    func click(_ point: CGPoint) throws {
+      for type: NSEvent.EventType in [.leftMouseDown, .leftMouseUp] {
+        let event = try XCTUnwrap(NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
+          timestamp: 0, windowNumber: 0, context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
+        if type == .leftMouseDown { canvas.mouseDown(with: event) } else { canvas.mouseUp(with: event) }
+      }
+    }
+    back.performClick(nil)
+    XCTAssertEqual(history.backRequests, 1)
+    XCTAssertEqual(canvas.selectedWindowID, 1)
+    XCTAssertEqual(canvas.camera, overviewCamera, "History must honor fixed Overview camera")
+    XCTAssertFalse(canvas.nativeCameraTravel)
+    try press(125)
+    XCTAssertEqual(canvas.selectedWindowID, 2, "Arrows remain usable after history selection")
+    let selectedRect = CanvasMath.viewRect(for: nodes[1].worldFrame, camera: canvas.camera, bounds: canvas.bounds)
+    try click(CGPoint(x: selectedRect.midX, y: selectedRect.maxY - 10))
+    XCTAssertEqual(history.focused, [2], "Selected preview remains clickable after Back")
+    canvas.selectHistoryWindow(999999)
+    XCTAssertEqual(canvas.selectedWindowID, 2, "Missing history window must not break selection")
+    canvas.layoutSubtreeIfNeeded()
+    if let bitmap = canvas.bitmapImageRepForCachingDisplay(in: canvas.bounds) {
+      canvas.cacheDisplay(in: canvas.bounds, to: bitmap)
+      try bitmap.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "/tmp/openplane-overlays-synthetic.png"))
+    }
+    let previousTabPreference = UserDefaults.standard.object(forKey: ChromeTabCounter.preferenceKey)
+    UserDefaults.standard.set(true, forKey: ChromeTabCounter.preferenceKey)
+    defer { UserDefaults.standard.set(previousTabPreference, forKey: ChromeTabCounter.preferenceKey) }
+    canvas.chromeTabCounts = [1: 12]
+    nodes[0].title = "Example window 1 · " + String(repeating: "Long browser page title ", count: 12)
+    canvas.selectedWindowID = 1
+    canvas.layoutSubtreeIfNeeded()
+    canvas.synchronizeScene()
+    let countedHeader = try XCTUnwrap(canvas.cameraLayer.sublayers?.first { $0.name == "stack-header:synthetic.0" })
+    XCTAssertTrue(visibleTitles(countedHeader).contains { $0.hasPrefix("1 von 3 · 12 Tabs · ") })
+
+    let bitmap = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 1200,
+      pixelsHigh: 800, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+      isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+    let context = try XCTUnwrap(NSGraphicsContext(bitmapImageRep: bitmap))
+    context.cgContext.setFillColor(NSColor.darkGray.cgColor); context.cgContext.fill(canvas.bounds)
+    context.cgContext.concatenate(CGAffineTransform(a: canvas.camera.zoom, b: 0, c: 0,
+      d: canvas.camera.zoom, tx: 600 - canvas.camera.center.x * canvas.camera.zoom,
+      ty: 400 - canvas.camera.center.y * canvas.camera.zoom))
+    canvas.cameraLayer.render(in: context.cgContext)
+    context.cgContext.concatenate(CGAffineTransform(a: canvas.camera.zoom, b: 0, c: 0,
+      d: canvas.camera.zoom, tx: 600 - canvas.camera.center.x * canvas.camera.zoom,
+      ty: 400 - canvas.camera.center.y * canvas.camera.zoom).inverted())
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = context
+    NSGraphicsContext.restoreGraphicsState()
+    var captionPixels = 0
+    // This fixture's header strip is above the card border; metadata alone missed blank long titles.
+    for y in 185..<202 { for x in 100..<395 {
+      if let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
+        color.redComponent > 0.8, color.greenComponent > 0.8, color.blueComponent < 0.4 {
+        captionPixels += 1
+      }
+    } }
+    XCTAssertGreaterThan(captionPixels, 20, "Long caption must actually draw pixels, not just have a string")
+    try bitmap.representation(using: .png, properties: [:])?.write(
+      to: URL(fileURLWithPath: "/tmp/openplane-overview-synthetic.png"))
+    canvas.selectedWindowID = 2
+    try press(124)
+    XCTAssertNotEqual(canvas.selectedWindowID, 2)
+    XCTAssertEqual(canvas.camera, overviewCamera)
+    canvas.setCameraFollowsSelection(true)
+    XCTAssertTrue(canvas.followsSelection)
+    canvas.setViewMode(.chronological)
+    XCTAssertTrue(canvas.followsSelection)
+    canvas.setViewMode(.canvas)
+    XCTAssertEqual(nodes.map(\.worldFrame), original)
+    canvas.setViewMode(.overview)
+    XCTAssertTrue(canvas.followsSelection)
+    canvas.setCameraFollowsSelection(false)
+    canvas.setFrameSize(CGSize(width: 800, height: 600)); canvas.layout()
+    for node in nodes {
+      XCTAssertTrue(canvas.overviewAvailableFrame.contains(CanvasMath.viewRect(for: node.worldFrame, camera: canvas.camera, bounds: canvas.bounds)))
+    }
+    canvas.applyPreviewSizePreference(fitAll: true)
+    for node in nodes {
+      XCTAssertTrue(canvas.overviewAvailableFrame.contains(
+        CanvasMath.viewRect(for: node.worldFrame, camera: canvas.camera, bounds: canvas.bounds)))
+    }
+    let stableCamera = canvas.camera
+    canvas.nodes = nodes
+    XCTAssertEqual(canvas.camera, stableCamera, "Unchanged inventory must not refit the view")
+    canvas.persistState()
+    let reopened = CanvasView(frame: canvas.frame)
+    defer { reopened.cancelLayoutAnimation(); NSObject.cancelPreviousPerformRequests(withTarget: reopened) }
+    XCTAssertEqual(reopened.viewMode, .overview)
+    XCTAssertFalse(reopened.followsSelection)
+    canvas.selectedWindowID = 2
+    canvas.recentWindows.used(3)
+    canvas.nodes = nodes.filter { $0.id != 2 }
+    XCTAssertEqual(canvas.selectedWindowID, 3, "Closed front falls back to most recently used sibling")
+    canvas.synchronizeScene()
+    XCTAssertFalse(canvas.cameraLayer.sublayers?.contains { $0.name == "window:2" } ?? false)
+    let stack = try XCTUnwrap(canvas.cameraLayer.sublayers?.first { $0.name == "stack-header:synthetic.0" })
+    func text(_ layer: CALayer) -> [String] {
+      let own = (layer as? CATextLayer)?.string as? NSAttributedString
+      return (own.map { [$0.string] } ?? []) + (layer.sublayers ?? []).flatMap { text($0) }
+    }
+    XCTAssertTrue(text(stack).contains { $0.contains("von 2 ·") })
+    canvas.nodes = []
+    canvas.synchronizeScene()
+    XCTAssertFalse(canvas.hasCanvasSelection)
+    XCTAssertFalse(canvas.cameraLayer.sublayers?.contains { $0.name?.hasPrefix("stack-header:") == true } ?? false)
+  }
+}
+
+
+@MainActor
+private final class HistoryNavigationProbe: CanvasViewDelegate {
+  var backRequests = 0
+  var focused: [CGWindowID] = []
+  func canvasView(_ canvasView: CanvasView, didRequestFocus node: WindowNode) { focused.append(node.id) }
+  func canvasViewDidRequestBack(_ canvasView: CanvasView) {
+    backRequests += 1
+    canvasView.selectHistoryWindow(1)
+  }
+  func canvasViewDidRequestForward(_ canvasView: CanvasView) { canvasView.selectHistoryWindow(2) }
+  func canvasView(_ canvasView: CanvasView, didRequestQuit node: WindowNode) { XCTFail("Unexpected quit") }
+  func canvasView(_ canvasView: CanvasView, didRequestLaunch bundleIdentifier: String, applicationName: String, at anchor: CGPoint) { XCTFail("Unexpected launch") }
+  func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool { false }
+  func canvasView(_ canvasView: CanvasView, setPrivateBrowserPreviews enabled: Bool) {}
 }

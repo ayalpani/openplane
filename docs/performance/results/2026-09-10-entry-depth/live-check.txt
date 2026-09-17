@@ -1,0 +1,1 @@
+Installed signed Release. AX-only startup/reopen observed. Cmd-F focuses search after reopen. Escape restoration reported a state change; re-query showed empty search, closed through X successfully. No user query overwritten, no live screenshots viewed. Physical right-Command and visible occlusion not observed.

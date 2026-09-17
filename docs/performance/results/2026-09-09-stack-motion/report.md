@@ -1,0 +1,7 @@
+# Coordinated stack motion
+
+320ms native CAAnimationGroup animates position, transform and zPosition for affected app cards; reuses previews and resumes rapid reversals from presentation-layer geometry. Moving hit testing follows presented frame/depth. Reduce Motion skips movement. Layout/focus transitions remove stack movement explicitly. Apple documents zPosition as animatable: https://developer.apple.com/documentation/quartzcore/calayer/zposition .
+
+Eleven tests PASS: native hosted intermediate presented position, grouped animation paths, rapid reversal, settled geometry and explicit cancellation; existing Overview and focus-cancel regressions. Signed Release build/signature PASS. Installed AX-only Down changed selection Claude→iTerm2. Reverse live attempt interrupted by user activity; no further actions sent. No personal screenshots inspected. Native presentation assertions verify motion geometry; full visual motion review and live within-stack motion remain incomplete (AppKit, no Storybook surface).
+
+P04/P20 full input/Reduce Motion/close variants/core smoke/matched baseline **NOT RUN: scheduled overnight**, source/build in identity.json. Same fixture and first/warm previews; idle/action/additional CPU and presented latency NOT RUN. Controlled fixture and calibrated observer **BLOCKED**, follow-up [PERF-025](../../backlog.md#perf-025--view-overlay-movement-policy-and-prompt-prototype-acceptance). Duration is configured, not measured latency; no measured performance gain claimed.

@@ -1,0 +1,7 @@
+# Explicit close refresh
+
+Successful AX close now notifies AppDelegate. Bounded targeted follow-up scheduling (150ms, at most ten inventory scans) permits inventory while explicit closes pending, with serialization against normal periodic scans. Requested IDs absent from both discovery and global CG inventory removed on first confirmed scan, rather than generic three-scan threshold. Existing window/save dialog retained. Polling expires after bounded checks; normal scan policy then resumes. Actual window lifetime remains OS-controlled.
+
+Three relevant tests PASS: unchanged generic disappearance policy, requested-close presence/absence gate, actual retained scene removing window layer/count and final group header. Signed Release build/signature PASS, installed AX launch check PASS. No real user Chrome window closed and no user screenshots viewed. Full live Chrome close/save-dialog fixture NOT RUN; automated tests do not prove installed OS timing.
+
+P11/P17 all close paths/core smoke/matched baseline comparisons **NOT RUN: scheduled overnight**, source/build in identity.json. Safe multi-window fixture and identical method, first/warm conditions. Idle/action/additional CPU and latency **NOT RUN**. Calibrated observer/Chrome fixture **BLOCKED**, [PERF-025](../../backlog.md#perf-025--view-overlay-movement-policy-and-prompt-prototype-acceptance). No measured performance gain claimed; bounded extra discovery CPU must be measured. Raw source/tests/build retained.

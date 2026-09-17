@@ -1,0 +1,111 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project OpenPlane.xcodeproj -scheme OpenPlane -configuration Debug -derivedDataPath /tmp/openplane-chronological/tests -destination platform=macOS -parallel-testing-enabled NO PRODUCT_BUNDLE_IDENTIFIER=com.yalpani.openplane.tests "-only-testing:OpenPlaneTests/OverviewModeTests" test
+
+Build settings from command line:
+    PRODUCT_BUNDLE_IDENTIFIER = com.yalpani.openplane.tests
+
+2026-09-09 21:53:20.962 xcodebuild[35047:3123265] [MT] IDERunDestination: Supported platforms for the buildables in the current scheme is empty.
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00006020-0016685611C0C01E, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00006020-0016685611C0C01E, name:My Mac }
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (2 targets)
+    Target 'OpenPlaneTests' in project 'OpenPlane'
+        ➜ Explicit dependency on target 'OpenPlane' in project 'OpenPlane'
+    Target 'OpenPlane' in project 'OpenPlane' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk /tmp/openplane-chronological/tests/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache
+    cd /Users/ayalpani/dev/_products/openplane/OpenPlane.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -o /tmp/openplane-chronological/tests/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache
+
+CodeSign /tmp/openplane-chronological/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/OpenPlane.debug.dylib (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --timestamp\=none --generate-entitlement-der /tmp/openplane-chronological/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/OpenPlane.debug.dylib
+/tmp/openplane-chronological/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/OpenPlane.debug.dylib: replacing existing signature
+
+CodeSign /tmp/openplane-chronological/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/__preview.dylib (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --timestamp\=none --generate-entitlement-der /tmp/openplane-chronological/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/__preview.dylib
+/tmp/openplane-chronological/tests/Build/Products/Debug/OpenPlane.app/Contents/MacOS/__preview.dylib: replacing existing signature
+
+CodeSign /tmp/openplane-chronological/tests/Build/Products/Debug/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    
+    Signing Identity:     "Apple Development: arash@yalpani.de (HWW447PPN9)"
+    
+    /usr/bin/codesign --force --sign FE0F0ABAB1006B294A5BD7EF23AAD0C7DF4296C7 --entitlements /tmp/openplane-chronological/tests/Build/Intermediates.noindex/OpenPlane.build/Debug/OpenPlane.build/OpenPlane.app.xcent --timestamp\=none --generate-entitlement-der /tmp/openplane-chronological/tests/Build/Products/Debug/OpenPlane.app
+/tmp/openplane-chronological/tests/Build/Products/Debug/OpenPlane.app: replacing existing signature
+
+Validate /tmp/openplane-chronological/tests/Build/Products/Debug/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    builtin-validationUtility /tmp/openplane-chronological/tests/Build/Products/Debug/OpenPlane.app -no-validate-extension -infoplist-subpath Contents/Info.plist
+
+RegisterWithLaunchServices /tmp/openplane-chronological/tests/Build/Products/Debug/OpenPlane.app (in target 'OpenPlane' from project 'OpenPlane')
+    cd /Users/ayalpani/dev/_products/openplane
+    /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /tmp/openplane-chronological/tests/Build/Products/Debug/OpenPlane.app
+
+2026-09-09 21:53:22.558652+0200 OpenPlane[35057:3123439] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/0b/k1jv3qb156l_p6wnvzh1csk00000gn/T/com.yalpani.openplane.tests.savedState
+2026-09-09 21:53:22.734918+0200 OpenPlane[35057:3123460] [Common] Unable to obtain a task name port right for pid 613: (os/kern) failure (0x5)
+Test Suite 'Selected tests' started at 2026-09-09 21:53:22.736.
+Test Suite 'OpenPlaneTests.xctest' started at 2026-09-09 21:53:22.736.
+Test Suite 'OverviewModeTests' started at 2026-09-09 21:53:22.736.
+Test Case '-[OpenPlaneTests.OverviewModeTests testCatalogZoomStopsAtVisibleMinimumAndReversesImmediately]' started.
+2026-09-09 21:53:22.851541+0200 OpenPlane[35057:3123439] [Utility] AFIsDeviceGreymatterEligible Missing entitlements for os_eligibility lookup
+Test Case '-[OpenPlaneTests.OverviewModeTests testCatalogZoomStopsAtVisibleMinimumAndReversesImmediately]' passed (0.352 seconds).
+Test Case '-[OpenPlaneTests.OverviewModeTests testChromeTabCountsRequireUnambiguousWindowMatch]' started.
+Test Case '-[OpenPlaneTests.OverviewModeTests testChromeTabCountsRequireUnambiguousWindowMatch]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.OverviewModeTests testCompactNavigatorDragClampsAndPersists]' started.
+Test Case '-[OpenPlaneTests.OverviewModeTests testCompactNavigatorDragClampsAndPersists]' passed (0.033 seconds).
+Test Case '-[OpenPlaneTests.OverviewModeTests testGroupedWindowsNavigationCameraAndCanvasRestoration]' started.
+Test Case '-[OpenPlaneTests.OverviewModeTests testGroupedWindowsNavigationCameraAndCanvasRestoration]' passed (0.300 seconds).
+Test Case '-[OpenPlaneTests.OverviewModeTests testRightCommandOnlyTogglesOnStandaloneRelease]' started.
+Test Case '-[OpenPlaneTests.OverviewModeTests testRightCommandOnlyTogglesOnStandaloneRelease]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.OverviewModeTests testSettingsTextEditorDoesNotTriggerCanvasSearch]' started.
+Test Case '-[OpenPlaneTests.OverviewModeTests testSettingsTextEditorDoesNotTriggerCanvasSearch]' passed (0.015 seconds).
+Test Case '-[OpenPlaneTests.OverviewModeTests testShortcutValidationAndSerialization]' started.
+Test Case '-[OpenPlaneTests.OverviewModeTests testShortcutValidationAndSerialization]' passed (0.001 seconds).
+Test Case '-[OpenPlaneTests.OverviewModeTests testTabCyclesViewsAndReverseWithoutChangingSavedDesktops]' started.
+Test Case '-[OpenPlaneTests.OverviewModeTests testTabCyclesViewsAndReverseWithoutChangingSavedDesktops]' passed (0.022 seconds).
+Test Case '-[OpenPlaneTests.OverviewModeTests testViewNamesPanDefaultsAndPromptValidation]' started.
+Test Case '-[OpenPlaneTests.OverviewModeTests testViewNamesPanDefaultsAndPromptValidation]' passed (0.022 seconds).
+Test Case '-[OpenPlaneTests.OverviewModeTests testViewPillClickAndRapidReverseSettleOnSelectedButton]' started.
+Test Case '-[OpenPlaneTests.OverviewModeTests testViewPillClickAndRapidReverseSettleOnSelectedButton]' passed (0.454 seconds).
+Test Case '-[OpenPlaneTests.OverviewModeTests testVisibleCameraSwitchTracksModeChanges]' started.
+Test Case '-[OpenPlaneTests.OverviewModeTests testVisibleCameraSwitchTracksModeChanges]' passed (0.195 seconds).
+Test Suite 'OverviewModeTests' passed at 2026-09-09 21:53:24.135.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 1.395 (1.398) seconds
+Test Suite 'OpenPlaneTests.xctest' passed at 2026-09-09 21:53:24.135.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 1.395 (1.399) seconds
+Test Suite 'Selected tests' passed at 2026-09-09 21:53:24.135.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 1.395 (1.399) seconds
+2026-09-09 21:53:24.429 xcodebuild[35047:3123265] [MT] IDETestOperationsObserverDebug: 2.458 elapsed -- Testing started completed.
+2026-09-09 21:53:24.429 xcodebuild[35047:3123265] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-09-09 21:53:24.429 xcodebuild[35047:3123265] [MT] IDETestOperationsObserverDebug: 2.458 sec, +2.458 sec -- end
+
+Test session results, code coverage, and logs:
+	/tmp/openplane-chronological/tests/Logs/Test/Test-OpenPlane-2026.09.09_21-53-20-+0200.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started

@@ -1,0 +1,1 @@
+Signed installed Release; AX-only: Search apps… placeholder present; click enlarged Cmd-F -> field focused, Close search replaces hint; Escape -> hint restored and Canvas focused. User colors preserved. No user preview images inspected.

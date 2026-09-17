@@ -1,0 +1,8 @@
+{
+  "head": "3d976d068ea1db08457d64dd71ad0f2b298248d8",
+  "source_sha256": "71118d88c3b9e9610803027cea7a788824aa56a24f2d89cad101c3f906f8815d",
+  "binary_sha256": "bc069ab041f53322ba1c43feb1f600941813dd74bb6c4277d3ac5579676e8b2a",
+  "baseline_binary_sha256": "5a71f81d32922ee56db68a50d3d1008dfe41d4fd5884e82a5190372c9f653767",
+  "configuration": "Release",
+  "signature": "verified deep strict"
+}

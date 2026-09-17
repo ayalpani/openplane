@@ -236,7 +236,17 @@ PERF-020 Vereinfachung: [Sofortige Auswahl als einziges Verhalten](results/2026-
 ## PERF-022 – Chronological Mode und All apps vollständig live abnehmen
 
 - Status: OPEN; Teil-Funktionstest vorhanden, vollständige Messadapter BLOCKED.
-- Bericht: [Chronological-Prototyp](results/2026-09-07-chronological/report.md).
+- Berichte: [Chronological-Prototyp](results/2026-09-07-chronological/report.md),
+  [Shortcut und Fenster-Lifecycle](results/2026-09-07-input-lifecycle/report.md).
+- Aktuelle Shortcut-Abnahme: Command-Tab öffnet nur die Übersicht; wiederholte
+  Chords und Loslassen dürfen Auswahl und Aktivierung nicht verändern. Der
+  frühere Command-Tab-Zyklus ist nicht mehr gewünschtes Produktverhalten.
+- Leere Zwei-Fenster-Fixture prüfte Schließen und anschließendes App-Beenden.
+  Minimierte/andere Spaces und Speicherdialoge bleiben offen.
+- Zweiersprung: Nutzer bestätigt normale Pfeile; Symptom nach Diagnose-Neustart
+  verschwunden, Ursache unbestätigt. Wiederholtes Öffnen und Moduswechsel mit
+  bestehender Auswahl/Kamera prüfen; Ereigniszähler mit sichtbarer Bewegung
+  vergleichen. Diagnose selbst änderte keine Navigationsentscheidung.
 - Fälle: P15/P16 sowie betroffene Varianten P01–P04, P09–P14. Sichere
   Mehrfenster-Fixture, gehaltenes Command mit einzeln gesteuerten Key-ups,
   Fokus-/Frame-Latenzbeobachter und reproduzierbare App-Startfehler bereitstellen.
@@ -248,3 +258,135 @@ PERF-020 Vereinfachung: [Sofortige Auswahl als einziges Verhalten](results/2026-
   Return-Ziele oder Überschreiben freier Canvas-Positionen akzeptieren.
 - Vollständige Varianten: NOT RUN: scheduled overnight, autorisierte 03:00-Runde.
   Keine neue Automation und keine unbeaufsichtigten Produktänderungen anlegen.
+
+Nachtrunde 2026-09-07: [NOT RUN – Ausführung außerhalb des Nachtfensters](results/2026-09-07-night-001/report.md).
+Vorprüfung erst 13:49 Berlin, keine Desktop-Eingaben. Offene Abnahmen unverändert;
+nächster regulärer Termin 2026-09-08 03:00. Bestehende Fixture-/Beobachterblockaden
+PERF-001/003–007 bleiben bestehen.
+
+PERF-022 extension, 2026-09-07: include P17/P18 Overview grouping/all-fit layout
+and per-mode camera following. [Report](results/2026-09-07-overview/report.md).
+Synthetic seven-window geometry/navigation/renderer covered; bounded follow-up:
+large same-app groups and title readability, overlap hit targets, deletion during
+navigation, repeated open/mode changes, full CPU baseline pairs and frame/focus
+latency adapters. Current protection of user screenshots remains in force.
+
+## PERF-023 – Browser-Privatmodus verlässlich unterscheiden
+
+- Status: SUPERSEDED by explicit user decision on 2026-09-07 to remove preview
+  filtering, including private windows. Prior containment is historical, not an
+  active release requirement. Browser disk caching remains disabled.
+- Remaining verification: P02/P12 safe normal/private browser fixtures, legacy
+  preference both ways, capture/refresh, first/warm process; no user screenshots.
+  Full comparison and calibrated capture observer remain pending under PERF-022.
+
+## PERF-024 – Native shortcuts and physical swipe acceptance
+
+- OPEN: P19. Verify configurable registered hotkey from external apps, repeat/
+  release, conflicts, cancellation/reset/restart and keyboard layouts. Compare
+  idle/action/additional CPU and latency against the previous monitor-based build.
+- Native swipe prototype needs actual built-in and Magic Trackpad input with
+  Mission Control freed and still assigned, plus three-finger dragging settings.
+  Public NSEvent monitor cannot suppress the system's original gesture; document
+  whether macOS actually delivers it. Do not claim a reliable system replacement
+  before this check. Physical gesture fixture/adapter missing: BLOCKED.
+- No new scheduler; authorized nightly tests only where supported. If the public
+  monitor fails, investigate an integrated native input backend rather than
+  requiring BetterTouchTool. Do not silently expand to private APIs.
+
+## PERF-025 – View overlay, movement policy and prompt prototype acceptance
+
+- OPEN: P20/P21 and affected P03/P07/P15–P18. Complete mixed-screen/viewport,
+  pinch/wheel/minimap, long-name/rename/restart and catalog bounded-scroll checks.
+- Prompt error/refusal/cancellation/stale-result matrix, deterministic response
+  fixture and calibrated input-to-layout observer missing: BLOCKED for full
+  performance acceptance. Compare same fixture with recorded baseline; remote API
+  latency separate. No user window screenshots permitted.
+- Environment/session API key is prototype scope; durable credential management
+  and additional custom view instances are separate future product work.
+
+PERF-025 follow-up (zoom/header revision): complete installed P16 keyboard/pinch reversal (resolve CUA arrow key adapter), and measure P17 shared HUD header grouping/text CPU with safe fixtures; source/build in results/2026-09-07-zoom-stack-header/identity.json.
+
+PERF-025 minimap follow-up: reproduce reported slight lag on installed Release during the actual user input path; synthetic presentation-layer translation/zoom/interruption agrees within 0.023pt. Calibrated display observation still required. Evidence: results/2026-09-07-minimap-sync/report.md. Do not alter timing based on the unconfirmed perception alone.
+
+PERF-025 history follow-up: reproduce permanent input lock reported after Overview navigator Back, using installed safe two-app history fixture. Unconditional history camera flight corrected; synthetic Back → arrow → preview click passes. Original permanent lock not reproduced. Evidence: results/2026-09-07-history-selection/report.md.
+
+PERF-025 close-refresh follow-up: live safe Chrome multi-window Backspace/context-close and save-dialog cancellation; verify card/count removal latency and extra discovery CPU versus prior build. Evidence and identity: results/2026-09-08-close-refresh/report.md.
+
+## Aktueller Nachtprüfstatus
+
+2026-09-15: [BLOCKED – Sitzung gesperrt](results/2026-09-15-night-001/report.md).
+Vorprüfung 03:26 Berlin; keine Live-Eingaben. Bekannte wiederholte Sperrblockade.
+PERF-014 und übrige offene Abnahmen unverändert; bestehende Fixture-/Beobachter-
+Aufgaben PERF-001/003–007 und PERF-025 bleiben offen. Keine neue Aufgabe dupliziert.
+
+PERF-025 Chrome-count/right-Command follow-up (2026-09-09): provide controlled
+Chrome windows and opt-in Automation grant/deny fixture; verify tab open/close,
+ambiguous matching, timeout/revocation, restart and no disabled-path Apple Events.
+CUA rejects bare Super_R (keyPressIncludedNoNonModifierKeys); add a supported
+modifier-only physical input path or record human-assisted press/release checks.
+Measure P04/P20/P22 on the same baseline fixture, including idle/action/additional
+CPU and input-to-caption/toggle latency. Evidence:
+[report](results/2026-09-09-tabs-command/report.md).
+
+PERF-025 separate-overlays follow-up: run P04/P07/P15/P20 input matrix and
+same-fixture CPU/latency comparison, including newly visible Overview/catalog
+mini-map, simultaneous search/current-app display, saved camera restore and
+Dock-aware map drag. Full comparisons NOT RUN: scheduled overnight; observer
+remains BLOCKED. See results/2026-09-09-separate-overlays/report.md.
+
+PERF-025 keyboard-first Settings follow-up: complete P07/P20 full control matrix
+(including shortcut recording and optional AI/error/permission states), macOS
+Keyboard Navigation off/on, focus outline/scroll visibility and no Canvas input
+leaks. Same-fixture CPU/latency comparisons NOT RUN: scheduled overnight;
+calibrated observer remains BLOCKED. Evidence: results/2026-09-09-keyboard-settings/.
+
+PERF-025 close-dialog follow-up (2026-09-10): complete installed safe iTerm
+close/quit confirmation reveal, Cancel retention, Confirm removal, no-modal
+close, delayed prompt and mode-switch cancellation. Interactive handoff test
+interrupted by user focus; do not mark passed. Measure P11/P17 observer overhead
+and handoff latency against final-colors baseline.
+Evidence: results/2026-09-10-close-dialog/report.md.
+
+PERF-025 dialog-return follow-up (2026-09-10): stabilize owned native sheet
+fixture lifecycle; complete confirm/cancel return and external-app cancellation
+in installed Release after repeated UI state interruptions. Include transient AX
+failure, target exit and pending-dialog CPU. Evidence:
+results/2026-09-10-dialog-return/report.md.
+
+PERF-025 close/entry follow-up (2026-09-10): complete safe Chrome two-window
+removal/capture-race test, exact-element AX absence/error cases and confirm/cancel
+return; occupied user search prevented live actions. Validate real-screen entry
+geometry/motion on multiple monitors, physical right Command and rapid toggle.
+Measure AX probe overhead and entry latency against dialog-return baseline.
+Evidence: results/2026-09-10-close-entry/report.md.
+
+PERF-025 origin-return follow-up (2026-09-10): verify exact captured window after
+selection/view changes with Q and physical right Command; same-app closed-window
+fallback and missing-origin status. Current live attempt had uncontrolled focus
+changes; target guarantee not verified. Measure shared focus animation latency.
+Evidence: results/2026-09-10-return-origin/report.md.
+
+PERF-025 toggle-parity follow-up (2026-09-11): validate physical rapid right
+Command release pairs/triples during each transition, including interruption.
+Current UI tool cannot synthesize bare right Command; queue unit coverage is not
+event-tap integration coverage. Compare latency/CPU against return-origin on
+same safe fixture. Evidence: results/2026-09-11-toggle-parity/report.md.
+
+PERF-025 transition-speed follow-up (2026-09-11): same safe fixture comparisons at
+1×/2×/limits, preview-to-real-window handoff alignment and physical right Command
+parity during faster transitions. Evidence: results/2026-09-11-transition-speed/.
+
+PERF-025 early-controls-fade follow-up (2026-09-11): verify physical right Command
+return with early minimap/chrome disappearance, interruption restoration and speed
+limits on a safe fixture; measure against transition-speed baseline.
+Evidence: results/2026-09-11-controls-fade/.
+
+PERF-025 Music Backspace follow-up (2026-09-15): reproduce missing AX window
+inventory on fresh Music launch before a UI inspector reads Music. Capture
+whether the selected node has an AX element and whether AXWindows is empty;
+then compare after AX inspection. One installed-app Backspace succeeded after
+inspection, so no permanent fix is established. Acceptance: repeat fresh/warm
+Music last-window Backspace with visible removal and process exit, preserving
+multi-window close behavior; use matched P11/P17 CPU/latency checks for any fix.
+Evidence: [Music diagnosis](results/2026-09-15-music-backspace/report.md).

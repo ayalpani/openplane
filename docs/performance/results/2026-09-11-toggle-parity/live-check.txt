@@ -1,0 +1,1 @@
+Signed Release installed and launched. AX exposes Overview selected, Settings, Search and view navigation. Q delivered, subsequent frontmost app remained OpenPlane: no controlled origin fixture, return check INCONCLUSIVE. No live screenshots inspected. Bare right Command cannot be synthesized by available UI tool; rapid toggle integration BLOCKED. No user settings changed.

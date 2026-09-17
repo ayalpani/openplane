@@ -1,0 +1,9 @@
+# Minimap synchronization investigation
+
+User reports apparent viewport-frame lag. No product behavior changed; two existing layer references exposed internally for a regression test. No new Release install necessary for test visibility changes.
+
+The test hosts a synthetic native NSWindow and samples the actual main camera, map-content and viewport presentation layers. Expected viewport = canvas bounds transformed by inverse presented main camera then presented minimap transform. Compare all four rectangle edges, not model camera against itself. Native translation, interrupted translation into zoom/pan, another reversal/zoom; 30 samples total across two runs. First run max numerical noise; expanded run maximum 0.0229564 screen points, all below 0.5pt bound. Regression PASS for these synthetic cases. Both native keyframes start from same timestamp/duration; per-frame zoom sets main and map in one disabled-actions transaction.
+
+No evidence of visible temporal lag in tested paths. The map projection dynamically fits the union of items and viewport, so map scale/center can change during a flight. That is a possible perceptual explanation, not a reproduced cause of the user's report. No unproven timing change made. No user screenshots inspected.
+
+Installed Release live reproduction **NOT RUN**: user-specific path not reproduced by this synthetic fixture; presentation-layer sampling does not prove physically displayed scanout. P01/P02/P07 full live coverage/core smoke and matched baseline CPU/latency comparisons **NOT RUN: scheduled overnight**, source/test and installed-reference identities in identity.json. Idle/action/additional CPU and latency **NOT RUN**, no performance claim. Calibrated display/latency observer **BLOCKED**, follow-up PERF-025 in backlog. Source/test-only change; no new user-visible performance function.

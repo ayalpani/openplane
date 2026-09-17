@@ -1,5 +1,8 @@
 # OpenPlane
 
+Licensed under the [MIT License](LICENSE). The Lucide-derived app icon is
+covered by the ISC license; see [third-party notices](THIRD_PARTY_NOTICES.md).
+
 OpenPlane is a native macOS proof of concept that turns open windows into a
 spatial, zoomable desktop. It started on **September 2, 2026** as an exploration
 of a simple idea: apps should keep a memorable place on an infinite plane
@@ -16,8 +19,9 @@ charge of launching and running software.
   Shift-Up to zoom out.
 - Use the arrow keys to move spatially between windows and closed app places;
   the highlighted target stays centered, and Return opens it.
-- Press Backspace to quit the highlighted open app. It continues to delete text
-  in search and text fields, and does nothing on an already closed app place.
+- Press Backspace to close the selected window. If it is the app’s confirmed
+  last window, quit the app instead. Minimized windows count too. Backspace still
+  deletes text in search and text fields and does nothing on closed app places.
 - Start typing to search open windows and closed app cards. Closed cards always
   keep their normal appearance; only nonmatching open windows dim. Up/Down selects a result and
   Return opens its window or starts its closed app. An empty search dims nothing.
@@ -54,14 +58,16 @@ canvas gestures. Up/Down follows the chronological window list; Return opens the
 selected window. Moving a card is temporary in Chronological: reopening the
 overview or a structural window change restores the vertical arrangement.
 
-With **Use ⌘Tab for OpenPlane** enabled, Chronological supports holding Command,
-pressing Tab repeatedly (Shift reverses), then releasing Command to activate the
-selected window. The list stays stable during selection. Canvas keeps its
-existing shortcut behavior. Window history starts with the OpenPlane process.
+With **Use ⌘Tab for OpenPlane** enabled, Command-Tab simply opens the overview
+in the selected mode. Repeating it while the overview is visible keeps the
+selection; releasing Command never activates a window. Use arrows to navigate
+and Return or a click to open the selected window. Window history starts with
+the OpenPlane process.
 
 **All apps** at the end opens a searchable installed-app catalog; its back arrow
-returns to the window list. Command-Tab skips this catalog entry. Window context
-menus distinguish **Close Window** from **Quit App**.
+returns to the window list. Window context menus distinguish **Close Window**
+from **Quit App**. Backspace closes one window first and quits only when a full
+application-window check confirms that it is the last window.
 
 ## Run
 
@@ -178,3 +184,54 @@ The proof of concept targets macOS 26, the main display, and the current Space.
 It is intentionally unsandboxed because controlling other applications' windows
 requires macOS Accessibility access. Multi-display layouts, multiple Spaces,
 cloud synchronization, and automatic layout cleanup are future work.
+
+Browser preview filtering and its Settings toggle have been removed. Normal and
+private browser windows are displayed regardless of the legacy preference.
+Browser previews remain memory-only and are not restored from disk cache.
+
+View mode also offers **Overview**: separate windows are grouped by application
+and cascaded with visible titles, then fitted together on the available screen.
+Up/Down traverses a group; Left/Right moves between groups; Tab traverses windows.
+Return or click activates the selected window. Browser tabs inside one native
+window are not separate items. Privacy protection applies unchanged.
+
+**Camera follows selection** is saved per mode. It defaults on in Canvas and
+Chronological, off in Overview. Explicit Fit all, entering an arranged view and
+layout changes still position the camera. Canvas placement/camera persistence is
+independent of both automatic layouts.
+
+### Overview input
+
+Settings → Open overview records a global modified keyboard shortcut; Reset
+restores Control–Option–Space. Native registration reports unavailable bindings.
+No external mapping tool is required. Optional “Swipe up opens Overview” uses
+macOS swipe events and is experimental: first free the Mission Control gesture
+in macOS Trackpad settings. Physical three-finger delivery is not yet verified.
+
+### View presets and prompt experiment
+
+The floating Views control switches Canvas, Chronological, Overview and All apps
+without opening Settings. View name and Canvas can be moved are saved separately
+for each view. Overview defaults to a fixed camera; All apps defaults to bounded
+vertical scrolling without free horizontal panning. Zoom remains available.
+
+Settings → View prompt generates an OpenAI suggestion for name, layout, camera
+movement and following. Apply suggestion explicitly adopts it; the prototype
+selects/configures one of the four existing views rather than generating code or
+creating arbitrary extra layouts. Only prompt/schema are sent, never window data.
+Uses gpt-5-mini and OPENAI_API_KEY (or openai_api_key) inherited by the app process,
+or a key entered into the secure field for that session. Keys are not persisted;
+a normal Finder launch may not inherit a shell environment. Prompt text is saved
+per view. The API response is requested with store=false.
+
+Views now occupy the former desktop-tab area: Canvas, Recent, Overview and All apps. Tab / Shift-Tab cycle views while the overview has focus (outside text editing/search). Fresh installs default to Overview. Legacy saved desktop arrangements are retained internally.
+
+
+### Keyboard-first interface
+
+Every control must have a keyboard path and visible focus. Within OpenPlane,
+⌘F focuses Search apps and ⌘, opens/closes Settings. In Settings, Tab/Shift-Tab
+traverse enabled controls on the current page; Space/Return activates buttons;
+Up/Down traverse controls when not editing text. Escape goes back one Settings
+level, then closes the sidebar. Sidebar input must never navigate the underlying
+Canvas. This does not require macOS Keyboard Navigation to be enabled.

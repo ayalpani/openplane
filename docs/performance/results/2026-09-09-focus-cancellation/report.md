@@ -1,0 +1,7 @@
+# Interrupted focus animation
+
+Code path: gesture selected Overview before checking the focusing state; mode/layout replacement can cancel focus camera animation without its completion, leaving CanvasStateMachine.focusing and rejecting subsequent requests. Exact user incident after process termination NOT REPRODUCED. Gesture now ignores trailing input during focus. Shared endFocusTransition reports cancellation once; AppDelegate restores overview state, opaque/key overlay, first responder and inventory loops. Successful completion explicitly does not report cancellation. Completion retains its target node so inventory removal cannot silently skip state cleanup.
+
+Ten relevant tests PASS (nine Overview tests and native Canvas cancellation/replacement/normal-completion regression). Signed Release build/signature PASS. Short installed check: gesture toggle and Return/navigator click dismissing overlay PASS. Exact target app focus not conclusively observed; physical gesture timing and preview-card click not tested. No user screenshots viewed.
+
+P04/P13/P20 full gesture/input variants, core smoke and matched baseline comparisons **NOT RUN: scheduled overnight**; identity.json identifies source/build/baseline. Same safe fixture, first/warm conditions. Idle CPU, action CPU, additional CPU and presented latency **NOT RUN**. Physical gesture injection/calibrated latency fixture **BLOCKED**, follow-up [PERF-025](../../backlog.md#perf-025--view-overlay-movement-policy-and-prompt-prototype-acceptance). No measured gain or proof of exact reported incident claimed.

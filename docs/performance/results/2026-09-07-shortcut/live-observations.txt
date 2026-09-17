@@ -1,0 +1,9 @@
+Signed installed Release, AX only. Settings → Overview shortcut:
+Recorded Control+Option+Shift+P; button displayed ⌃⌥⇧P.
+Closed Settings/dismissed overview. App-targeted key attempt failed noWindowsAvailable;
+not counted as a successful trigger. Then selected Finder and sent the custom
+shortcut there. OpenPlane AX window appeared with selected preview control.
+Reopened Settings: recorded binding retained. Reset → ⌃⌥Space. Began recording
+again and pressed Escape: default retained. Settings left open for user's physical
+gesture test; swipe option remains off, privacy option remains off. No user
+screenshots captured/viewed. Live lease released before asking user to test swipe.

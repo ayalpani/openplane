@@ -1,0 +1,20 @@
+{
+  "time_utc": "2026-09-15T01:26:24.353139+00:00",
+  "within_window": true,
+  "session": "BLOCKED",
+  "reason": "Unlock the Mac before measuring visible navigation",
+  "commit": "3d976d068ea1db08457d64dd71ad0f2b298248d8",
+  "dirty_diff_sha256": "f384ca8e248697c4c9938d3d3e8121d8b7d70fa332ea0b46f8382c0e59b4a384",
+  "installed_binary_sha256": "ad9c59aa401b54a0910c087ec861f93537c8dc9b289476909f04c85c5e0c3808",
+  "signature_verified": true,
+  "lock": "available; released",
+  "status": "BLOCKED",
+  "live_inputs": 0,
+  "completed_actions": 0,
+  "app_preferences_or_foreground_changed": false,
+  "cpu_idle": null,
+  "cpu_action": null,
+  "cpu_additional": null,
+  "latency": null,
+  "frames": null
+}

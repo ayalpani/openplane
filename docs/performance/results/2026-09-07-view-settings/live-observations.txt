@@ -1,0 +1,16 @@
+AX-only installed Release check, no user-window screenshots viewed:
+Overlay switched Chronological → Overview → All apps → Overview with Settings closed.
+Overview movement checkbox=0. Text entry initially exposed global type-to-search
+intercepting Settings edits; fixed for NSTextView responders and regression-tested.
+Initial API attempt with gpt-4o-mini failed HTTP403 model_not_found. Models endpoint
+confirmed access to gpt-5-mini and gpt-5.5; switched to gpt-5-mini, no key values logged.
+Production-client synthetic smoke returned Fokus/overview/canPan=false/follow=false.
+Installed UI: complete synthetic prompt entered, Generate returned suggestion
+'Overview: alle Fenster', movement off, following off. Apply updated overlay/name
+and both switches. Renamed back to Overview through name field/Return.
+A missing standard Edit menu prevented Command-A; final build adds standard Cut,
+Copy, Paste, Select All. Final installed Command-A selected the entire prompt.
+Restart retained Overview name and sample prompt, movement=0/follow=0/privacy=0.
+Settings closed and initial Chronological view restored via overlay. Sample
+Overview prompt retained as a usable example. Environment key inherited by final
+app process, not copied to a file/preferences; session field remains empty.

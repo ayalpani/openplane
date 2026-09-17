@@ -1,0 +1,11 @@
+{
+  "head": "3d976d068ea1db08457d64dd71ad0f2b298248d8",
+  "source_patch_sha256": "b4bbf67a7f10bbc8b41c9281bbfb2d2c6c4a13aa9e4665b85c71cd7b1a24b590",
+  "binary_sha256": "389a90b7a5fad0a06e2120ff7f3291977634ed9e97ba0bbd3814563f8e669d93",
+  "baseline_binary_sha256": "ce9132b3178d12813e74414682f3178dc3b899f46cfcb4861e6d806617b83afd",
+  "configuration": "signed Release installed",
+  "cases": [
+    "P04",
+    "P20"
+  ]
+}

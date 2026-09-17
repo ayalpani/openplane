@@ -1,0 +1,1 @@
+Signed installed Release AX: Settings opens, slider 2.00×. Three Tabs from Views focus slider; Right changes to 2.25×, confirmed by AX value and caption. Left restores 2×, Escape closes Settings. No screenshot inspected or unrelated setting changed.

@@ -28,6 +28,8 @@
 	<true/>
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>OpenPlane uses window previews to place your open apps on the canvas.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>When you enable Chrome tab counts, OpenPlane asks Chrome how many tabs each window contains to show the count in its caption.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

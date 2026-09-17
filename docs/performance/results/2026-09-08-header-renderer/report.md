@@ -1,0 +1,7 @@
+# One retained preview-header renderer
+
+Removed separate drawOverviewHeaders HUD renderer and its manual text/icon positioning. updatePreviewHeader and layoutPreviewHeader now render Canvas/Recent cards and Overview stack headers using the same CanvasCardLayer badge/text layers. Overview supplies union rectangle, selected window title/count, selection state. Stack header layers retained per app and removed on group deletion/mode exit. Preview cards keep per-window outlines; hidden individual header layers do not replace shared stack header.
+
+Twelve relevant Overview/Chronological tests PASS, synthetic full scene visually inspected. Signed Release build/signature PASS. Installed live AX Canvas → Overview → Canvas PASS, original mode restored. No user preview screenshots viewed. Existing synthetic fixture updated to capture retained headers in scene rather than manually invoke removed HUD renderer.
+
+P15/P17 full zoom/selection/truncation/group-lifecycle coverage, core smoke and baseline comparisons **NOT RUN: scheduled overnight** for source/build in identity.json. Same safe fixture and observer, first/warm conditions. Idle/action/additional CPU and latency **NOT RUN**; calibrated observer/fixture **BLOCKED**, [PERF-025](../../backlog.md#perf-025--view-overlay-movement-policy-and-prompt-prototype-acceptance). No performance gains claimed from retained rendering without paired measurements.

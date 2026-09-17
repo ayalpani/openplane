@@ -1,0 +1,12 @@
+{
+  "head": "3d976d068ea1db08457d64dd71ad0f2b298248d8",
+  "source_patch_sha256": "6dcc749268d96d4d4a3b0b955f563f9960dc7699d3d133b814a8dfe552898add",
+  "binary_sha256": "259cf5061d6707bacf0e31ddc5e40185141d888668f076eadf64908bceb96da4",
+  "baseline_binary_sha256": "3eb57edbc781971ef917d3974fe39be88e69adc16680ae4fc622cca2c1497edd",
+  "configuration": "signed Release installed /Applications/OpenPlane.app",
+  "cases": [
+    "P13",
+    "P20",
+    "P21"
+  ]
+}

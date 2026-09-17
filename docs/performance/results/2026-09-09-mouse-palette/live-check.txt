@@ -1,0 +1,1 @@
+Signed installed Release, AX-only. Overview selected, white text ~51%/black background ~20%. Click Text color -> Black then Tab -> Canvas selected; first responder remains Canvas. Click Text color -> White then Shift-Tab -> Overview selected; original settings restored. No user screenshots inspected.
