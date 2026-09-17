@@ -1,0 +1,12 @@
+Installed signed Release at /Applications/OpenPlane.app.
+Baseline AX: app-name Open button and app-history Select button present.
+Candidate AX: Settings, Fit, Save, Search and four view buttons; app strip absent.
+Candidate screenshots inspected: Overview with search, Canvas, and Overview after navigation.
+Cmd-F + Chrome: field updated; Chrome selected, other cards dimmed; result count 1/1.
+Escape: query cleared. Tab: Canvas -> Recent -> All apps -> Overview, radio state confirmed.
+Left/Right: selected-card highlighting visible; minimap and search remain rendered.
+Return: overview dismissed; AX reported noWindowsAvailable. Destination app not independently inspected.
+Reopened installed app: Overview and remaining controls visible.
+Cmd-comma: Settings visible. Escape: Settings dismissed.
+No settings controls changed. Restored Overview with empty search.
+No personal screenshots copied into repository. Original before/after observations are in task tool outputs.

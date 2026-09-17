@@ -390,3 +390,10 @@ inspection, so no permanent fix is established. Acceptance: repeat fresh/warm
 Music last-window Backspace with visible removal and process exit, preserving
 multi-window close behavior; use matched P11/P17 CPU/latency checks for any fix.
 Evidence: [Music diagnosis](results/2026-09-15-music-backspace/report.md).
+
+PERF-025 app-strip removal follow-up (2026-09-17): complete the P04/P07/P15/P20
+removal case across all four views, search and keyboard/mouse activation, narrow
+layouts and minimap repositioning, on a safe fixture. Compare with e97c070 using
+the same first/warm cache conditions; record idle/action/additional CPU, latency
+and correctness. Full core smoke and repeated A/B pairs: NOT RUN: scheduled
+overnight. Evidence: [removal report](results/2026-09-17-remove-app-strip/report.md).

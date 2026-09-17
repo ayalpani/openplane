@@ -558,55 +558,6 @@ enum ShortcutMatcher {
   }
 }
 
-struct AppNavigationHistory {
-  private(set) var current: String?
-  private var backStack: [String] = []
-  private var forwardStack: [String] = []
-
-  mutating func opened(_ bundleIdentifier: String) {
-    guard bundleIdentifier != current else { return }
-    if let current { backStack.append(current) }
-    current = bundleIdentifier
-    forwardStack.removeAll()
-  }
-
-  func canGoBack(available: Set<String>) -> Bool {
-    backDestination(available: available) != nil
-  }
-
-  func backDestination(available: Set<String>) -> String? {
-    backStack.last(where: available.contains)
-  }
-
-  func canGoForward(available: Set<String>) -> Bool {
-    forwardDestination(available: available) != nil
-  }
-
-  func forwardDestination(available: Set<String>) -> String? {
-    forwardStack.last(where: available.contains)
-  }
-
-  mutating func goBack(available: Set<String>) -> String? {
-    while let bundleIdentifier = backStack.popLast() {
-      guard available.contains(bundleIdentifier) else { continue }
-      if let current { forwardStack.append(current) }
-      current = bundleIdentifier
-      return bundleIdentifier
-    }
-    return nil
-  }
-
-  mutating func goForward(available: Set<String>) -> String? {
-    while let bundleIdentifier = forwardStack.popLast() {
-      guard available.contains(bundleIdentifier) else { continue }
-      if let current { backStack.append(current) }
-      current = bundleIdentifier
-      return bundleIdentifier
-    }
-    return nil
-  }
-}
-
 enum CanvasDirection {
   case left
   case right
@@ -1630,7 +1581,6 @@ struct InstalledApp: Sendable {
   }
 }
 
-
 enum WindowBackspaceAction: Equatable {
   case closeWindow
   case quitApp
@@ -1640,7 +1590,6 @@ enum WindowBackspaceAction: Equatable {
     windowCount == 1 ? .quitApp : .closeWindow
   }
 }
-
 
 enum CanvasViewMode: String, CaseIterable {
   case canvas, chronological, overview
@@ -1705,7 +1654,6 @@ struct OverviewLayout {
     return OverviewLayout(order: groups.flatMap { $0.map(\.id) }, frames: bestFrames)
   }
 }
-
 
 struct OverviewShortcut: Codable, Equatable {
   let keyCode: UInt32
@@ -1795,7 +1743,6 @@ final class OverviewShortcutController {
     held = false
   }
 }
-
 
 struct ViewPromptPlan: Codable, Equatable, Sendable {
   let name: String

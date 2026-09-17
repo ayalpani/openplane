@@ -1139,12 +1139,6 @@ private final class SelectionDelegate: CanvasViewDelegate {
     _ canvasView: CanvasView, didRequestLaunch bundleIdentifier: String, applicationName: String,
     at anchor: CGPoint
   ) { launched.append(bundleIdentifier) }
-  func canvasViewDidRequestBack(_ canvasView: CanvasView) {
-    XCTFail("Selection must not navigate back")
-  }
-  func canvasViewDidRequestForward(_ canvasView: CanvasView) {
-    XCTFail("Selection must not navigate forward")
-  }
   func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool { false }
   func canvasView(_ canvasView: CanvasView, setPrivateBrowserPreviews enabled: Bool) {}
 }

@@ -514,25 +514,6 @@ final class CanvasMathTests: XCTestCase {
 
   }
 
-  func testAppNavigationHistoryMovesBothDirectionsAndDropsForwardBranch() {
-    var history = AppNavigationHistory()
-    history.opened("app.a")
-    history.opened("app.b")
-    history.opened("app.b")
-    history.opened("app.c")
-
-    XCTAssertTrue(history.canGoBack(available: ["app.a", "app.c"]))
-    XCTAssertEqual(history.backDestination(available: ["app.a", "app.b"]), "app.b")
-    XCTAssertEqual(history.goBack(available: ["app.a", "app.b", "app.c"]), "app.b")
-    XCTAssertEqual(history.forwardDestination(available: ["app.a", "app.c"]), "app.c")
-    XCTAssertTrue(history.canGoForward(available: ["app.a", "app.c"]))
-    XCTAssertEqual(history.goBack(available: ["app.a", "app.b", "app.c"]), "app.a")
-    XCTAssertEqual(history.current, "app.a")
-    XCTAssertEqual(history.goForward(available: ["app.a", "app.b", "app.c"]), "app.b")
-    history.opened("app.d")
-    XCTAssertFalse(history.canGoForward(available: ["app.a", "app.b", "app.c", "app.d"]))
-  }
-
   func testCanvasSearchMatchesAppNamesAndWindowTitles() {
     XCTAssertTrue(
       CanvasSearch.matches(query: "chrome", applicationName: "Google Chrome", title: "OpenPlane")
@@ -1505,7 +1486,6 @@ final class WindowBackspaceActionTests: XCTestCase {
   }
 }
 
-
 @MainActor
 final class OverviewModeTests: XCTestCase {
   func testFocusControlsDisappearEarlyAndRestoreAtStart() {
@@ -1668,8 +1648,6 @@ final class OverviewModeTests: XCTestCase {
     canvas.layout()
     let original = canvas.navigatorPanelFrame
     XCTAssertGreaterThanOrEqual(original.minY, 96)
-    XCTAssertLessThan(canvas.searchOverlayFrame.maxX, canvas.positionOverlayFrame.minX)
-    XCTAssertFalse(canvas.positionOverlayFrame.intersects(original))
     let search = try XCTUnwrap(canvas.subviews.compactMap { $0 as? NSTextField }.first {
       $0.action == NSSelectorFromString("openSearchResult:")
     })
@@ -1725,14 +1703,18 @@ final class OverviewModeTests: XCTestCase {
     canvas.setViewMode(.chronological)
     XCTAssertNil(defaults.data(forKey: "savedOverlayCamera.chronological"))
     XCTAssertEqual(defaults.data(forKey: "savedOverlayCamera.overview"), saved)
+    for index in 0..<4 {
+      canvas.selectPresentation(at: index)
+      let actions = canvas.subviews.compactMap { ($0 as? NSButton)?.action }.map(NSStringFromSelector)
+      XCTAssertFalse(actions.contains("openPreviousApp:"))
+      XCTAssertFalse(actions.contains("openNextApp:"))
+      XCTAssertFalse(actions.contains("focusSelectedApp:"))
+    }
     for width: CGFloat in [480, 800, 1200] {
       canvas.setFrameSize(CGSize(width: width, height: 600))
       canvas.layout()
-      XCTAssertFalse(canvas.searchOverlayFrame.intersects(canvas.positionOverlayFrame))
       XCTAssertFalse(canvas.searchOverlayFrame.intersects(canvas.navigatorPanelFrame))
-      XCTAssertFalse(canvas.positionOverlayFrame.intersects(canvas.navigatorPanelFrame))
       XCTAssertLessThanOrEqual(canvas.navigatorPanelFrame.maxX, width)
-      XCTAssertLessThanOrEqual(canvas.positionOverlayFrame.maxX, width)
     }
   }
 
@@ -2064,13 +2046,8 @@ final class OverviewModeTests: XCTestCase {
     canvas.selectedWindowID = 4
     frontmost(3, over: [1, 2])
     canvas.selectedWindowID = 2
-    let history = HistoryNavigationProbe()
-    canvas.delegate = history
-    canvas.backNavigationTarget = nodes[0]
-    canvas.layoutSubtreeIfNeeded()
-    let back = try XCTUnwrap(canvas.subviews.compactMap { $0 as? NSButton }.first {
-      $0.action == NSSelectorFromString("openPreviousApp:")
-    })
+    let focusProbe = WindowFocusProbe()
+    canvas.delegate = focusProbe
     func click(_ point: CGPoint) throws {
       for type: NSEvent.EventType in [.leftMouseDown, .leftMouseUp] {
         let event = try XCTUnwrap(NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
@@ -2078,18 +2055,9 @@ final class OverviewModeTests: XCTestCase {
         if type == .leftMouseDown { canvas.mouseDown(with: event) } else { canvas.mouseUp(with: event) }
       }
     }
-    back.performClick(nil)
-    XCTAssertEqual(history.backRequests, 1)
-    XCTAssertEqual(canvas.selectedWindowID, 1)
-    XCTAssertEqual(canvas.camera, overviewCamera, "History must honor fixed Overview camera")
-    XCTAssertFalse(canvas.nativeCameraTravel)
-    try press(125)
-    XCTAssertEqual(canvas.selectedWindowID, 2, "Arrows remain usable after history selection")
     let selectedRect = CanvasMath.viewRect(for: nodes[1].worldFrame, camera: canvas.camera, bounds: canvas.bounds)
     try click(CGPoint(x: selectedRect.midX, y: selectedRect.maxY - 10))
-    XCTAssertEqual(history.focused, [2], "Selected preview remains clickable after Back")
-    canvas.selectHistoryWindow(999999)
-    XCTAssertEqual(canvas.selectedWindowID, 2, "Missing history window must not break selection")
+    XCTAssertEqual(focusProbe.focused, [2], "Selected preview remains clickable")
     canvas.layoutSubtreeIfNeeded()
     if let bitmap = canvas.bitmapImageRepForCachingDisplay(in: canvas.bounds) {
       canvas.cacheDisplay(in: canvas.bounds, to: bitmap)
@@ -2181,17 +2149,10 @@ final class OverviewModeTests: XCTestCase {
   }
 }
 
-
 @MainActor
-private final class HistoryNavigationProbe: CanvasViewDelegate {
-  var backRequests = 0
+private final class WindowFocusProbe: CanvasViewDelegate {
   var focused: [CGWindowID] = []
   func canvasView(_ canvasView: CanvasView, didRequestFocus node: WindowNode) { focused.append(node.id) }
-  func canvasViewDidRequestBack(_ canvasView: CanvasView) {
-    backRequests += 1
-    canvasView.selectHistoryWindow(1)
-  }
-  func canvasViewDidRequestForward(_ canvasView: CanvasView) { canvasView.selectHistoryWindow(2) }
   func canvasView(_ canvasView: CanvasView, didRequestQuit node: WindowNode) { XCTFail("Unexpected quit") }
   func canvasView(_ canvasView: CanvasView, didRequestLaunch bundleIdentifier: String, applicationName: String, at anchor: CGPoint) { XCTFail("Unexpected launch") }
   func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool { false }

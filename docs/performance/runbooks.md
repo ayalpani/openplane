@@ -1216,3 +1216,26 @@ previews; measure first-visible response, overlay-hidden time, completed handoff
 idle/action/additional CPU separately. Full variants/core smoke and paired
 comparison NOT RUN: scheduled overnight. Physical modifier input/calibrated
 visual observer BLOCKED under PERF-025. Evidence: results/2026-09-11-controls-fade/.
+
+### P04/P07/P15/P20 – Remove the current-app/history strip (2026-09-17)
+
+The bottom-left app-name strip and its Back/Forward controls are removed, including
+app-level navigation history. This supersedes earlier strip/history cases in P07
+and the September 7/9 overlay additions. Recent's window-use history remains.
+
+On the signed Release app, check Overview, Canvas, Recent and All apps with empty
+and populated scenes: no strip, app-name button, hover preview or history arrows;
+the former strip area accepts normal canvas input and reserves no overlay space.
+Use mouse selection, arrow keys, Return, Cmd-F, typed search, Escape, view clicks
+and Tab/Shift-Tab. Search, selected-card headers, Settings, minimap dragging,
+Fit/Save and normal activation must still work. Include narrow/full-width windows
+and a minimap moved into the former strip area. Return to the starting view,
+search and camera after each sequence.
+
+Compare baseline e97c070 and candidate on the same safe fixture and observer.
+Measure from input delivery to correct selection, filtered scene, view or native
+window activation. Record idle CPU, action CPU and additional CPU separately,
+along with correctness and latency; distinguish first/fresh previews from warm
+repeated navigation. Do not report removing the requested strip as an optimization
+of its former behavior. Full variant/core smoke and repeated pairs:
+NOT RUN: scheduled overnight; see the removal report and PERF-025.

@@ -59,7 +59,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   private var pendingQuitSuppressions: [pid_t: PendingQuitWindowSuppression] = [:]
   private var requestedLaunchAnchors: [String: CGPoint] = [:]
   private var lastFocusedByBundle: [String: CGWindowID] = [:]
-  private var appHistory = AppNavigationHistory()
   private let windowFocusObserver = WindowFocusObserver()
   private var overviewGeneration = 0
   private var inventoryTracker = WindowInventoryTracker()
@@ -300,22 +299,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
         try? await Task.sleep(for: .milliseconds(150))
       }
     }
-  }
-
-  func canvasViewDidRequestBack(_ canvasView: CanvasView) {
-    let available = Set(nodesByID.values.map(\.bundleIdentifier))
-    selectHistoryTarget(appHistory.goBack(available: available))
-  }
-
-  func canvasViewDidRequestForward(_ canvasView: CanvasView) {
-    let available = Set(nodesByID.values.map(\.bundleIdentifier))
-    selectHistoryTarget(appHistory.goForward(available: available))
-  }
-
-  private func selectHistoryTarget(_ bundleIdentifier: String?) {
-    updateHistoryNavigation()
-    guard let bundleIdentifier, let node = preferredNode(for: bundleIdentifier) else { return }
-    canvasView.selectHistoryWindow(node.id)
   }
 
   func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool {
@@ -569,7 +552,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     }
     canvasView.cancelLayoutAnimation()
     canvasView.dismissSearch()
-    focus(target, recordInHistory: false)
+    focus(target)
   }
 
   private func showCanvas() {
@@ -712,7 +695,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     }
   }
 
-  private func focus(_ node: WindowNode, recordInHistory: Bool = true) {
+  private func focus(_ node: WindowNode) {
     canvasView.dismissSettings()
     canvasView.revealCatalogWindowForFocus(node.id)
     guard stateMachine.beginFocus(on: node.id) else { return }
@@ -720,8 +703,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     canvasView.selectedWindowID = node.id
     lastOverviewCamera = canvasView.camera
     lastFocusedByBundle[node.bundleIdentifier] = node.id
-    if recordInHistory { appHistory.opened(node.bundleIdentifier) }
-    updateHistoryNavigation()
     stopCanvasLoops()
     guard windowService.prepareForFocus(node) else {
       overlayWindow.orderOut(nil)
@@ -1302,19 +1283,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     }
     canvasView.recentWindows.updateInventory(nodes.map(\.id))
     canvasView.nodes = nodes.sorted { $0.id < $1.id }
-    updateHistoryNavigation()
     guard !canvasView.hasCanvasSelection else { return }
     canvasView.selectedWindowID = windowService.frontmostWindowID(among: nodes) ?? nodes.first?.id
-  }
-
-  private func updateHistoryNavigation() {
-    let available = Set(nodesByID.values.map(\.bundleIdentifier))
-    canvasView.backNavigationTarget = appHistory
-      .backDestination(available: available)
-      .flatMap(preferredNode)
-    canvasView.forwardNavigationTarget = appHistory
-      .forwardDestination(available: available)
-      .flatMap(preferredNode)
   }
 
   private func preferredNode(for bundleIdentifier: String) -> WindowNode? {

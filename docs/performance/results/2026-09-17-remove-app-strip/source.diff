@@ -1,0 +1,768 @@
+diff --git a/OpenPlane/AppDelegate.swift b/OpenPlane/AppDelegate.swift
+index 21a3932..0baa08c 100644
+--- a/OpenPlane/AppDelegate.swift
++++ b/OpenPlane/AppDelegate.swift
+@@ -59,7 +59,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+   private var pendingQuitSuppressions: [pid_t: PendingQuitWindowSuppression] = [:]
+   private var requestedLaunchAnchors: [String: CGPoint] = [:]
+   private var lastFocusedByBundle: [String: CGWindowID] = [:]
+-  private var appHistory = AppNavigationHistory()
+   private let windowFocusObserver = WindowFocusObserver()
+   private var overviewGeneration = 0
+   private var inventoryTracker = WindowInventoryTracker()
+@@ -302,22 +301,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+     }
+   }
+ 
+-  func canvasViewDidRequestBack(_ canvasView: CanvasView) {
+-    let available = Set(nodesByID.values.map(\.bundleIdentifier))
+-    selectHistoryTarget(appHistory.goBack(available: available))
+-  }
+-
+-  func canvasViewDidRequestForward(_ canvasView: CanvasView) {
+-    let available = Set(nodesByID.values.map(\.bundleIdentifier))
+-    selectHistoryTarget(appHistory.goForward(available: available))
+-  }
+-
+-  private func selectHistoryTarget(_ bundleIdentifier: String?) {
+-    updateHistoryNavigation()
+-    guard let bundleIdentifier, let node = preferredNode(for: bundleIdentifier) else { return }
+-    canvasView.selectHistoryWindow(node.id)
+-  }
+-
+   func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool {
+     configureCommandTabEventTap(enabled: enabled)
+   }
+@@ -569,7 +552,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+     }
+     canvasView.cancelLayoutAnimation()
+     canvasView.dismissSearch()
+-    focus(target, recordInHistory: false)
++    focus(target)
+   }
+ 
+   private func showCanvas() {
+@@ -712,7 +695,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+     }
+   }
+ 
+-  private func focus(_ node: WindowNode, recordInHistory: Bool = true) {
++  private func focus(_ node: WindowNode) {
+     canvasView.dismissSettings()
+     canvasView.revealCatalogWindowForFocus(node.id)
+     guard stateMachine.beginFocus(on: node.id) else { return }
+@@ -720,8 +703,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+     canvasView.selectedWindowID = node.id
+     lastOverviewCamera = canvasView.camera
+     lastFocusedByBundle[node.bundleIdentifier] = node.id
+-    if recordInHistory { appHistory.opened(node.bundleIdentifier) }
+-    updateHistoryNavigation()
+     stopCanvasLoops()
+     guard windowService.prepareForFocus(node) else {
+       overlayWindow.orderOut(nil)
+@@ -1302,21 +1283,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+     }
+     canvasView.recentWindows.updateInventory(nodes.map(\.id))
+     canvasView.nodes = nodes.sorted { $0.id < $1.id }
+-    updateHistoryNavigation()
+     guard !canvasView.hasCanvasSelection else { return }
+     canvasView.selectedWindowID = windowService.frontmostWindowID(among: nodes) ?? nodes.first?.id
+   }
+ 
+-  private func updateHistoryNavigation() {
+-    let available = Set(nodesByID.values.map(\.bundleIdentifier))
+-    canvasView.backNavigationTarget = appHistory
+-      .backDestination(available: available)
+-      .flatMap(preferredNode)
+-    canvasView.forwardNavigationTarget = appHistory
+-      .forwardDestination(available: available)
+-      .flatMap(preferredNode)
+-  }
+-
+   private func preferredNode(for bundleIdentifier: String) -> WindowNode? {
+     let candidates = nodesByID.values.filter { $0.bundleIdentifier == bundleIdentifier }
+     if let remembered = lastFocusedByBundle[bundleIdentifier].flatMap({ nodesByID[$0] }),
+diff --git a/OpenPlane/CanvasModel.swift b/OpenPlane/CanvasModel.swift
+index 11109f0..4d975e6 100644
+--- a/OpenPlane/CanvasModel.swift
++++ b/OpenPlane/CanvasModel.swift
+@@ -558,55 +558,6 @@ enum ShortcutMatcher {
+   }
+ }
+ 
+-struct AppNavigationHistory {
+-  private(set) var current: String?
+-  private var backStack: [String] = []
+-  private var forwardStack: [String] = []
+-
+-  mutating func opened(_ bundleIdentifier: String) {
+-    guard bundleIdentifier != current else { return }
+-    if let current { backStack.append(current) }
+-    current = bundleIdentifier
+-    forwardStack.removeAll()
+-  }
+-
+-  func canGoBack(available: Set<String>) -> Bool {
+-    backDestination(available: available) != nil
+-  }
+-
+-  func backDestination(available: Set<String>) -> String? {
+-    backStack.last(where: available.contains)
+-  }
+-
+-  func canGoForward(available: Set<String>) -> Bool {
+-    forwardDestination(available: available) != nil
+-  }
+-
+-  func forwardDestination(available: Set<String>) -> String? {
+-    forwardStack.last(where: available.contains)
+-  }
+-
+-  mutating func goBack(available: Set<String>) -> String? {
+-    while let bundleIdentifier = backStack.popLast() {
+-      guard available.contains(bundleIdentifier) else { continue }
+-      if let current { forwardStack.append(current) }
+-      current = bundleIdentifier
+-      return bundleIdentifier
+-    }
+-    return nil
+-  }
+-
+-  mutating func goForward(available: Set<String>) -> String? {
+-    while let bundleIdentifier = forwardStack.popLast() {
+-      guard available.contains(bundleIdentifier) else { continue }
+-      if let current { backStack.append(current) }
+-      current = bundleIdentifier
+-      return bundleIdentifier
+-    }
+-    return nil
+-  }
+-}
+-
+ enum CanvasDirection {
+   case left
+   case right
+@@ -1630,7 +1581,6 @@ struct InstalledApp: Sendable {
+   }
+ }
+ 
+-
+ enum WindowBackspaceAction: Equatable {
+   case closeWindow
+   case quitApp
+@@ -1641,7 +1591,6 @@ enum WindowBackspaceAction: Equatable {
+   }
+ }
+ 
+-
+ enum CanvasViewMode: String, CaseIterable {
+   case canvas, chronological, overview
+   var followsSelectionByDefault: Bool { self != .overview }
+@@ -1706,7 +1655,6 @@ struct OverviewLayout {
+   }
+ }
+ 
+-
+ struct OverviewShortcut: Codable, Equatable {
+   let keyCode: UInt32
+   let modifiers: UInt32
+@@ -1796,7 +1744,6 @@ final class OverviewShortcutController {
+   }
+ }
+ 
+-
+ struct ViewPromptPlan: Codable, Equatable, Sendable {
+   let name: String
+   let layout: String
+diff --git a/OpenPlane/CanvasView.swift b/OpenPlane/CanvasView.swift
+index 4f84803..c76cc3e 100644
+--- a/OpenPlane/CanvasView.swift
++++ b/OpenPlane/CanvasView.swift
+@@ -203,8 +203,6 @@ protocol CanvasViewDelegate: AnyObject {
+   func canvasView(_ canvasView: CanvasView, didRequestCloseWindow id: CGWindowID)
+   func canvasViewDidCancelFocusTransition(_ canvasView: CanvasView)
+   func canvasViewDidRequestReturnToOrigin(_ canvasView: CanvasView)
+-  func canvasViewDidRequestBack(_ canvasView: CanvasView)
+-  func canvasViewDidRequestForward(_ canvasView: CanvasView)
+   func canvasView(_ canvasView: CanvasView, setRightCommandShortcut enabled: Bool) -> Bool
+   func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool
+   func canvasView(_ canvasView: CanvasView, setPrivateBrowserPreviews enabled: Bool)
+@@ -466,7 +464,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       {
+         selectedPlaceholderBundleIdentifier = nil
+       }
+-      updateNavigatorPanel()
+       if isSearching { updateSearchResults(centerSelection: false) }
+     }
+   }
+@@ -480,7 +477,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       }
+       animateSelection(from: oldValue, to: selectedWindowID)
+       invalidateSelectionHUD()
+-      updateNavigatorPanel()
+     }
+   }
+   private var cameraState = CameraState()
+@@ -515,18 +511,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       needsDisplay = true
+     }
+   }
+-  var backNavigationTarget: WindowNode? {
+-    didSet {
+-      if backNavigationTarget == nil { isHoveringBackButton = false }
+-      updateNavigatorPanel()
+-    }
+-  }
+-  var forwardNavigationTarget: WindowNode? {
+-    didSet {
+-      if forwardNavigationTarget == nil { isHoveringForwardButton = false }
+-      updateNavigatorPanel()
+-    }
+-  }
+ 
+   private enum Interaction {
+     case miniMap
+@@ -587,7 +571,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       synchronizeScene(targetKeys: Set([oldValue, selectedPlaceholderBundleIdentifier]
+         .compactMap { $0.map { "app:\($0)" } }))
+       invalidateSelectionHUD()
+-      updateNavigatorPanel()
+     }
+   }
+   private var hoveredPlaceholderBundleIdentifier: String? {
+@@ -630,20 +613,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   private var focusTransitionProgress: CGFloat = 0
+   private var navigatorPanelOrigin: CGPoint?
+   private var canvasTrackingArea: NSTrackingArea?
+-  private var backTrackingArea: NSTrackingArea?
+-  private var forwardTrackingArea: NSTrackingArea?
+-  private var isHoveringBackButton = false {
+-    didSet {
+-      guard isHoveringBackButton != oldValue else { return }
+-      updateNavigatorPanel()
+-    }
+-  }
+-  private var isHoveringForwardButton = false {
+-    didSet {
+-      guard isHoveringForwardButton != oldValue else { return }
+-      updateNavigatorPanel()
+-    }
+-  }
+   private var appIconSourceRects: [ObjectIdentifier: CGRect] = [:]
+   private var previewToolTipTags: [NSView.ToolTipTag] = []
+   private var previewToolTipWindowIDs: [NSView.ToolTipTag: CGWindowID] = [:]
+@@ -680,11 +649,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   private var previewFadeDisplayLink: CADisplayLink?
+   private var launchSplashView: LaunchSplashView?
+   private var launchSplashTask: Task<Void, Never>?
+-  private var displayedNavigatorContentID: String?
+-  private var hasDisplayedNavigatorContent = false
+-  private let focusButton = NSButton()
+-  private let backButton = HoverButton()
+-  private let forwardButton = HoverButton()
+   private let menuButton = HoverButton()
+   private let fitAllButton = HoverButton()
+   private let searchButton = HoverButton()
+@@ -786,7 +750,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     addTrackingArea(trackingArea)
+     canvasTrackingArea = trackingArea
+     configureDesktopTitle()
+-    configureNavigatorPanel()
+     configureMenuButton()
+     configureFitAllButton()
+     configureLockViewButton()
+@@ -805,7 +768,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     presentationNameField.action = #selector(renamePresentation(_:))
+     presentationNameField.setAccessibilityLabel("View name")
+     refreshPlaceholders()
+-    updateNavigatorPanel()
++    updateOverlaySettings()
+   }
+ 
+   required init?(coder: NSCoder) { nil }
+@@ -836,14 +799,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     updateSceneCamera()
+     schedulePreviewToolTipUpdate()
+     let panel = navigatorPanelFrame
+-    let position = positionOverlayFrame
+-    var navigationX = position.minX + 8
+-    backButton.frame = CGRect(x: navigationX, y: position.minY + 4, width: 28, height: 40)
+-    if !backButton.isHidden { navigationX += 28 }
+-    forwardButton.frame = CGRect(x: navigationX, y: position.minY + 4, width: 28, height: 40)
+-    if !forwardButton.isHidden { navigationX += 28 }
+-    focusButton.frame = CGRect(x: navigationX, y: position.minY,
+-      width: max(40, position.maxX - navigationX - 8), height: position.height)
+     menuButton.frame = settingsOverlayFrame
+     fitAllButton.frame = CGRect(x: panel.maxX - 88, y: panel.minY + 8, width: 36, height: 36)
+     lockViewButton.frame = CGRect(x: panel.maxX - 44, y: panel.minY + 8, width: 36, height: 36)
+@@ -857,22 +812,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     layoutDesktopTabs()
+   }
+ 
+-  override func mouseEntered(with event: NSEvent) {
+-    if let backTrackingArea, event.trackingArea === backTrackingArea {
+-      isHoveringBackButton = true
+-    } else if let forwardTrackingArea, event.trackingArea === forwardTrackingArea {
+-      isHoveringForwardButton = true
+-    } else {
+-      super.mouseEntered(with: event)
+-    }
+-  }
+-
+   override func mouseExited(with event: NSEvent) {
+-    if let backTrackingArea, event.trackingArea === backTrackingArea {
+-      isHoveringBackButton = false
+-    } else if let forwardTrackingArea, event.trackingArea === forwardTrackingArea {
+-      isHoveringForwardButton = false
+-    } else if let canvasTrackingArea, event.trackingArea === canvasTrackingArea {
++    if let canvasTrackingArea, event.trackingArea === canvasTrackingArea {
+       hoveredSelectionResizeHandle = nil
+       hoveredPlaceholderBundleIdentifier = nil
+       setHoveredWindow(nil)
+@@ -1626,7 +1567,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+ 
+   func refreshMetadata(for windowIDs: [CGWindowID]) {
+     setNeedsDisplay(for: windowIDs)
+-    updateNavigatorPanel()
+     if isSearching { updateSearchResults(centerSelection: false) }
+     synchronizeManifestedPlacements()
+   }
+@@ -3282,17 +3222,12 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     return CGRect(x: available.minX, y: available.minY, width: width, height: 48)
+   }
+ 
+-  var positionOverlayFrame: CGRect {
+-    let search = searchOverlayFrame
+-    return CGRect(x: search.maxX + 12, y: search.minY, width: min(300, search.width), height: 48)
+-  }
+-
+   private var settingsOverlayFrame: CGRect {
+     CGRect(x: bounds.maxX - 128, y: presentationOverlayFrame.midY - 22, width: 104, height: 44)
+   }
+ 
+   private var overlayFrames: [CGRect] {
+-    [navigatorPanelFrame, searchOverlayFrame, positionOverlayFrame, settingsOverlayFrame]
++    [navigatorPanelFrame, searchOverlayFrame, settingsOverlayFrame]
+   }
+ 
+   private var navigatorAvailableFrame: CGRect {
+@@ -3324,7 +3259,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+ 
+   private func clampedNavigatorPanelOrigin(_ origin: CGPoint) -> CGPoint {
+     var point = CanvasMath.clampedOrigin(origin, size: currentNavigatorPanelSize, in: navigatorAvailableFrame)
+-    let reserved = searchOverlayFrame.union(positionOverlayFrame).insetBy(dx: -12, dy: -12)
++    let reserved = searchOverlayFrame.insetBy(dx: -12, dy: -12)
+     if CGRect(origin: point, size: currentNavigatorPanelSize).intersects(reserved) {
+       point.y = max(point.y, reserved.maxY)
+     }
+@@ -3354,7 +3289,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   }
+ 
+   private func drawNavigatorPanel() {
+-    for frame in [navigatorPanelFrame, searchOverlayFrame, positionOverlayFrame] {
++    for frame in [navigatorPanelFrame, searchOverlayFrame] {
+       let light = frame != navigatorPanelFrame
+       NSGraphicsContext.saveGraphicsState()
+       let shadow = NSShadow()
+@@ -3539,66 +3474,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     selectDesktop(id: desktopPages.pages[sender.tag].id)
+   }
+ 
+-  private func configureNavigatorPanel() {
+-    backButton.usesOpacityOnlyHover = true
+-    backButton.title = ""
+-    backButton.image = Self.backImage()
+-    backButton.image?.isTemplate = true
+-    backButton.contentTintColor = Self.overlayInk
+-    backButton.imagePosition = .imageOnly
+-    backButton.imageScaling = .scaleProportionallyDown
+-    backButton.isBordered = false
+-    backButton.focusRingType = .none
+-    backButton.toolTip = "Select previous app"
+-    backButton.setAccessibilityLabel("Select previous app")
+-    backButton.target = self
+-    backButton.action = #selector(openPreviousApp(_:))
+-    addSubview(backButton)
+-    let trackingArea = NSTrackingArea(
+-      rect: .zero,
+-      options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+-      owner: self,
+-      userInfo: nil
+-    )
+-    backButton.addTrackingArea(trackingArea)
+-    backTrackingArea = trackingArea
+-
+-    forwardButton.usesOpacityOnlyHover = true
+-    forwardButton.title = ""
+-    forwardButton.image = Self.forwardImage()
+-    forwardButton.image?.isTemplate = true
+-    forwardButton.contentTintColor = Self.overlayInk
+-    forwardButton.imagePosition = .imageOnly
+-    forwardButton.imageScaling = .scaleProportionallyDown
+-    forwardButton.isBordered = false
+-    forwardButton.focusRingType = .none
+-    forwardButton.toolTip = "Select next app"
+-    forwardButton.setAccessibilityLabel("Select next app")
+-    forwardButton.target = self
+-    forwardButton.action = #selector(openNextApp(_:))
+-    addSubview(forwardButton)
+-    let forwardTrackingArea = NSTrackingArea(
+-      rect: .zero,
+-      options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+-      owner: self,
+-      userInfo: nil
+-    )
+-    forwardButton.addTrackingArea(forwardTrackingArea)
+-    self.forwardTrackingArea = forwardTrackingArea
+-
+-    focusButton.cell = NavigatorAppButtonCell(textCell: "")
+-    focusButton.isBordered = false
+-    focusButton.focusRingType = .none
+-    focusButton.alignment = .left
+-    focusButton.imagePosition = .imageLeading
+-    focusButton.imageScaling = .scaleProportionallyDown
+-    focusButton.font = Self.navigatorTextFont
+-    focusButton.wantsLayer = true
+-    focusButton.target = self
+-    focusButton.action = #selector(focusSelectedApp(_:))
+-    addSubview(focusButton)
+-  }
+-
+   private func configureMenuButton() {
+     menuButton.title = "Settings"
+     menuButton.font = ViewModeControl.labelFont
+@@ -3778,58 +3653,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     addSubview(fitAllButton)
+   }
+ 
+-  private func updateNavigatorPanel() {
+-    let previousVisibility = [backButton.isHidden, forwardButton.isHidden]
+-    let selectedNode = nodes.first(where: { $0.id == selectedWindowID })
+-    let selectedPlaceholder = selectedPlaceholderBundleIdentifier.flatMap { bundleIdentifier in
+-      appPlaceholders.first { $0.bundleIdentifier == bundleIdentifier }
+-    }
+-    let previewNode =
+-      isHoveringBackButton ? backNavigationTarget
+-      : isHoveringForwardButton ? forwardNavigationTarget : selectedNode
+-    let title = previewNode?.applicationName
+-      ?? selectedPlaceholder?.applicationName
+-      ?? "No app selected"
+-    let icon = previewNode?.icon ?? selectedPlaceholder?.icon
+-    let contentID = previewNode.map { "window:\($0.id)" }
+-      ?? selectedPlaceholder.map { "app:\($0.bundleIdentifier)" }
+-    focusButton.isEnabled = selectedNode != nil || selectedPlaceholder != nil
+-    if !hasDisplayedNavigatorContent || displayedNavigatorContentID != contentID {
+-      if hasDisplayedNavigatorContent {
+-        let transition = CATransition()
+-        transition.type = .fade
+-        transition.duration = 0.2
+-        transition.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+-        focusButton.layer?.add(transition, forKey: "navigatorContentFade")
+-      }
+-      focusButton.attributedTitle = NSAttributedString(
+-        string: title,
+-        attributes: [
+-          .font: Self.navigatorTextFont,
+-          .foregroundColor: Self.overlayInk,
+-        ]
+-      )
+-      if let icon = icon?.copy() as? NSImage {
+-        icon.size = CGSize(width: 32, height: 32)
+-        focusButton.image = icon
+-      } else {
+-        focusButton.image = nil
+-      }
+-      displayedNavigatorContentID = contentID
+-      hasDisplayedNavigatorContent = true
+-    }
+-    let selectedApplicationName = selectedNode?.applicationName
+-      ?? selectedPlaceholder?.applicationName
+-    focusButton.toolTip = selectedApplicationName.map { "Open \($0)" }
+-    focusButton.setAccessibilityLabel(selectedApplicationName.map { "Open \($0)" } ?? title)
+-    backButton.isEnabled = backNavigationTarget != nil
+-    backButton.isHidden = backNavigationTarget == nil
+-    backButton.toolTip = backNavigationTarget.map { "Select \($0.applicationName)" }
+-    backButton.setAccessibilityLabel(backButton.toolTip ?? "Select previous app")
+-    forwardButton.isEnabled = forwardNavigationTarget != nil
+-    forwardButton.isHidden = forwardNavigationTarget == nil
+-    forwardButton.toolTip = forwardNavigationTarget.map { "Select \($0.applicationName)" }
+-    forwardButton.setAccessibilityLabel(forwardButton.toolTip ?? "Select next app")
++  private func updateOverlaySettings() {
+     expandLandscapePreviewsMenuItem.state = expandsLandscapePreviews ? .on : .off
+     debugInformationMenuItem.state = showsDebugInformation ? .on : .off
+     gridMenuItem.state = showsGrid ? .on : .off
+@@ -3837,9 +3661,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     lightClosedCardsMenuItem.state = usesLightClosedCards ? .on : .off
+     commandTabShortcutMenuItem.state = usesCommandTabShortcut ? .on : .off
+     updateLockViewButton()
+-    if previousVisibility != [backButton.isHidden, forwardButton.isHidden] {
+-      needsLayout = true
+-    }
+   }
+ 
+   func controlTextDidChange(_ notification: Notification) {
+@@ -4019,32 +3840,10 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     searchButton.isHidden = true
+     nextSearchResultButton.isHidden = true
+     previousSearchResultButton.isHidden = true
+-    updateNavigatorPanel()
+     if visible { updateSearchNavigationButtons() }
+     needsLayout = true
+   }
+ 
+-  @objc private func focusSelectedApp(_ sender: NSButton) {
+-    focusSelectedWindow()
+-  }
+-
+-  func selectHistoryWindow(_ id: CGWindowID) {
+-    guard let node = nodes.first(where: { $0.id == id }) else { return }
+-    if showingAllApps { _ = closeCatalog() }
+-    cancelLayoutAnimation()
+-    selectNavigationTarget(.window(node))
+-    centerCamera(on: .window(node))
+-    window?.makeFirstResponder(self)
+-  }
+-
+-  @objc private func openPreviousApp(_ sender: NSButton) {
+-    delegate?.canvasViewDidRequestBack(self)
+-  }
+-
+-  @objc private func openNextApp(_ sender: NSButton) {
+-    delegate?.canvasViewDidRequestForward(self)
+-  }
+-
+   @objc private func showSearch(_ sender: NSButton) {
+     beginSearch(with: searchField.stringValue)
+   }
+@@ -4239,7 +4038,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     camera = target
+     applySelectedDesktopLayout(around: target.center)
+     updateDesktopTabs()
+-    updateNavigatorPanel()
++    updateOverlaySettings()
+     persistDesktopPages()
+     updateLockViewButton()
+   }
+@@ -5021,7 +4820,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     if let first = apps.first { selectPlaceholder(first.id) }
+   }
+ 
+-
+   @discardableResult func closeCatalog() -> Bool {
+     guard showingAllApps else { return false }
+     dismissSearch()
+@@ -5065,7 +4863,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       paletteView?.select(background: selectedBackground)
+     }
+ 
+-    updateNavigatorPanel()
++    updateOverlaySettings()
+     updateModeControls()
+     let panel = CanvasSettingsPanel(modeControl: modeControl, nameField: presentationNameField, promptPanel: viewPromptPanel, palette: paletteView, groups: [
+       ("Appearance", [
+@@ -5187,34 +4985,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+     return image
+   }
+ 
+-  private static func backImage() -> NSImage? {
+-    let svg = """
+-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+-           fill="none" stroke="#FFFFFF" stroke-width="2"
+-           stroke-linecap="round" stroke-linejoin="round">
+-        <path d="m15 18-6-6 6-6"/>
+-      </svg>
+-      """
+-    guard let image = NSImage(data: Data(svg.utf8)) else { return nil }
+-    image.size = CGSize(width: 20, height: 20)
+-    image.isTemplate = false
+-    return image
+-  }
+-
+-  private static func forwardImage() -> NSImage? {
+-    let svg = """
+-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+-           fill="none" stroke="#FFFFFF" stroke-width="2"
+-           stroke-linecap="round" stroke-linejoin="round">
+-        <path d="m9 18 6-6-6-6"/>
+-      </svg>
+-      """
+-    guard let image = NSImage(data: Data(svg.utf8)) else { return nil }
+-    image.size = CGSize(width: 20, height: 20)
+-    image.isTemplate = false
+-    return image
+-  }
+-
+   private static func menuImage() -> NSImage? {
+     let svg = """
+       <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+@@ -6024,7 +5794,6 @@ final class ViewModeControl: NSControl {
+   }
+ }
+ 
+-
+ private final class SearchTextField: NSTextField {
+   var onFocus: (() -> Void)?
+ 
+@@ -6034,21 +5803,3 @@ private final class SearchTextField: NSTextField {
+     return accepted
+   }
+ }
+-
+-private final class NavigatorAppButtonCell: NSButtonCell {
+-  override func drawInterior(withFrame frame: NSRect, in view: NSView) {
+-    let gap: CGFloat = 8
+-    let iconSize = frame.height - 2 * gap
+-    if let image {
+-      image.draw(in: CGRect(x: frame.minX, y: frame.minY + gap, width: iconSize, height: iconSize),
+-        from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+-    }
+-    let title = NSMutableAttributedString(attributedString: attributedTitle)
+-    let paragraph = NSMutableParagraphStyle()
+-    paragraph.lineBreakMode = .byTruncatingTail
+-    title.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: title.length))
+-    let offset = image == nil ? 0 : iconSize + gap
+-    title.draw(in: CGRect(x: frame.minX + offset, y: frame.midY - title.size().height / 2,
+-      width: max(0, frame.width - offset), height: title.size().height))
+-  }
+-}
+diff --git a/OpenPlaneTests/CanvasMathTests.swift b/OpenPlaneTests/CanvasMathTests.swift
+index 22597c0..56aadbf 100644
+--- a/OpenPlaneTests/CanvasMathTests.swift
++++ b/OpenPlaneTests/CanvasMathTests.swift
+@@ -514,25 +514,6 @@ final class CanvasMathTests: XCTestCase {
+ 
+   }
+ 
+-  func testAppNavigationHistoryMovesBothDirectionsAndDropsForwardBranch() {
+-    var history = AppNavigationHistory()
+-    history.opened("app.a")
+-    history.opened("app.b")
+-    history.opened("app.b")
+-    history.opened("app.c")
+-
+-    XCTAssertTrue(history.canGoBack(available: ["app.a", "app.c"]))
+-    XCTAssertEqual(history.backDestination(available: ["app.a", "app.b"]), "app.b")
+-    XCTAssertEqual(history.goBack(available: ["app.a", "app.b", "app.c"]), "app.b")
+-    XCTAssertEqual(history.forwardDestination(available: ["app.a", "app.c"]), "app.c")
+-    XCTAssertTrue(history.canGoForward(available: ["app.a", "app.c"]))
+-    XCTAssertEqual(history.goBack(available: ["app.a", "app.b", "app.c"]), "app.a")
+-    XCTAssertEqual(history.current, "app.a")
+-    XCTAssertEqual(history.goForward(available: ["app.a", "app.b", "app.c"]), "app.b")
+-    history.opened("app.d")
+-    XCTAssertFalse(history.canGoForward(available: ["app.a", "app.b", "app.c", "app.d"]))
+-  }
+-
+   func testCanvasSearchMatchesAppNamesAndWindowTitles() {
+     XCTAssertTrue(
+       CanvasSearch.matches(query: "chrome", applicationName: "Google Chrome", title: "OpenPlane")
+@@ -1505,7 +1486,6 @@ final class WindowBackspaceActionTests: XCTestCase {
+   }
+ }
+ 
+-
+ @MainActor
+ final class OverviewModeTests: XCTestCase {
+   func testFocusControlsDisappearEarlyAndRestoreAtStart() {
+@@ -1668,8 +1648,6 @@ final class OverviewModeTests: XCTestCase {
+     canvas.layout()
+     let original = canvas.navigatorPanelFrame
+     XCTAssertGreaterThanOrEqual(original.minY, 96)
+-    XCTAssertLessThan(canvas.searchOverlayFrame.maxX, canvas.positionOverlayFrame.minX)
+-    XCTAssertFalse(canvas.positionOverlayFrame.intersects(original))
+     let search = try XCTUnwrap(canvas.subviews.compactMap { $0 as? NSTextField }.first {
+       $0.action == NSSelectorFromString("openSearchResult:")
+     })
+@@ -1725,14 +1703,18 @@ final class OverviewModeTests: XCTestCase {
+     canvas.setViewMode(.chronological)
+     XCTAssertNil(defaults.data(forKey: "savedOverlayCamera.chronological"))
+     XCTAssertEqual(defaults.data(forKey: "savedOverlayCamera.overview"), saved)
++    for index in 0..<4 {
++      canvas.selectPresentation(at: index)
++      let actions = canvas.subviews.compactMap { ($0 as? NSButton)?.action }.map(NSStringFromSelector)
++      XCTAssertFalse(actions.contains("openPreviousApp:"))
++      XCTAssertFalse(actions.contains("openNextApp:"))
++      XCTAssertFalse(actions.contains("focusSelectedApp:"))
++    }
+     for width: CGFloat in [480, 800, 1200] {
+       canvas.setFrameSize(CGSize(width: width, height: 600))
+       canvas.layout()
+-      XCTAssertFalse(canvas.searchOverlayFrame.intersects(canvas.positionOverlayFrame))
+       XCTAssertFalse(canvas.searchOverlayFrame.intersects(canvas.navigatorPanelFrame))
+-      XCTAssertFalse(canvas.positionOverlayFrame.intersects(canvas.navigatorPanelFrame))
+       XCTAssertLessThanOrEqual(canvas.navigatorPanelFrame.maxX, width)
+-      XCTAssertLessThanOrEqual(canvas.positionOverlayFrame.maxX, width)
+     }
+   }
+ 
+@@ -2064,13 +2046,8 @@ final class OverviewModeTests: XCTestCase {
+     canvas.selectedWindowID = 4
+     frontmost(3, over: [1, 2])
+     canvas.selectedWindowID = 2
+-    let history = HistoryNavigationProbe()
+-    canvas.delegate = history
+-    canvas.backNavigationTarget = nodes[0]
+-    canvas.layoutSubtreeIfNeeded()
+-    let back = try XCTUnwrap(canvas.subviews.compactMap { $0 as? NSButton }.first {
+-      $0.action == NSSelectorFromString("openPreviousApp:")
+-    })
++    let focusProbe = WindowFocusProbe()
++    canvas.delegate = focusProbe
+     func click(_ point: CGPoint) throws {
+       for type: NSEvent.EventType in [.leftMouseDown, .leftMouseUp] {
+         let event = try XCTUnwrap(NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
+@@ -2078,18 +2055,9 @@ final class OverviewModeTests: XCTestCase {
+         if type == .leftMouseDown { canvas.mouseDown(with: event) } else { canvas.mouseUp(with: event) }
+       }
+     }
+-    back.performClick(nil)
+-    XCTAssertEqual(history.backRequests, 1)
+-    XCTAssertEqual(canvas.selectedWindowID, 1)
+-    XCTAssertEqual(canvas.camera, overviewCamera, "History must honor fixed Overview camera")
+-    XCTAssertFalse(canvas.nativeCameraTravel)
+-    try press(125)
+-    XCTAssertEqual(canvas.selectedWindowID, 2, "Arrows remain usable after history selection")
+     let selectedRect = CanvasMath.viewRect(for: nodes[1].worldFrame, camera: canvas.camera, bounds: canvas.bounds)
+     try click(CGPoint(x: selectedRect.midX, y: selectedRect.maxY - 10))
+-    XCTAssertEqual(history.focused, [2], "Selected preview remains clickable after Back")
+-    canvas.selectHistoryWindow(999999)
+-    XCTAssertEqual(canvas.selectedWindowID, 2, "Missing history window must not break selection")
++    XCTAssertEqual(focusProbe.focused, [2], "Selected preview remains clickable")
+     canvas.layoutSubtreeIfNeeded()
+     if let bitmap = canvas.bitmapImageRepForCachingDisplay(in: canvas.bounds) {
+       canvas.cacheDisplay(in: canvas.bounds, to: bitmap)
+@@ -2181,17 +2149,10 @@ final class OverviewModeTests: XCTestCase {
+   }
+ }
+ 
+-
+ @MainActor
+-private final class HistoryNavigationProbe: CanvasViewDelegate {
+-  var backRequests = 0
++private final class WindowFocusProbe: CanvasViewDelegate {
+   var focused: [CGWindowID] = []
+   func canvasView(_ canvasView: CanvasView, didRequestFocus node: WindowNode) { focused.append(node.id) }
+-  func canvasViewDidRequestBack(_ canvasView: CanvasView) {
+-    backRequests += 1
+-    canvasView.selectHistoryWindow(1)
+-  }
+-  func canvasViewDidRequestForward(_ canvasView: CanvasView) { canvasView.selectHistoryWindow(2) }
+   func canvasView(_ canvasView: CanvasView, didRequestQuit node: WindowNode) { XCTFail("Unexpected quit") }
+   func canvasView(_ canvasView: CanvasView, didRequestLaunch bundleIdentifier: String, applicationName: String, at anchor: CGPoint) { XCTFail("Unexpected launch") }
+   func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool { false }
+diff --git a/OpenPlaneTests/CanvasSelectionTests.swift b/OpenPlaneTests/CanvasSelectionTests.swift
+index b94f561..f1aaef3 100644
+--- a/OpenPlaneTests/CanvasSelectionTests.swift
++++ b/OpenPlaneTests/CanvasSelectionTests.swift
+@@ -1139,12 +1139,6 @@ private final class SelectionDelegate: CanvasViewDelegate {
+     _ canvasView: CanvasView, didRequestLaunch bundleIdentifier: String, applicationName: String,
+     at anchor: CGPoint
+   ) { launched.append(bundleIdentifier) }
+-  func canvasViewDidRequestBack(_ canvasView: CanvasView) {
+-    XCTFail("Selection must not navigate back")
+-  }
+-  func canvasViewDidRequestForward(_ canvasView: CanvasView) {
+-    XCTFail("Selection must not navigate forward")
+-  }
+   func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool { false }
+   func canvasView(_ canvasView: CanvasView, setPrivateBrowserPreviews enabled: Bool) {}
+ }
