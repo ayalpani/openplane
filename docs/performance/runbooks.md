@@ -1239,3 +1239,26 @@ along with correctness and latency; distinguish first/fresh previews from warm
 repeated navigation. Do not report removing the requested strip as an optimization
 of its former behavior. Full variant/core smoke and repeated pairs:
 NOT RUN: scheduled overnight; see the removal report and PERF-025.
+
+### P04/P07/P17/P20 – Centered search and handoff flash (2026-09-17)
+
+Search is horizontally centered in the canvas at all viewport widths. Check
+mouse focus, Cmd-F, typing, result arrows, Return and Escape across all four
+presentations, with Settings open/closed, Dock sides and narrow/full widths.
+Minimap clamping must avoid the centered search area, including dragging.
+
+For handoff, compare source 805f1a0 and candidate using the same safe windows,
+closed-app placeholders (including an icon to the right of the selected window),
+selection, camera and transition speed. Exit via standalone right Command, Q,
+Return and preview click in Canvas and Overview. Observe the entire transition
+and its final frames: unrelated app icons/headers and navigation controls fade
+out and remain hidden until overview preparation; reopening restores them.
+Cover immediate reopen, repeated toggles, interruption, and a metadata refresh
+between handoff and reopen. No unrelated app may activate.
+
+Input delivery to the correct native target and disappearance of the overlay
+is the completion boundary. Measure idle/action/additional CPU separately and
+latency; distinguish first/fresh preview and warm repeat conditions. A hidden
+layer unit check is not proof of compositor timing or physical right Command.
+Full matched pairs/core smoke: NOT RUN: scheduled overnight. Physical modifier-
+only input and frame-resolved capture remain PERF-025 capability gaps.

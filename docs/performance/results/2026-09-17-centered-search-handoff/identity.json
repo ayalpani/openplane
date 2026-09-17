@@ -1,0 +1,13 @@
+{
+  "baseline_source_commit": "805f1a0a751f8d3812666516de0ec18a6299f8ae",
+  "baseline_installed_binary_sha256": "55ddee03584e1d252c0b624a6ca7a084acb812ba6d19563957d495c7b5f5707b",
+  "source_diff_sha256": "86ad2274d88a15d0bb4b8d5fd0570fa564340ced5d0acca9ba74ceb6c3e63bc5",
+  "source_files": {
+    "OpenPlane/AppDelegate.swift": "e1649605b710b3906173f99973b6a3a453357d2384bf5a9a268384d30c865efb",
+    "OpenPlane/CanvasView.swift": "e57dfaad162e0b5fbbdc5988ba9c0ea4953c3fefa8c414e8ad90c3bc2a354165",
+    "OpenPlaneTests/CanvasMathTests.swift": "503499fe756b8706623df499868781ebfa669ed10e201130f5718ccceecb8b72"
+  },
+  "configuration": "Release",
+  "candidate_binary_sha256": "1b3edf51d260ead0b0f9b936a2645e1413cf9fc8841255a3bb8a0317e50e4ab5",
+  "signature": "codesign --verify --deep --strict passed"
+}

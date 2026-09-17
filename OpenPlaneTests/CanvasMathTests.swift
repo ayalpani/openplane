@@ -1713,6 +1713,7 @@ final class OverviewModeTests: XCTestCase {
     for width: CGFloat in [480, 800, 1200] {
       canvas.setFrameSize(CGSize(width: width, height: 600))
       canvas.layout()
+      XCTAssertEqual(canvas.searchOverlayFrame.midX, canvas.bounds.midX, accuracy: 0.001)
       XCTAssertFalse(canvas.searchOverlayFrame.intersects(canvas.navigatorPanelFrame))
       XCTAssertLessThanOrEqual(canvas.navigatorPanelFrame.maxX, width)
     }
@@ -1913,6 +1914,46 @@ final class OverviewModeTests: XCTestCase {
         to: URL(fileURLWithPath: "/tmp/openplane-settings-root-synthetic.png"))
     }
     canvas.selectPresentation(at: 1)
+  }
+
+  func testCompletedFocusKeepsChromeAndHeadersHiddenUntilOverviewPreparation() throws {
+    let defaults = UserDefaults.standard
+    let previousMode = defaults.object(forKey: "viewMode")
+    defer { defaults.set(previousMode, forKey: "viewMode") }
+    defaults.set("overview", forKey: "viewMode")
+    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1200, height: 800))
+    let node = WindowNode(discovered: DiscoveredWindow(id: 101, processID: 90001,
+      bundleIdentifier: "synthetic.focus", applicationName: "Focus fixture", title: "Safe window",
+      isPrivateBrowsing: false, frame: CGRect(x: 0, y: 0, width: 800, height: 600),
+      icon: nil, captureWindow: nil, accessibilityElement: nil),
+      worldFrame: CGRect(x: 0, y: 0, width: 800, height: 600), cachedPreview: nil)
+    canvas.nodes = [node]
+    let host = NSWindow(contentRect: canvas.bounds, styleMask: [.borderless], backing: .buffered, defer: false)
+    host.contentView = canvas
+    host.orderFront(nil)
+    defer { canvas.cancelLayoutAnimation(); host.orderOut(nil) }
+    canvas.layoutSubtreeIfNeeded()
+    canvas.synchronizeScene()
+    let header = try XCTUnwrap(canvas.cameraLayer.sublayers?.first { $0.name == "stack-header:synthetic.focus" })
+    let search = try XCTUnwrap(canvas.subviews.compactMap { $0 as? NSTextField }.first {
+      $0.action == NSSelectorFromString("openSearchResult:")
+    })
+    var completed = false
+    canvas.animateCamera(to: canvas.camera, isolating: node.id, duration: 0.03) {
+      XCTAssertEqual(header.opacity, 0, "App headers must fade out during the handoff")
+      XCTAssertEqual(search.alphaValue, 0)
+      canvas.endFocusTransition(completed: true)
+      XCTAssertEqual(search.alphaValue, 0, "Completion must not restore chrome while the window is disappearing")
+      canvas.synchronizeScene()
+      XCTAssertEqual(header.opacity, 0, "A metadata refresh must not reveal an app icon after completion")
+      completed = true
+    }
+    let deadline = Date().addingTimeInterval(2)
+    while !completed && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.02)) }
+    XCTAssertTrue(completed)
+    canvas.prepareChronologicalOverview()
+    XCTAssertEqual(search.alphaValue, 1, "Reopening restores controls")
+    XCTAssertEqual(header.opacity, 1)
   }
 
   func testGroupedWindowsNavigationCameraAndCanvasRestoration() throws {

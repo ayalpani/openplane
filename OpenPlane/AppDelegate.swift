@@ -755,7 +755,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       }
       activatedFocusWindowID = nil
       overlayWindow.orderOut(nil)
-      overlayWindow.alphaValue = 1
       canvasView.endFocusTransition(completed: true)
       stateMachine.completeFocus(on: node.id)
       drainRightCommandQueue()

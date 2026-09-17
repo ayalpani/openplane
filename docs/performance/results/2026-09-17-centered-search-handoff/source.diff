@@ -1,0 +1,107 @@
+diff --git a/OpenPlane/AppDelegate.swift b/OpenPlane/AppDelegate.swift
+index 0baa08c..f1922f0 100644
+--- a/OpenPlane/AppDelegate.swift
++++ b/OpenPlane/AppDelegate.swift
+@@ -755,7 +755,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
+       }
+       activatedFocusWindowID = nil
+       overlayWindow.orderOut(nil)
+-      overlayWindow.alphaValue = 1
+       canvasView.endFocusTransition(completed: true)
+       stateMachine.completeFocus(on: node.id)
+       drainRightCommandQueue()
+diff --git a/OpenPlane/CanvasView.swift b/OpenPlane/CanvasView.swift
+index c76cc3e..8e219d6 100644
+--- a/OpenPlane/CanvasView.swift
++++ b/OpenPlane/CanvasView.swift
+@@ -2012,9 +2012,13 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+ 
+   func endFocusTransition(completed: Bool = false) {
+     guard focusTransitionWindowID != nil || focusTransitionProgress != 0 else { return }
++    let wasFocusing = focusTransitionWindowID != nil
+     focusTransitionWindowID = nil
++    // Keep the final hidden state until the next overview is prepared offscreen.
++    // Restoring cards here can flash them at the handoff camera position.
++    guard !completed else { return }
+     setFocusTransitionProgress(0)
+-    if !completed { delegate?.canvasViewDidCancelFocusTransition(self) }
++    if wasFocusing { delegate?.canvasViewDidCancelFocusTransition(self) }
+   }
+ 
+   private func setFocusTransitionProgress(_ progress: CGFloat) {
+@@ -3166,6 +3170,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+       let node = ordered[index]
+       let union = ordered.map(\.worldFrame).reduce(CGRect.null) { $0.union($1) }
+       let card = overviewHeaderCards[key] ?? CanvasCardLayer()
++      card.opacity = Float(CanvasMath.focusBackdropOpacity(progress: focusTransitionProgress))
+       if card.superlayer == nil {
+         card.name = "stack-header:\(key)"
+         for layer in [card.surface, card.border, card.indicator] { layer.isHidden = true }
+@@ -3219,7 +3224,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
+   var searchOverlayFrame: CGRect {
+     let available = navigatorAvailableFrame
+     let width = min(260, max(140, (available.width - 240 - 24) / 2))
+-    return CGRect(x: available.minX, y: available.minY, width: width, height: 48)
++    return CGRect(x: bounds.midX - width / 2, y: available.minY, width: width, height: 48)
+   }
+ 
+   private var settingsOverlayFrame: CGRect {
+diff --git a/OpenPlaneTests/CanvasMathTests.swift b/OpenPlaneTests/CanvasMathTests.swift
+index 56aadbf..1ddfcc4 100644
+--- a/OpenPlaneTests/CanvasMathTests.swift
++++ b/OpenPlaneTests/CanvasMathTests.swift
+@@ -1713,6 +1713,7 @@ final class OverviewModeTests: XCTestCase {
+     for width: CGFloat in [480, 800, 1200] {
+       canvas.setFrameSize(CGSize(width: width, height: 600))
+       canvas.layout()
++      XCTAssertEqual(canvas.searchOverlayFrame.midX, canvas.bounds.midX, accuracy: 0.001)
+       XCTAssertFalse(canvas.searchOverlayFrame.intersects(canvas.navigatorPanelFrame))
+       XCTAssertLessThanOrEqual(canvas.navigatorPanelFrame.maxX, width)
+     }
+@@ -1915,6 +1916,46 @@ final class OverviewModeTests: XCTestCase {
+     canvas.selectPresentation(at: 1)
+   }
+ 
++  func testCompletedFocusKeepsChromeAndHeadersHiddenUntilOverviewPreparation() throws {
++    let defaults = UserDefaults.standard
++    let previousMode = defaults.object(forKey: "viewMode")
++    defer { defaults.set(previousMode, forKey: "viewMode") }
++    defaults.set("overview", forKey: "viewMode")
++    let canvas = CanvasView(frame: CGRect(x: 0, y: 0, width: 1200, height: 800))
++    let node = WindowNode(discovered: DiscoveredWindow(id: 101, processID: 90001,
++      bundleIdentifier: "synthetic.focus", applicationName: "Focus fixture", title: "Safe window",
++      isPrivateBrowsing: false, frame: CGRect(x: 0, y: 0, width: 800, height: 600),
++      icon: nil, captureWindow: nil, accessibilityElement: nil),
++      worldFrame: CGRect(x: 0, y: 0, width: 800, height: 600), cachedPreview: nil)
++    canvas.nodes = [node]
++    let host = NSWindow(contentRect: canvas.bounds, styleMask: [.borderless], backing: .buffered, defer: false)
++    host.contentView = canvas
++    host.orderFront(nil)
++    defer { canvas.cancelLayoutAnimation(); host.orderOut(nil) }
++    canvas.layoutSubtreeIfNeeded()
++    canvas.synchronizeScene()
++    let header = try XCTUnwrap(canvas.cameraLayer.sublayers?.first { $0.name == "stack-header:synthetic.focus" })
++    let search = try XCTUnwrap(canvas.subviews.compactMap { $0 as? NSTextField }.first {
++      $0.action == NSSelectorFromString("openSearchResult:")
++    })
++    var completed = false
++    canvas.animateCamera(to: canvas.camera, isolating: node.id, duration: 0.03) {
++      XCTAssertEqual(header.opacity, 0, "App headers must fade out during the handoff")
++      XCTAssertEqual(search.alphaValue, 0)
++      canvas.endFocusTransition(completed: true)
++      XCTAssertEqual(search.alphaValue, 0, "Completion must not restore chrome while the window is disappearing")
++      canvas.synchronizeScene()
++      XCTAssertEqual(header.opacity, 0, "A metadata refresh must not reveal an app icon after completion")
++      completed = true
++    }
++    let deadline = Date().addingTimeInterval(2)
++    while !completed && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.02)) }
++    XCTAssertTrue(completed)
++    canvas.prepareChronologicalOverview()
++    XCTAssertEqual(search.alphaValue, 1, "Reopening restores controls")
++    XCTAssertEqual(header.opacity, 1)
++  }
++
+   func testGroupedWindowsNavigationCameraAndCanvasRestoration() throws {
+     let defaults = UserDefaults.standard
+     let keys = ["desktopPages", "chronologicalMode", "chronologicalCamera", "viewMode",

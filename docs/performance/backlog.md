@@ -397,3 +397,12 @@ layouts and minimap repositioning, on a safe fixture. Compare with e97c070 using
 the same first/warm cache conditions; record idle/action/additional CPU, latency
 and correctness. Full core smoke and repeated A/B pairs: NOT RUN: scheduled
 overnight. Evidence: [removal report](results/2026-09-17-remove-app-strip/report.md).
+
+PERF-025 centered-search/handoff-flash follow-up (2026-09-17): verify physical
+right Command with frame-resolved observations on the P04/P07/P17/P20 safe fixture.
+The regression test demonstrates premature chrome restoration and unfaded
+Overview headers; the reported transient Ollama icon is not independently
+identified. Compare 805f1a0 and candidate for all close/reopen paths, first/warm
+cache states, idle/action/additional CPU and latency. Include centered search
+with narrow/Settings layouts and minimap clamping. NOT RUN: scheduled overnight.
+Evidence: [report](results/2026-09-17-centered-search-handoff/report.md).

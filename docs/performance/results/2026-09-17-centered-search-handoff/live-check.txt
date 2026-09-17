@@ -1,0 +1,10 @@
+Baseline: Canvas view, search bottom-left; closed placeholders visible including Ollama at the right of selection.
+Tool attempt to send Super_R rejected: keyPressIncludedNoNonModifierKeys. Physical right Command not tested.
+Candidate installed at /Applications/OpenPlane.app; strict/deep signature verified.
+Canvas screenshot: search centered under the vertical center guide; minimap remains at right.
+Cmd-F + requested Chrome: tool delivered hrome; result count 1/1 and Chrome selected. A subsequent paste attempt timed out. Query later cleared; no claim of validated paste path.
+Return: overview dismissed; AX returned noWindowsAvailable. Reopen: search and minimap visible again, Canvas restored.
+Mouse-selected Overview: centered search and remaining controls visible, app headers visible normally.
+Q dispatched from Overview; subsequent app interaction returned noWindowsAvailable. Exact transition frames and destination not independently recorded.
+Reopened installed app: Canvas selected, empty search, navigation controls present.
+Before/after screenshots inspected in task, not saved publicly because they contain user window contents.

@@ -2012,9 +2012,13 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
 
   func endFocusTransition(completed: Bool = false) {
     guard focusTransitionWindowID != nil || focusTransitionProgress != 0 else { return }
+    let wasFocusing = focusTransitionWindowID != nil
     focusTransitionWindowID = nil
+    // Keep the final hidden state until the next overview is prepared offscreen.
+    // Restoring cards here can flash them at the handoff camera position.
+    guard !completed else { return }
     setFocusTransitionProgress(0)
-    if !completed { delegate?.canvasViewDidCancelFocusTransition(self) }
+    if wasFocusing { delegate?.canvasViewDidCancelFocusTransition(self) }
   }
 
   private func setFocusTransitionProgress(_ progress: CGFloat) {
@@ -3166,6 +3170,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       let node = ordered[index]
       let union = ordered.map(\.worldFrame).reduce(CGRect.null) { $0.union($1) }
       let card = overviewHeaderCards[key] ?? CanvasCardLayer()
+      card.opacity = Float(CanvasMath.focusBackdropOpacity(progress: focusTransitionProgress))
       if card.superlayer == nil {
         card.name = "stack-header:\(key)"
         for layer in [card.surface, card.border, card.indicator] { layer.isHidden = true }
@@ -3219,7 +3224,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   var searchOverlayFrame: CGRect {
     let available = navigatorAvailableFrame
     let width = min(260, max(140, (available.width - 240 - 24) / 2))
-    return CGRect(x: available.minX, y: available.minY, width: width, height: 48)
+    return CGRect(x: bounds.midX - width / 2, y: available.minY, width: width, height: 48)
   }
 
   private var settingsOverlayFrame: CGRect {
