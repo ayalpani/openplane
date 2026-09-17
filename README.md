@@ -13,6 +13,8 @@ live previews, and transitions seamlessly into the real app when a window is
 selected. Spotlight, the Dock, Finder, and the regular macOS apps remain in
 charge of launching and running software.
 
+![OpenPlane Canvas view with spatially arranged app windows, a selected Chrome window, and the minimap](docs/images/openplane-canvas.png)
+
 ## Proof of concept
 
 - Pan with two fingers and pinch to zoom. Press Shift-Down to zoom in and
