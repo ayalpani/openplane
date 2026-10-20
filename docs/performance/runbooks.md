@@ -1295,3 +1295,29 @@ grid, plus narrow/wide viewports, search/clear, long names, launch errors and
 Escape. Measure open→grid ready, input→selection visible and zoom→final grid;
 idle/action/additional CPU and latency separately against f9a3bde with the same
 warm catalog. Full matched pairs/core smoke: NOT RUN: scheduled overnight.
+
+### P16 – Readable search field, tabs and All apps captions (2026-10-20)
+
+The bottom search field ("Search apps… ⌘F") now uses a dark, mostly opaque
+backdrop (white 0.08, alpha 0.86) with near-white text and a 0.68-alpha
+placeholder/⌘F hint. The search status line above it, the mode tabs and the
+All apps captions draw a soft dark text shadow; caption shadows are rasterized
+so zoom/scroll does not re-render them per frame. Verify legibility on a light,
+a saturated blue and a dark wallpaper in Overview, Canvas, Recent and All apps,
+plus search focus/typing/results/clear, Escape, caption fade on zoom out/in and
+launch-error captions (red). Measure All apps open→grid ready, scroll and
+zoom→final grid; idle/action/additional CPU and latency separately against the
+previous main build with the same warm catalog. Full matched pairs/core smoke:
+NOT RUN: scheduled overnight.
+
+### P16 – Arrow keys always navigate during search (2026-10-20)
+
+While the search field has focus, ←/→/↑/↓ never move the text cursor; they move
+the selection exactly like outside search, restricted to current matches (Recent
+↑/↓ steps through matches in list order). Shift/Option/⌘-arrows are swallowed so
+the query text is never re-selected. Typing, Backspace, Return, Escape and the
+result arrow buttons are unchanged. Verify in Overview, Canvas, Recent and All
+apps with 0/1/many matches, a selection outside the matches, key repeat and
+empty query. Measure input→selection visible; idle/action/additional CPU and
+latency against 50baddd with the same warm fixture. Full matched pairs/core
+smoke: NOT RUN: scheduled overnight.
