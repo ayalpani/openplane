@@ -335,8 +335,18 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   private static let lightClosedCardsPreferenceKey = "useLightClosedCards"
   private static let desktopPagesPreferenceKey = "desktopPages"
   private static let navigatorPanelSize = CGSize(width: 268, height: 244)
-  private static let overlayInk = NSColor.white.withAlphaComponent(0.75)
-  private static let overlayBackground = NSColor.black.withAlphaComponent(0.10)
+  private static let overlayInk = NSColor.white.withAlphaComponent(0.95)
+  private static let overlayPlaceholderInk = NSColor.white.withAlphaComponent(0.68)
+  // Opaque enough to stay readable over light wallpapers and the All apps grid.
+  private static let overlayBackground = NSColor(calibratedWhite: 0.08, alpha: 0.86)
+  // Lifts text drawn straight onto the canvas off light backgrounds.
+  static let canvasTextShadow: NSShadow = {
+    let shadow = NSShadow()
+    shadow.shadowColor = NSColor.black.withAlphaComponent(0.55)
+    shadow.shadowBlurRadius = 3
+    shadow.shadowOffset = CGSize(width: 0, height: -1)
+    return shadow
+  }()
   private static let navigatorTextFont = ViewModeControl.labelFont
   private static let searchTextFont = NSFont.systemFont(ofSize: ViewModeControl.labelFont.pointSize, weight: .regular)
   private static let desktopTitleFont = NSFont.systemFont(ofSize: 36, weight: .heavy)
@@ -1135,6 +1145,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     }
     card.preview.opacity = previewOpacity
     card.status.isHidden = statusText == nil
+    card.status.shadowOpacity = 0
+    card.status.shouldRasterize = false
     if let statusText {
       let fontSize = CanvasMath.placeholderStatusFontSize(at: zoom)
       let value = NSAttributedString(string: statusText, attributes: [
@@ -1171,8 +1183,16 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       let label = NSAttributedString(string: placeholder.errorMessage.map { "\(title): \($0)" } ?? title,
         attributes: [.font: NSFont.systemFont(ofSize: 12, weight: .medium),
           .foregroundColor: placeholder.errorMessage == nil
-            ? NSColor.white.withAlphaComponent(0.92) : NSColor.systemRed])
+            ? NSColor.white : NSColor.systemRed])
       card.status.isHidden = false
+      // Captions sit directly on the wallpaper; a rasterized shadow keeps them legible on light
+      // backgrounds without re-rendering the shadow on every frame.
+      card.status.shadowColor = NSColor.black.cgColor
+      card.status.shadowOpacity = 0.6
+      card.status.shadowRadius = 2.5
+      card.status.shadowOffset = CGSize(width: 0, height: -1)
+      card.status.rasterizationScale = scale
+      card.status.shouldRasterize = true
       card.status.fontSize = 12
       card.status.isWrapped = false
       card.status.truncationMode = .end
@@ -3304,8 +3324,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       let light = frame != navigatorPanelFrame
       NSGraphicsContext.saveGraphicsState()
       let shadow = NSShadow()
-      shadow.shadowColor = NSColor.black.withAlphaComponent(light ? 0.12 : 0.24)
-      shadow.shadowBlurRadius = light ? 12 : 16
+      shadow.shadowColor = NSColor.black.withAlphaComponent(light ? 0.2 : 0.24)
+      shadow.shadowBlurRadius = light ? 14 : 16
       shadow.shadowOffset = CGSize(width: 0, height: -3)
       shadow.set()
       (light ? Self.overlayBackground : NSColor(calibratedWhite: 0.025, alpha: 0.90)).setFill()
@@ -3335,7 +3355,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     )
     let attributes: [NSAttributedString.Key: Any] = [
       .font: Self.navigatorTextFont,
-      .foregroundColor: NSColor.white.withAlphaComponent(0.56),
+      .foregroundColor: NSColor.white.withAlphaComponent(0.9),
+      .shadow: Self.canvasTextShadow,
     ]
     let size = message.size(withAttributes: attributes)
     let arrowCount = [previousSearchResultButton, nextSearchResultButton].filter { !$0.isHidden }.count
@@ -3569,7 +3590,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       string: "Search apps…",
       attributes: [
         .font: searchField.font as Any,
-        .foregroundColor: Self.overlayInk,
+        .foregroundColor: Self.overlayPlaceholderInk,
       ]
     )
     searchField.placeholderAttributedString = placeholder
@@ -3590,7 +3611,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     addSubview(searchField)
     searchShortcutHint.isBordered = false
     searchShortcutHint.font = Self.searchTextFont
-    searchShortcutHint.contentTintColor = Self.overlayInk
+    searchShortcutHint.contentTintColor = Self.overlayPlaceholderInk
     searchShortcutHint.appearance = NSAppearance(named: .darkAqua)
     searchShortcutHint.focusRingType = .none
     searchShortcutHint.target = self
@@ -5737,6 +5758,8 @@ final class ViewModeControl: NSControl {
       button.isBordered = false
       button.font = Self.labelFont
       button.contentTintColor = .white
+      button.wantsLayer = true
+      button.shadow = CanvasView.canvasTextShadow
       button.lineBreakMode = .byTruncatingTail
       button.setAccessibilityRole(.radioButton)
       button.setAccessibilityChildren([])
@@ -5770,7 +5793,7 @@ final class ViewModeControl: NSControl {
     guard buttons.indices.contains(selectedSegment) else { return }
     for (index, button) in buttons.enumerated() {
       button.setAccessibilityValue(index == selectedSegment ? 1 : 0)
-      button.contentTintColor = .white.withAlphaComponent(index == selectedSegment ? 1 : 0.65)
+      button.contentTintColor = .white.withAlphaComponent(index == selectedSegment ? 1 : 0.82)
     }
     let target = buttons[selectedSegment].frame
     selection.layer?.cornerRadius = 10
