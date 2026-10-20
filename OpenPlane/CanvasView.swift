@@ -204,7 +204,6 @@ protocol CanvasViewDelegate: AnyObject {
   func canvasViewDidCancelFocusTransition(_ canvasView: CanvasView)
   func canvasViewDidRequestReturnToOrigin(_ canvasView: CanvasView)
   func canvasView(_ canvasView: CanvasView, setRightCommandShortcut enabled: Bool) -> Bool
-  func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool
   func canvasView(_ canvasView: CanvasView, setPrivateBrowserPreviews enabled: Bool)
 }
 
@@ -677,7 +676,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   }
   private let chromeTabsMenuItem = NSMenuItem()
   private let rightCommandMenuItem = NSMenuItem()
-  private let commandTabShortcutMenuItem = NSMenuItem()
   private let swipeOverviewMenuItem = NSMenuItem()
   private var isSearching = false
   private var expandsLandscapePreviews = true
@@ -690,8 +688,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     forKey: CanvasView.centerGuidePreferenceKey)
   private var usesLightClosedCards = UserDefaults.standard.bool(
     forKey: CanvasView.lightClosedCardsPreferenceKey)
-  private var usesCommandTabShortcut = UserDefaults.standard.bool(
-    forKey: OpenPlanePreferences.useCommandTabShortcut)
   private var desktopPages = DesktopPages()
   private let selectionColor = NSColor(srgbRed: 1, green: 1, blue: 0, alpha: 1)
   private let groupSelectionColor = NSColor(
@@ -3521,9 +3517,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     rightCommandMenuItem.target = self
     rightCommandMenuItem.action = #selector(toggleRightCommand(_:))
     rightCommandMenuItem.state = UserDefaults.standard.bool(forKey: "useRightCommandShortcut") ? .on : .off
-    commandTabShortcutMenuItem.title = "Use ⌘Tab for OpenPlane"
-    commandTabShortcutMenuItem.target = self
-    commandTabShortcutMenuItem.action = #selector(toggleCommandTabShortcut(_:))
   }
 
   private func configureSearch() {
@@ -3664,7 +3657,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     gridMenuItem.state = showsGrid ? .on : .off
     centerGuideMenuItem.state = showsCenterGuide ? .on : .off
     lightClosedCardsMenuItem.state = usesLightClosedCards ? .on : .off
-    commandTabShortcutMenuItem.state = usesCommandTabShortcut ? .on : .off
     updateLockViewButton()
   }
 
@@ -3943,17 +3935,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       currentSettingsPanel?.refreshControls()
       statusMessage = allowed ? "Chrome tab counts enabled." : "Chrome tab counts are off. Allow Chrome Automation in System Settings to enable them."
     }
-  }
-
-  @objc private func toggleCommandTabShortcut(_ sender: NSMenuItem) {
-    let enabled = !usesCommandTabShortcut
-    guard delegate?.canvasView(self, setCommandTabShortcut: enabled) == true else {
-      NSSound.beep()
-      return
-    }
-    usesCommandTabShortcut = enabled
-    UserDefaults.standard.set(enabled, forKey: OpenPlanePreferences.useCommandTabShortcut)
-    sender.state = enabled ? .on : .off
   }
 
   @objc private func closeSearch(_ sender: NSButton) {
@@ -4881,7 +4862,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       ("Navigation", [
         ("Canvas can be moved", "hand.draw", panCanvasMenuItem),
         ("Camera follows selection", "viewfinder", followSelectionMenuItem),
-        ("Use ⌘Tab for OpenPlane", "command", commandTabShortcutMenuItem),
         ("Right ⌘ toggles OpenPlane", "command", rightCommandMenuItem),
         ("Swipe up opens Overview", "hand.draw", swipeOverviewMenuItem),
       ]),

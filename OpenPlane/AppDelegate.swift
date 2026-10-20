@@ -9,7 +9,7 @@ private final class OverlayWindow: NSWindow {
   override var canBecomeMain: Bool { true }
 }
 
-private func openPlaneCommandTabEventTapCallback(
+private func openPlaneRightCommandEventTapCallback(
   proxy: CGEventTapProxy,
   type: CGEventType,
   event: CGEvent,
@@ -19,7 +19,7 @@ private func openPlaneCommandTabEventTapCallback(
   let appDelegate = Unmanaged<AppDelegate>.fromOpaque(userInfo).takeUnretainedValue()
 
   if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-    MainActor.assumeIsolated { appDelegate.reenableCommandTabEventTap() }
+    MainActor.assumeIsolated { appDelegate.reenableRightCommandEventTap() }
     return Unmanaged.passUnretained(event)
   }
 
@@ -27,18 +27,7 @@ private func openPlaneCommandTabEventTapCallback(
     return Unmanaged.passUnretained(event)
   }
   MainActor.assumeIsolated { appDelegate.handleRightCommand(type: type, event: event) }
-  guard UserDefaults.standard.bool(forKey: OpenPlanePreferences.useCommandTabShortcut),
-    ShortcutMatcher.isCommandTab(
-    keyCode: event.getIntegerValueField(.keyboardEventKeycode),
-    flags: event.flags
-  ) else { return Unmanaged.passUnretained(event) }
-
-  if type == .keyDown,
-    event.getIntegerValueField(.keyboardEventAutorepeat) == 0
-  {
-    MainActor.assumeIsolated { appDelegate.handleShortcut() }
-  }
-  return nil
+  return Unmanaged.passUnretained(event)
 }
 
 @MainActor
@@ -87,8 +76,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
   private var rightCommandTap = RightCommandTap()
   private var rightCommandQueue = ToggleParityQueue()
   private var chromeTabTask: Task<Void, Never>?
-  private var commandTabEventTap: CFMachPort?
-  private var commandTabRunLoopSource: CFRunLoopSource?
+  private var rightCommandEventTap: CFMachPort?
+  private var rightCommandRunLoopSource: CFRunLoopSource?
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     buildMenu()
@@ -126,7 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     if let globalSwipeMonitor { NSEvent.removeMonitor(globalSwipeMonitor) }
     globalSwipeMonitor = nil
     if let localKeyMonitor { NSEvent.removeMonitor(localKeyMonitor) }
-    removeCommandTabEventTap()
+    removeRightCommandEventTap()
     closeDialogTask?.cancel()
     windowFocusObserver.stop()
     NSWorkspace.shared.notificationCenter.removeObserver(self)
@@ -301,15 +290,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     }
   }
 
-  func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool {
-    configureCommandTabEventTap(enabled: enabled)
-  }
-
   func canvasView(_ canvasView: CanvasView, setRightCommandShortcut enabled: Bool) -> Bool {
     let old = UserDefaults.standard.bool(forKey: "useRightCommandShortcut")
     UserDefaults.standard.set(enabled, forKey: "useRightCommandShortcut")
-    let success = configureCommandTabEventTap(enabled:
-      UserDefaults.standard.bool(forKey: OpenPlanePreferences.useCommandTabShortcut))
+    let success = configureRightCommandEventTap()
     if !success { UserDefaults.standard.set(old, forKey: "useRightCommandShortcut") }
     return success
   }
@@ -1382,14 +1366,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     if !OverviewShortcutController.shared.start() {
       canvasView.statusMessage = "Overview shortcut is unavailable. Choose another in Settings."
     }
-    _ = configureCommandTabEventTap(
-      enabled: UserDefaults.standard.bool(forKey: OpenPlanePreferences.useCommandTabShortcut)
-    )
+    _ = configureRightCommandEventTap()
   }
 
-  private func configureCommandTabEventTap(enabled: Bool) -> Bool {
-    removeCommandTabEventTap()
-    guard enabled || UserDefaults.standard.bool(forKey: "useRightCommandShortcut") else { return true }
+  private func configureRightCommandEventTap() -> Bool {
+    removeRightCommandEventTap()
+    guard UserDefaults.standard.bool(forKey: "useRightCommandShortcut") else { return true }
 
     let eventMask = CGEventMask(1 << CGEventType.keyDown.rawValue)
       | CGEventMask(1 << CGEventType.keyUp.rawValue)
@@ -1403,36 +1385,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
         place: .headInsertEventTap,
         options: .defaultTap,
         eventsOfInterest: eventMask,
-        callback: openPlaneCommandTabEventTapCallback,
+        callback: openPlaneRightCommandEventTapCallback,
         userInfo: Unmanaged.passUnretained(self).toOpaque()
       ),
       let runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
     else { return false }
 
-    commandTabEventTap = eventTap
-    commandTabRunLoopSource = runLoopSource
+    rightCommandEventTap = eventTap
+    rightCommandRunLoopSource = runLoopSource
     CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
     CGEvent.tapEnable(tap: eventTap, enable: true)
     return true
   }
 
-  private func removeCommandTabEventTap() {
+  private func removeRightCommandEventTap() {
     rightCommandTap = RightCommandTap()
-    if let commandTabEventTap {
-      CGEvent.tapEnable(tap: commandTabEventTap, enable: false)
-      CFMachPortInvalidate(commandTabEventTap)
+    if let rightCommandEventTap {
+      CGEvent.tapEnable(tap: rightCommandEventTap, enable: false)
+      CFMachPortInvalidate(rightCommandEventTap)
     }
-    if let commandTabRunLoopSource {
-      CFRunLoopRemoveSource(CFRunLoopGetMain(), commandTabRunLoopSource, .commonModes)
+    if let rightCommandRunLoopSource {
+      CFRunLoopRemoveSource(CFRunLoopGetMain(), rightCommandRunLoopSource, .commonModes)
     }
-    commandTabEventTap = nil
-    commandTabRunLoopSource = nil
+    rightCommandEventTap = nil
+    rightCommandRunLoopSource = nil
   }
 
-  fileprivate func reenableCommandTabEventTap() {
+  fileprivate func reenableRightCommandEventTap() {
     rightCommandTap = RightCommandTap()
-    if let commandTabEventTap {
-      CGEvent.tapEnable(tap: commandTabEventTap, enable: true)
+    if let rightCommandEventTap {
+      CGEvent.tapEnable(tap: rightCommandEventTap, enable: true)
     }
   }
 

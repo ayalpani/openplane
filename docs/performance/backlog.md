@@ -238,9 +238,10 @@ PERF-020 Vereinfachung: [Sofortige Auswahl als einziges Verhalten](results/2026-
 - Status: OPEN; Teil-Funktionstest vorhanden, vollständige Messadapter BLOCKED.
 - Berichte: [Chronological-Prototyp](results/2026-09-07-chronological/report.md),
   [Shortcut und Fenster-Lifecycle](results/2026-09-07-input-lifecycle/report.md).
-- Aktuelle Shortcut-Abnahme: Command-Tab öffnet nur die Übersicht; wiederholte
-  Chords und Loslassen dürfen Auswahl und Aktivierung nicht verändern. Der
-  frühere Command-Tab-Zyklus ist nicht mehr gewünschtes Produktverhalten.
+- Aktuelle Shortcut-Abnahme (2026-10-20): OpenPlane registriert Command-Tab nicht
+  mehr; Command-Tab bleibt der macOS-App-Umschalter. Die Übersicht öffnet über die
+  allein getippte rechte Command-Taste. Live-Prüfung auf signiertem Release-Build:
+  NOT RUN (Cloud-Sitzung ohne macOS).
 - Leere Zwei-Fenster-Fixture prüfte Schließen und anschließendes App-Beenden.
   Minimierte/andere Spaces und Speicherdialoge bleiben offen.
 - Zweiersprung: Nutzer bestätigt normale Pfeile; Symptom nach Diagnose-Neustart
