@@ -204,7 +204,6 @@ protocol CanvasViewDelegate: AnyObject {
   func canvasViewDidCancelFocusTransition(_ canvasView: CanvasView)
   func canvasViewDidRequestReturnToOrigin(_ canvasView: CanvasView)
   func canvasView(_ canvasView: CanvasView, setRightCommandShortcut enabled: Bool) -> Bool
-  func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool
   func canvasView(_ canvasView: CanvasView, setPrivateBrowserPreviews enabled: Bool)
 }
 
@@ -677,7 +676,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   }
   private let chromeTabsMenuItem = NSMenuItem()
   private let rightCommandMenuItem = NSMenuItem()
-  private let commandTabShortcutMenuItem = NSMenuItem()
   private let swipeOverviewMenuItem = NSMenuItem()
   private var isSearching = false
   private var expandsLandscapePreviews = true
@@ -690,8 +688,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     forKey: CanvasView.centerGuidePreferenceKey)
   private var usesLightClosedCards = UserDefaults.standard.bool(
     forKey: CanvasView.lightClosedCardsPreferenceKey)
-  private var usesCommandTabShortcut = UserDefaults.standard.bool(
-    forKey: OpenPlanePreferences.useCommandTabShortcut)
   private var desktopPages = DesktopPages()
   private let selectionColor = NSColor(srgbRed: 1, green: 1, blue: 0, alpha: 1)
   private let groupSelectionColor = NSColor(
@@ -1076,6 +1072,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     card.opacity = Float(backdrop * searchOpacity(for: target))
     card.zPosition = 0
     card.surface.backgroundColor = NSColor(calibratedWhite: 0.11, alpha: 1).cgColor
+    card.surface.borderWidth = 2
     card.indicator.isHidden = true
     switch target {
     case .window(let node):
@@ -1157,26 +1154,32 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       card.preview.contents = preview?.cgImage(forProposedRect: nil, context: nil, hints: nil)
     }
     if showingAllApps, case .placeholder(let placeholder) = target {
-      card.surface.backgroundColor = NSColor.white.withAlphaComponent(selected ? 0.08 : 0.025).cgColor
+      // No frame around catalog icons; only hover and selection get a soft backdrop.
+      let hovered = hoveredPlaceholderBundleIdentifier == placeholder.bundleIdentifier
+      card.surface.backgroundColor = NSColor.white.withAlphaComponent(selected ? 0.1 : hovered ? 0.06 : 0).cgColor
+      card.surface.borderWidth = 0
       let metrics = CanvasMath.applicationTileMetrics(zoom: zoom)
       let iconSize = metrics.icon
-      card.icon.frame = CGRect(x: (rect.width - iconSize) / 2, y: rect.height - iconSize - 12,
+      card.icon.frame = CGRect(x: (rect.width - iconSize) / 2, y: rect.height - iconSize - 6,
         width: iconSize, height: iconSize)
       if card.iconImage !== icon || card.icon.contents == nil {
         card.iconImage = icon
-        card.icon.contents = icon?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        // Request a large representation so enlarged icons stay sharp on Retina screens.
+        var iconRect = CGRect(x: 0, y: 0, width: 256, height: 256)
+        card.icon.contents = icon?.cgImage(forProposedRect: &iconRect, context: nil, hints: nil)
       }
       let label = NSAttributedString(string: placeholder.errorMessage.map { "\(title): \($0)" } ?? title,
-        attributes: [.font: NSFont.systemFont(ofSize: 13, weight: .medium),
-          .foregroundColor: placeholder.errorMessage == nil ? NSColor.white : NSColor.systemRed])
+        attributes: [.font: NSFont.systemFont(ofSize: 12, weight: .medium),
+          .foregroundColor: placeholder.errorMessage == nil
+            ? NSColor.white.withAlphaComponent(0.92) : NSColor.systemRed])
       card.status.isHidden = false
-      card.status.fontSize = 13
+      card.status.fontSize = 12
       card.status.isWrapped = false
       card.status.truncationMode = .end
       card.status.opacity = Float(metrics.caption)
       if card.statusValue != label { card.status.string = label; card.statusValue = label; sceneContentUpdates += 1 }
       card.status.contentsScale = scale
-      card.status.frame = CGRect(x: 8, y: 8, width: rect.width - 16, height: 18)
+      card.status.frame = CGRect(x: 4, y: 4, width: rect.width - 8, height: 16)
       card.header.isHidden = true
       card.activeHeader.isHidden = true
       updateSelectionAppearance(card, target: target, selectedPID: selectedPID)
@@ -2676,6 +2679,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       let visible = bounds.insetBy(dx: 24, dy: 112)
       if rect.minY < visible.minY { camera.center.y -= (visible.minY - rect.minY) / camera.zoom }
       else if rect.maxY > visible.maxY { camera.center.y += (rect.maxY - visible.maxY) / camera.zoom }
+      if !canPanCanvas { panCanvas(deltaX: 0, deltaY: 0) }
       return
     }
     guard followsSelection else { return }
@@ -2693,6 +2697,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   }
 
   private var navigationTargets: [NavigationTarget] {
+    // The catalog hides every window; Canvas windows must not become arrow or search targets there.
+    if showingAllApps { return appPlaceholders.map(NavigationTarget.placeholder) }
     if usesAutomaticLayout {
       let byID = Dictionary(uniqueKeysWithValues: displayedNodes.map { ($0.id, $0) })
       return (isOverview ? overviewOrder : recentWindows.visible).compactMap { byID[$0].map(NavigationTarget.window) }
@@ -3521,9 +3527,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     rightCommandMenuItem.target = self
     rightCommandMenuItem.action = #selector(toggleRightCommand(_:))
     rightCommandMenuItem.state = UserDefaults.standard.bool(forKey: "useRightCommandShortcut") ? .on : .off
-    commandTabShortcutMenuItem.title = "Use ⌘Tab for OpenPlane"
-    commandTabShortcutMenuItem.target = self
-    commandTabShortcutMenuItem.action = #selector(toggleCommandTabShortcut(_:))
   }
 
   private func configureSearch() {
@@ -3664,7 +3667,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     gridMenuItem.state = showsGrid ? .on : .off
     centerGuideMenuItem.state = showsCenterGuide ? .on : .off
     lightClosedCardsMenuItem.state = usesLightClosedCards ? .on : .off
-    commandTabShortcutMenuItem.state = usesCommandTabShortcut ? .on : .off
     updateLockViewButton()
   }
 
@@ -3943,17 +3945,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       currentSettingsPanel?.refreshControls()
       statusMessage = allowed ? "Chrome tab counts enabled." : "Chrome tab counts are off. Allow Chrome Automation in System Settings to enable them."
     }
-  }
-
-  @objc private func toggleCommandTabShortcut(_ sender: NSMenuItem) {
-    let enabled = !usesCommandTabShortcut
-    guard delegate?.canvasView(self, setCommandTabShortcut: enabled) == true else {
-      NSSound.beep()
-      return
-    }
-    usesCommandTabShortcut = enabled
-    UserDefaults.standard.set(enabled, forKey: OpenPlanePreferences.useCommandTabShortcut)
-    sender.state = enabled ? .on : .off
   }
 
   @objc private func closeSearch(_ sender: NSButton) {
@@ -4881,7 +4872,6 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       ("Navigation", [
         ("Canvas can be moved", "hand.draw", panCanvasMenuItem),
         ("Camera follows selection", "viewfinder", followSelectionMenuItem),
-        ("Use ⌘Tab for OpenPlane", "command", commandTabShortcutMenuItem),
         ("Right ⌘ toggles OpenPlane", "command", rightCommandMenuItem),
         ("Swipe up opens Overview", "hand.draw", swipeOverviewMenuItem),
       ]),

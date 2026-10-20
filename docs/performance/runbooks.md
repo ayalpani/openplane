@@ -27,7 +27,7 @@ stehen in `results/`; alle nicht abgedeckten Kriterien bleiben ausdrücklich off
 | P12 | Desktops anlegen/umbenennen, viele Tabs, Zustände speichern | Runbook; Live-Messadapter fehlt |
 | P13 | Einstellungen, Darstellung und alternative Shortcut-Pfade | Runbook; Variantenmanifest fehlt |
 | P14 | Leerlauf und längere gemischte Nutzung | 60-Sekunden-Idle-Pilot; Dauerlauf-/Speicherbeobachter fehlt |
-| P15 | Chronological Mode, Fokusverlauf, Moduswechsel und Command-Tab | Kurzer Live-Funktionstest; vollständige Messadapter fehlen |
+| P15 | Chronological Mode, Fokusverlauf, Moduswechsel und rechte Command-Taste | Kurzer Live-Funktionstest; vollständige Messadapter fehlen |
 | P16 | All apps, Rückkehr und Fensteraktionen | Kurzer Katalog-/Starttest; vollständige Fixtures/Messadapter fehlen |
 
 **Core-Smoke pro Produktänderung:** je ein kurzer Live-Durchlauf von P01
@@ -132,7 +132,7 @@ und erneutes Aktivieren der Anzeige gehören zu den vollständigen Varianten.
   alle laufenden Test-Apps; Reihenfolge zwischen Paaren kontrolliert wechseln.
 - **Varianten:** Mausklick auf Karte; Navigator-Klick; nächstes Fenster derselben
   App; Zurück/Vorwärts; Hover-Vorschau; Rückkehr über Dock und, falls aktiviert,
-  Command-Tab. Minimiertes Fenster separat von normal sichtbarem Fenster testen.
+  rechte Command-Taste. Minimiertes Fenster separat von normal sichtbarem Fenster testen.
 - **Abschluss/Korrektheit:** richtige App **und** richtiges Fenster vorne und
   per harmloser Testinteraktion bedienbar. Rückkehr zeigt die erwartete Kamera
   und Auswahl. „Prozess ist frontmost“ allein ist kein Beleg für Bedienbarkeit.
@@ -290,7 +290,7 @@ und erneutes Aktivieren der Anzeige gehören zu den vollständigen Varianten.
   Standardwerte; jeden neuen Menüpunkt hier ergänzen.
 - **Eingaben:** Menü/Popover zehnmal öffnen/schließen; Hintergrundfarbe, gespeicherte
   Ansicht, Landscape-Vorschauen, Debuganzeige, Center Guide, Auswahlanimationsmodus,
-  geschlossene Karten, private Vorschauen und Command-Tab-Einstellung jeweils
+  geschlossene Karten, private Vorschauen und Rechts-Command-Einstellung jeweils
   ändern und zurücksetzen. Betroffene P01/P02/P03/P10-Variante danach ausführen.
 - **Abschluss/Korrektheit:** sichtbare Einstellung, Speicherung, Shortcut-Routing
   und Zugriffsschutz stimmen. Für private Vorschauen nur lokale Dummy-Inhalte.
@@ -545,9 +545,12 @@ Frame/Latenzvergleich NOT RUN: scheduled overnight.
   Vorgängers, Größenänderung, neue Fenster während Auswahl, schnelles Umkehren,
   Gruppe verschieben, nächste Übersicht richtet neu aus. Leere Liste/Einzelfenster.
   Direkt während Settings-Schließanimation navigieren; Ziel bleibt zentriert.
-- **Command-Tab (aktualisiert 2026-09-07):** öffnet nur die Übersicht im
-  gewählten Modus. Wiederholtes Command-Tab beziehungsweise Command-Shift-Tab
-  lässt die bestehende Auswahl unverändert; Command-Loslassen aktiviert nichts.
+- **Command-Tab (aktualisiert 2026-10-20):** OpenPlane registriert Command-Tab
+  nicht mehr; Command-Tab und Command-Shift-Tab zeigen immer den macOS-App-Umschalter,
+  auch wenn „Right ⌘ toggles OpenPlane“ aktiv ist. Die Einstellung „Use ⌘Tab for
+  OpenPlane“ existiert nicht mehr. Die Übersicht öffnet über die allein getippte
+  rechte Command-Taste im gewählten Modus; ein Chord mit rechter Command-Taste
+  (z. B. rechts-Command-Tab) öffnet nichts.
   Pfeile navigieren, Return/Klick öffnet. Normales Tab/Shift-Tab separat prüfen.
   Ein vollständiger Pfeiltastendruck einschließlich Key-up darf nur einen
   Nachbarn auswählen; gehaltene Tasten bleiben als eigene Variante erhalten.
@@ -557,7 +560,7 @@ Frame/Latenzvergleich NOT RUN: scheduled overnight.
   OpenPlane einschließlich Wechseln innerhalb derselben App prüfen.
 - **Messen:** Eingabe bis sichtbarer Auswahl und Kameraruhe; Moduswechsel bis
   stabilem Layout; tatsächlicher Fokus bis Einordnung beim nächsten Aufruf;
-  Command-Tab bis Übersicht bereit, Return bis Ziel bereit. CPU idle/action/additional getrennt, zusätzlich
+  rechte Command-Taste bis Übersicht bereit, Return bis Ziel bereit. CPU idle/action/additional getrennt, zusätzlich
   Hintergrund-Idle mit Fokusbeobachtung, Speicher nach Wiederholungen.
 - **Cache:** frischer OpenPlane-Prozess, zwei Aufwärmrunden, warmer Prozess;
   Vorschaucache und App-Prozesse unverändert gegenüber Baseline dokumentieren.
@@ -1262,3 +1265,33 @@ latency; distinguish first/fresh preview and warm repeat conditions. A hidden
 layer unit check is not proof of compositor timing or physical right Command.
 Full matched pairs/core smoke: NOT RUN: scheduled overnight. Physical modifier-
 only input and frame-resolved capture remain PERF-025 capability gaps.
+
+### P16 – All apps arrow navigation stays in the catalog (2026-10-20)
+
+Open All apps from Canvas (with several Canvas windows, some far from the
+origin), from Overview and from Recent. Each arrow press moves the selection by
+exactly one app tile (Left/Right in the row, Up/Down in the column) and never
+selects a hidden Canvas window; the grid scrolls only enough to keep the
+selection visible and never past the first or last row. Repeat with held arrows
+(key repeat), with search active (result arrows), with canvas panning on and
+off, at narrow and full widths, and after zooming. Escape restores the previous
+view, camera and window selection.
+
+Measure input delivery to the visible selection change; record idle, action and
+additional CPU separately plus latency against eac5cd7 with the same catalog
+and window fixture, warm catalog. Full matched pairs/core smoke:
+NOT RUN: scheduled overnight.
+
+### P16 – Large frameless All apps icons (2026-10-20)
+
+Supersedes the tile sizes in "P16 catalog zoom": at zoom 1 icons are 96pt
+without a frame or box border, the one-line name (12pt, end-truncated) sits
+directly below, tiles are 116pt wide with an 8pt gap and centered in their
+column. Hover shows a faint backdrop, selection a stronger backdrop plus the
+selection border. Icons stay sharp (256px representation) and stop at 48pt when
+zoomed out; captions still fade from zoom .85 to .55. Re-run the arrow
+navigation case above (one tile per press, selection visible) with the denser
+grid, plus narrow/wide viewports, search/clear, long names, launch errors and
+Escape. Measure open→grid ready, input→selection visible and zoom→final grid;
+idle/action/additional CPU and latency separately against f9a3bde with the same
+warm catalog. Full matched pairs/core smoke: NOT RUN: scheduled overnight.

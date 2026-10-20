@@ -298,15 +298,6 @@ final class CanvasMathTests: XCTestCase {
     XCTAssertEqual(Set(updated.windowSlots.map(\.titleHint)), ["duplicate"])
   }
 
-  func testCommandTabMatcherOnlyClaimsTheSystemSwitcherShortcut() {
-    XCTAssertTrue(ShortcutMatcher.isCommandTab(keyCode: 48, flags: [.maskCommand]))
-    XCTAssertTrue(
-      ShortcutMatcher.isCommandTab(keyCode: 48, flags: [.maskCommand, .maskShift]))
-    XCTAssertFalse(
-      ShortcutMatcher.isCommandTab(keyCode: 48, flags: [.maskCommand, .maskAlternate]))
-    XCTAssertFalse(ShortcutMatcher.isCommandTab(keyCode: 49, flags: [.maskCommand]))
-  }
-
   func testBackspaceQuitsOnlyOncePerKeyPress() {
     XCTAssertTrue(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: false))
     XCTAssertFalse(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: true))
@@ -1313,21 +1304,23 @@ final class RecentWindowOrderTests: XCTestCase {
   func testApplicationGridUsesWidthAndRowMajorOrder() {
     let frames = CanvasMath.applicationGridFrames(count: 20, viewport: CGSize(width: 1200, height: 800))
     XCTAssertEqual(frames.count, 20)
-    XCTAssertEqual(frames[0].minY, frames[7].minY)
-    XCTAssertGreaterThan(frames[7].minX, frames[0].minX)
-    XCTAssertLessThan(frames[8].minY, frames[0].minY)
-    XCTAssertEqual(frames[8].minX, frames[0].minX)
+    let columns = frames.filter { $0.minY == frames[0].minY }.count
+    XCTAssertGreaterThanOrEqual(columns, 9)
+    XCTAssertGreaterThan(frames[columns - 1].minX, frames[0].minX)
+    XCTAssertLessThan(frames[columns].minY, frames[0].minY)
+    XCTAssertEqual(frames[columns].minX, frames[0].minX)
     XCTAssertTrue(frames.allSatisfy { $0.minX >= -600 && $0.maxX <= 600 })
   }
 
   func testCatalogZoomKeepsIconsAndMinimumGap() {
     for zoom: CGFloat in [0.06, 0.3, 0.55, 0.7, 1, 1.25] {
       let metrics = CanvasMath.applicationTileMetrics(zoom: zoom)
-      XCTAssertGreaterThanOrEqual(metrics.icon, 40)
+      XCTAssertGreaterThanOrEqual(metrics.icon, 48)
       if zoom <= 0.55 { XCTAssertEqual(metrics.caption, 0) }
       let frames = CanvasMath.applicationGridFrames(count: 100,
         viewport: CGSize(width: 1200, height: 800), zoom: zoom)
-      XCTAssertGreaterThanOrEqual((frames[1].minX - frames[0].maxX) * zoom, 16 - 0.001)
+      XCTAssertGreaterThanOrEqual((frames[1].minX - frames[0].maxX) * zoom,
+        CanvasMath.applicationGridGap - 0.001)
       XCTAssertEqual(frames[0].height * zoom, metrics.size.height, accuracy: 0.001)
     }
   }
@@ -2196,6 +2189,5 @@ private final class WindowFocusProbe: CanvasViewDelegate {
   func canvasView(_ canvasView: CanvasView, didRequestFocus node: WindowNode) { focused.append(node.id) }
   func canvasView(_ canvasView: CanvasView, didRequestQuit node: WindowNode) { XCTFail("Unexpected quit") }
   func canvasView(_ canvasView: CanvasView, didRequestLaunch bundleIdentifier: String, applicationName: String, at anchor: CGPoint) { XCTFail("Unexpected launch") }
-  func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool { false }
   func canvasView(_ canvasView: CanvasView, setPrivateBrowserPreviews enabled: Bool) {}
 }
