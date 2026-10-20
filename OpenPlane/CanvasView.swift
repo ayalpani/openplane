@@ -3199,7 +3199,9 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       let node = ordered[index]
       let union = ordered.map(\.worldFrame).reduce(CGRect.null) { $0.union($1) }
       let card = overviewHeaderCards[key] ?? CanvasCardLayer()
-      card.opacity = Float(CanvasMath.focusBackdropOpacity(progress: focusTransitionProgress))
+      // The stack's icon and title fade with its windows when no window in the stack matches the search.
+      let searchFade = ordered.map { searchOpacity(for: .window($0)) }.max() ?? 1
+      card.opacity = Float(CanvasMath.focusBackdropOpacity(progress: focusTransitionProgress) * searchFade)
       if card.superlayer == nil {
         card.name = "stack-header:\(key)"
         for layer in [card.surface, card.border, card.indicator] { layer.isHidden = true }

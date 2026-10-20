@@ -1321,3 +1321,14 @@ apps with 0/1/many matches, a selection outside the matches, key repeat and
 empty query. Measure input→selection visible; idle/action/additional CPU and
 latency against 50baddd with the same warm fixture. Full matched pairs/core
 smoke: NOT RUN: scheduled overnight.
+
+### P16 – Non-matching Overview stacks fade their icon during search (2026-10-20)
+
+In Overview, a stack's header (app icon + title) now fades to the same 0.14
+opacity as its windows when none of its windows matches the search; it returns
+to full opacity when any window matches or the search is cleared/escaped.
+Verify with 0/1/many matching stacks, a match in a non-front window, typing and
+deleting characters, Escape and overview entry animation while searching.
+Measure keystroke→dimmed frame; idle/action/additional CPU and latency against
+4234faa with the same warm fixture. Full matched pairs/core smoke:
+NOT RUN: scheduled overnight.

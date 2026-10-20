@@ -2176,6 +2176,20 @@ final class OverviewModeTests: XCTestCase {
       return (own.map { [$0.string] } ?? []) + (layer.sublayers ?? []).flatMap { text($0) }
     }
     XCTAssertTrue(text(stack).contains { $0.contains("von 2 ·") })
+    let searchField = try XCTUnwrap(canvas.subviews.compactMap { $0 as? NSTextField }.first {
+      $0.action == NSSelectorFromString("openSearchResult:")
+    })
+    searchField.stringValue = "Example App 2"
+    canvas.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: searchField))
+    canvas.synchronizeScene()
+    func header(_ key: String) throws -> CALayer {
+      try XCTUnwrap(canvas.cameraLayer.sublayers?.first { $0.name == "stack-header:\(key)" })
+    }
+    XCTAssertLessThan(try header("synthetic.0").opacity, 0.2, "A non-matching stack fades its icon and title too")
+    XCTAssertGreaterThan(try header("synthetic.1").opacity, 0.5, "A matching stack keeps its icon and title")
+    XCTAssertTrue(canvas.dismissSearch())
+    canvas.synchronizeScene()
+    XCTAssertGreaterThan(try header("synthetic.0").opacity, 0.5)
     canvas.nodes = []
     canvas.synchronizeScene()
     XCTAssertFalse(canvas.hasCanvasSelection)
