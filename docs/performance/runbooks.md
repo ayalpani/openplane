@@ -1262,3 +1262,19 @@ latency; distinguish first/fresh preview and warm repeat conditions. A hidden
 layer unit check is not proof of compositor timing or physical right Command.
 Full matched pairs/core smoke: NOT RUN: scheduled overnight. Physical modifier-
 only input and frame-resolved capture remain PERF-025 capability gaps.
+
+### P16 – All apps arrow navigation stays in the catalog (2026-10-20)
+
+Open All apps from Canvas (with several Canvas windows, some far from the
+origin), from Overview and from Recent. Each arrow press moves the selection by
+exactly one app tile (Left/Right in the row, Up/Down in the column) and never
+selects a hidden Canvas window; the grid scrolls only enough to keep the
+selection visible and never past the first or last row. Repeat with held arrows
+(key repeat), with search active (result arrows), with canvas panning on and
+off, at narrow and full widths, and after zooming. Escape restores the previous
+view, camera and window selection.
+
+Measure input delivery to the visible selection change; record idle, action and
+additional CPU separately plus latency against eac5cd7 with the same catalog
+and window fixture, warm catalog. Full matched pairs/core smoke:
+NOT RUN: scheduled overnight.

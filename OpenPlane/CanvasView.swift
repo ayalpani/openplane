@@ -2676,6 +2676,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       let visible = bounds.insetBy(dx: 24, dy: 112)
       if rect.minY < visible.minY { camera.center.y -= (visible.minY - rect.minY) / camera.zoom }
       else if rect.maxY > visible.maxY { camera.center.y += (rect.maxY - visible.maxY) / camera.zoom }
+      if !canPanCanvas { panCanvas(deltaX: 0, deltaY: 0) }
       return
     }
     guard followsSelection else { return }
@@ -2693,6 +2694,8 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   }
 
   private var navigationTargets: [NavigationTarget] {
+    // The catalog hides every window; Canvas windows must not become arrow or search targets there.
+    if showingAllApps { return appPlaceholders.map(NavigationTarget.placeholder) }
     if usesAutomaticLayout {
       let byID = Dictionary(uniqueKeysWithValues: displayedNodes.map { ($0.id, $0) })
       return (isOverview ? overviewOrder : recentWindows.visible).compactMap { byID[$0].map(NavigationTarget.window) }
