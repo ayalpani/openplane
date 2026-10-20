@@ -298,15 +298,6 @@ final class CanvasMathTests: XCTestCase {
     XCTAssertEqual(Set(updated.windowSlots.map(\.titleHint)), ["duplicate"])
   }
 
-  func testCommandTabMatcherOnlyClaimsTheSystemSwitcherShortcut() {
-    XCTAssertTrue(ShortcutMatcher.isCommandTab(keyCode: 48, flags: [.maskCommand]))
-    XCTAssertTrue(
-      ShortcutMatcher.isCommandTab(keyCode: 48, flags: [.maskCommand, .maskShift]))
-    XCTAssertFalse(
-      ShortcutMatcher.isCommandTab(keyCode: 48, flags: [.maskCommand, .maskAlternate]))
-    XCTAssertFalse(ShortcutMatcher.isCommandTab(keyCode: 49, flags: [.maskCommand]))
-  }
-
   func testBackspaceQuitsOnlyOncePerKeyPress() {
     XCTAssertTrue(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: false))
     XCTAssertFalse(ShortcutMatcher.isPlaneBackspace(keyCode: 51, isRepeat: true))
@@ -2198,6 +2189,5 @@ private final class WindowFocusProbe: CanvasViewDelegate {
   func canvasView(_ canvasView: CanvasView, didRequestFocus node: WindowNode) { focused.append(node.id) }
   func canvasView(_ canvasView: CanvasView, didRequestQuit node: WindowNode) { XCTFail("Unexpected quit") }
   func canvasView(_ canvasView: CanvasView, didRequestLaunch bundleIdentifier: String, applicationName: String, at anchor: CGPoint) { XCTFail("Unexpected launch") }
-  func canvasView(_ canvasView: CanvasView, setCommandTabShortcut enabled: Bool) -> Bool { false }
   func canvasView(_ canvasView: CanvasView, setPrivateBrowserPreviews enabled: Bool) {}
 }

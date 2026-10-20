@@ -27,7 +27,7 @@ stehen in `results/`; alle nicht abgedeckten Kriterien bleiben ausdrücklich off
 | P12 | Desktops anlegen/umbenennen, viele Tabs, Zustände speichern | Runbook; Live-Messadapter fehlt |
 | P13 | Einstellungen, Darstellung und alternative Shortcut-Pfade | Runbook; Variantenmanifest fehlt |
 | P14 | Leerlauf und längere gemischte Nutzung | 60-Sekunden-Idle-Pilot; Dauerlauf-/Speicherbeobachter fehlt |
-| P15 | Chronological Mode, Fokusverlauf, Moduswechsel und Command-Tab | Kurzer Live-Funktionstest; vollständige Messadapter fehlen |
+| P15 | Chronological Mode, Fokusverlauf, Moduswechsel und rechte Command-Taste | Kurzer Live-Funktionstest; vollständige Messadapter fehlen |
 | P16 | All apps, Rückkehr und Fensteraktionen | Kurzer Katalog-/Starttest; vollständige Fixtures/Messadapter fehlen |
 
 **Core-Smoke pro Produktänderung:** je ein kurzer Live-Durchlauf von P01
@@ -132,7 +132,7 @@ und erneutes Aktivieren der Anzeige gehören zu den vollständigen Varianten.
   alle laufenden Test-Apps; Reihenfolge zwischen Paaren kontrolliert wechseln.
 - **Varianten:** Mausklick auf Karte; Navigator-Klick; nächstes Fenster derselben
   App; Zurück/Vorwärts; Hover-Vorschau; Rückkehr über Dock und, falls aktiviert,
-  Command-Tab. Minimiertes Fenster separat von normal sichtbarem Fenster testen.
+  rechte Command-Taste. Minimiertes Fenster separat von normal sichtbarem Fenster testen.
 - **Abschluss/Korrektheit:** richtige App **und** richtiges Fenster vorne und
   per harmloser Testinteraktion bedienbar. Rückkehr zeigt die erwartete Kamera
   und Auswahl. „Prozess ist frontmost“ allein ist kein Beleg für Bedienbarkeit.
@@ -290,7 +290,7 @@ und erneutes Aktivieren der Anzeige gehören zu den vollständigen Varianten.
   Standardwerte; jeden neuen Menüpunkt hier ergänzen.
 - **Eingaben:** Menü/Popover zehnmal öffnen/schließen; Hintergrundfarbe, gespeicherte
   Ansicht, Landscape-Vorschauen, Debuganzeige, Center Guide, Auswahlanimationsmodus,
-  geschlossene Karten, private Vorschauen und Command-Tab-Einstellung jeweils
+  geschlossene Karten, private Vorschauen und Rechts-Command-Einstellung jeweils
   ändern und zurücksetzen. Betroffene P01/P02/P03/P10-Variante danach ausführen.
 - **Abschluss/Korrektheit:** sichtbare Einstellung, Speicherung, Shortcut-Routing
   und Zugriffsschutz stimmen. Für private Vorschauen nur lokale Dummy-Inhalte.
@@ -545,9 +545,12 @@ Frame/Latenzvergleich NOT RUN: scheduled overnight.
   Vorgängers, Größenänderung, neue Fenster während Auswahl, schnelles Umkehren,
   Gruppe verschieben, nächste Übersicht richtet neu aus. Leere Liste/Einzelfenster.
   Direkt während Settings-Schließanimation navigieren; Ziel bleibt zentriert.
-- **Command-Tab (aktualisiert 2026-09-07):** öffnet nur die Übersicht im
-  gewählten Modus. Wiederholtes Command-Tab beziehungsweise Command-Shift-Tab
-  lässt die bestehende Auswahl unverändert; Command-Loslassen aktiviert nichts.
+- **Command-Tab (aktualisiert 2026-10-20):** OpenPlane registriert Command-Tab
+  nicht mehr; Command-Tab und Command-Shift-Tab zeigen immer den macOS-App-Umschalter,
+  auch wenn „Right ⌘ toggles OpenPlane“ aktiv ist. Die Einstellung „Use ⌘Tab for
+  OpenPlane“ existiert nicht mehr. Die Übersicht öffnet über die allein getippte
+  rechte Command-Taste im gewählten Modus; ein Chord mit rechter Command-Taste
+  (z. B. rechts-Command-Tab) öffnet nichts.
   Pfeile navigieren, Return/Klick öffnet. Normales Tab/Shift-Tab separat prüfen.
   Ein vollständiger Pfeiltastendruck einschließlich Key-up darf nur einen
   Nachbarn auswählen; gehaltene Tasten bleiben als eigene Variante erhalten.
@@ -557,7 +560,7 @@ Frame/Latenzvergleich NOT RUN: scheduled overnight.
   OpenPlane einschließlich Wechseln innerhalb derselben App prüfen.
 - **Messen:** Eingabe bis sichtbarer Auswahl und Kameraruhe; Moduswechsel bis
   stabilem Layout; tatsächlicher Fokus bis Einordnung beim nächsten Aufruf;
-  Command-Tab bis Übersicht bereit, Return bis Ziel bereit. CPU idle/action/additional getrennt, zusätzlich
+  rechte Command-Taste bis Übersicht bereit, Return bis Ziel bereit. CPU idle/action/additional getrennt, zusätzlich
   Hintergrund-Idle mit Fokusbeobachtung, Speicher nach Wiederholungen.
 - **Cache:** frischer OpenPlane-Prozess, zwei Aufwärmrunden, warmer Prozess;
   Vorschaucache und App-Prozesse unverändert gegenüber Baseline dokumentieren.

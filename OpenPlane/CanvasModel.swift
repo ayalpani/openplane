@@ -538,19 +538,12 @@ enum OpenPlanePreferences {
     original / transitionSpeed
   }
 
-  static let useCommandTabShortcut = "useCommandTabShortcut"
   static let showPrivateBrowserPreviews = "showPrivateBrowserPreviews"
 }
 
 enum ShortcutMatcher {
   static func isOverviewSwipe(deltaX: CGFloat, deltaY: CGFloat) -> Bool {
     deltaY > 0 && deltaY > abs(deltaX)
-  }
-
-  static func isCommandTab(keyCode: Int64, flags: CGEventFlags) -> Bool {
-    guard keyCode == 48 else { return false }
-    let modifiers = flags.intersection([.maskCommand, .maskShift, .maskControl, .maskAlternate])
-    return modifiers == [.maskCommand] || modifiers == [.maskCommand, .maskShift]
   }
 
   static func isPlaneBackspace(keyCode: UInt16, isRepeat: Bool) -> Bool {
