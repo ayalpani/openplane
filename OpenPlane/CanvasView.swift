@@ -2629,11 +2629,14 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     CATransaction.begin()
     CATransaction.setDisableActions(true)
     defer { CATransaction.commit() }
+    let query = isSearching ? searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) : ""
     if isChronological, !showingAllApps, direction == .up || direction == .down {
-      stepRecent(by: direction == .up ? -1 : 1, wrapping: false)
+      if query.isEmpty { stepRecent(by: direction == .up ? -1 : 1, wrapping: false) }
+      else { moveSearchSelection(by: direction == .up ? -1 : 1) }
       return
     }
-    let targets = navigationTargets
+    // During a search, arrows move only between matches so the selection never lands on a dimmed card.
+    let targets = query.isEmpty ? navigationTargets : navigationTargets.filter(matchesSearch)
     guard !targets.isEmpty else { return }
 
     guard let selected = selectedNavigationTarget else {
@@ -3751,16 +3754,45 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       return false
     }
     guard control === searchField else { return false }
-    if commandSelector == #selector(NSResponder.moveDown(_:)) {
-      moveSearchSelection(by: 1)
+    // Arrow keys always navigate, even while typing a search; the query has no text cursor movement.
+    if let direction = Self.searchNavigationCommands[commandSelector] {
+      moveSelection(direction)
+      updateSearchNavigationButtons()
       return true
     }
-    if commandSelector == #selector(NSResponder.moveUp(_:)) {
-      moveSearchSelection(by: -1)
-      return true
-    }
-    return false
+    return Self.suppressedSearchCursorCommands.contains(commandSelector)
   }
+
+  private static let searchNavigationCommands: [Selector: CanvasDirection] = [
+    #selector(NSResponder.moveUp(_:)): .up,
+    #selector(NSResponder.moveDown(_:)): .down,
+    #selector(NSResponder.moveLeft(_:)): .left,
+    #selector(NSResponder.moveRight(_:)): .right,
+  ]
+
+  // Modified arrow keys would otherwise still move or extend the text selection in the query.
+  private static let suppressedSearchCursorCommands: Set<Selector> = [
+    #selector(NSResponder.moveUpAndModifySelection(_:)),
+    #selector(NSResponder.moveDownAndModifySelection(_:)),
+    #selector(NSResponder.moveLeftAndModifySelection(_:)),
+    #selector(NSResponder.moveRightAndModifySelection(_:)),
+    #selector(NSResponder.moveWordLeft(_:)),
+    #selector(NSResponder.moveWordRight(_:)),
+    #selector(NSResponder.moveWordLeftAndModifySelection(_:)),
+    #selector(NSResponder.moveWordRightAndModifySelection(_:)),
+    #selector(NSResponder.moveToLeftEndOfLine(_:)),
+    #selector(NSResponder.moveToRightEndOfLine(_:)),
+    #selector(NSResponder.moveToLeftEndOfLineAndModifySelection(_:)),
+    #selector(NSResponder.moveToRightEndOfLineAndModifySelection(_:)),
+    #selector(NSResponder.moveToBeginningOfDocument(_:)),
+    #selector(NSResponder.moveToEndOfDocument(_:)),
+    #selector(NSResponder.moveToBeginningOfDocumentAndModifySelection(_:)),
+    #selector(NSResponder.moveToEndOfDocumentAndModifySelection(_:)),
+    #selector(NSResponder.moveParagraphBackwardAndModifySelection(_:)),
+    #selector(NSResponder.moveParagraphForwardAndModifySelection(_:)),
+    #selector(NSResponder.moveToBeginningOfParagraph(_:)),
+    #selector(NSResponder.moveToEndOfParagraph(_:)),
+  ]
 
   private func matchesSearch(_ target: NavigationTarget) -> Bool {
     switch target {

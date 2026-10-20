@@ -611,7 +611,7 @@ final class CanvasSelectionTests: XCTestCase {
       canvas.layoutSubtreeIfNeeded()
       XCTAssertEqual(next.frame.minX, previous.frame.minX, "A single arrow must not leave an empty slot")
       canvas.camera.center.x = 2_800
-      XCTAssertTrue(canvas.control(field, textView: NSTextView(), doCommandBy: #selector(NSResponder.moveDown(_:))))
+      next.performClick(nil)
       XCTAssertFalse(next.isHidden)
       XCTAssertFalse(previous.isHidden)
       canvas.layoutSubtreeIfNeeded()
@@ -622,7 +622,7 @@ final class CanvasSelectionTests: XCTestCase {
       XCTAssertTrue(previous.isEnabled)
       XCTAssertTrue(next.isHidden)
       XCTAssertFalse(previous.isHidden)
-      XCTAssertTrue(canvas.control(field, textView: NSTextView(), doCommandBy: #selector(NSResponder.moveDown(_:))))
+      XCTAssertTrue(canvas.control(field, textView: NSTextView(), doCommandBy: #selector(NSResponder.moveToEndOfDocument(_:))))
       canvas.nodes = []
       XCTAssertFalse(next.isEnabled)
       XCTAssertTrue(next.isHidden)
@@ -630,6 +630,25 @@ final class CanvasSelectionTests: XCTestCase {
       XCTAssertTrue(delegate.launched.isEmpty)
       _ = NSApp.sendAction(field.action!, to: canvas, from: field)
       XCTAssertEqual(delegate.launched, [bundles[1]], "The last closed result stays selected after refresh")
+    }
+  }
+
+  func testArrowKeysInSearchNavigateMatchesInsteadOfMovingTextCursor() throws {
+    try withCanvas { canvas, delegate in
+      canvas.camera.center.x = -2_800 // Keep this synchronous event test free of camera animation.
+      let field = try startSearch(in: canvas)
+      search("t", in: canvas, field: field) // Only TextEdit matches.
+      let editor = NSTextView()
+      for command in [#selector(NSResponder.moveLeft(_:)), #selector(NSResponder.moveRight(_:)),
+        #selector(NSResponder.moveUp(_:)), #selector(NSResponder.moveDown(_:)),
+        #selector(NSResponder.moveWordLeft(_:)), #selector(NSResponder.moveRightAndModifySelection(_:))] {
+        XCTAssertTrue(canvas.control(field, textView: editor, doCommandBy: command),
+          "\(command) must not reach the search text")
+      }
+      XCTAssertFalse(canvas.control(field, textView: editor, doCommandBy: #selector(NSResponder.deleteBackward(_:))))
+      XCTAssertEqual(field.stringValue, "t")
+      _ = NSApp.sendAction(field.action!, to: canvas, from: field)
+      XCTAssertEqual(delegate.launched, [bundles[1]], "Arrows must not leave the only match")
     }
   }
 

@@ -1309,3 +1309,15 @@ launch-error captions (red). Measure All apps open→grid ready, scroll and
 zoom→final grid; idle/action/additional CPU and latency separately against the
 previous main build with the same warm catalog. Full matched pairs/core smoke:
 NOT RUN: scheduled overnight.
+
+### P16 – Arrow keys always navigate during search (2026-10-20)
+
+While the search field has focus, ←/→/↑/↓ never move the text cursor; they move
+the selection exactly like outside search, restricted to current matches (Recent
+↑/↓ steps through matches in list order). Shift/Option/⌘-arrows are swallowed so
+the query text is never re-selected. Typing, Backspace, Return, Escape and the
+result arrow buttons are unchanged. Verify in Overview, Canvas, Recent and All
+apps with 0/1/many matches, a selection outside the matches, key repeat and
+empty query. Measure input→selection visible; idle/action/additional CPU and
+latency against 50baddd with the same warm fixture. Full matched pairs/core
+smoke: NOT RUN: scheduled overnight.
