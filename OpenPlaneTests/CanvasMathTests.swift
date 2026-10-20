@@ -1313,21 +1313,23 @@ final class RecentWindowOrderTests: XCTestCase {
   func testApplicationGridUsesWidthAndRowMajorOrder() {
     let frames = CanvasMath.applicationGridFrames(count: 20, viewport: CGSize(width: 1200, height: 800))
     XCTAssertEqual(frames.count, 20)
-    XCTAssertEqual(frames[0].minY, frames[7].minY)
-    XCTAssertGreaterThan(frames[7].minX, frames[0].minX)
-    XCTAssertLessThan(frames[8].minY, frames[0].minY)
-    XCTAssertEqual(frames[8].minX, frames[0].minX)
+    let columns = frames.filter { $0.minY == frames[0].minY }.count
+    XCTAssertGreaterThanOrEqual(columns, 9)
+    XCTAssertGreaterThan(frames[columns - 1].minX, frames[0].minX)
+    XCTAssertLessThan(frames[columns].minY, frames[0].minY)
+    XCTAssertEqual(frames[columns].minX, frames[0].minX)
     XCTAssertTrue(frames.allSatisfy { $0.minX >= -600 && $0.maxX <= 600 })
   }
 
   func testCatalogZoomKeepsIconsAndMinimumGap() {
     for zoom: CGFloat in [0.06, 0.3, 0.55, 0.7, 1, 1.25] {
       let metrics = CanvasMath.applicationTileMetrics(zoom: zoom)
-      XCTAssertGreaterThanOrEqual(metrics.icon, 40)
+      XCTAssertGreaterThanOrEqual(metrics.icon, 48)
       if zoom <= 0.55 { XCTAssertEqual(metrics.caption, 0) }
       let frames = CanvasMath.applicationGridFrames(count: 100,
         viewport: CGSize(width: 1200, height: 800), zoom: zoom)
-      XCTAssertGreaterThanOrEqual((frames[1].minX - frames[0].maxX) * zoom, 16 - 0.001)
+      XCTAssertGreaterThanOrEqual((frames[1].minX - frames[0].maxX) * zoom,
+        CanvasMath.applicationGridGap - 0.001)
       XCTAssertEqual(frames[0].height * zoom, metrics.size.height, accuracy: 0.001)
     }
   }

@@ -1076,6 +1076,7 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     card.opacity = Float(backdrop * searchOpacity(for: target))
     card.zPosition = 0
     card.surface.backgroundColor = NSColor(calibratedWhite: 0.11, alpha: 1).cgColor
+    card.surface.borderWidth = 2
     card.indicator.isHidden = true
     switch target {
     case .window(let node):
@@ -1157,26 +1158,32 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       card.preview.contents = preview?.cgImage(forProposedRect: nil, context: nil, hints: nil)
     }
     if showingAllApps, case .placeholder(let placeholder) = target {
-      card.surface.backgroundColor = NSColor.white.withAlphaComponent(selected ? 0.08 : 0.025).cgColor
+      // No frame around catalog icons; only hover and selection get a soft backdrop.
+      let hovered = hoveredPlaceholderBundleIdentifier == placeholder.bundleIdentifier
+      card.surface.backgroundColor = NSColor.white.withAlphaComponent(selected ? 0.1 : hovered ? 0.06 : 0).cgColor
+      card.surface.borderWidth = 0
       let metrics = CanvasMath.applicationTileMetrics(zoom: zoom)
       let iconSize = metrics.icon
-      card.icon.frame = CGRect(x: (rect.width - iconSize) / 2, y: rect.height - iconSize - 12,
+      card.icon.frame = CGRect(x: (rect.width - iconSize) / 2, y: rect.height - iconSize - 6,
         width: iconSize, height: iconSize)
       if card.iconImage !== icon || card.icon.contents == nil {
         card.iconImage = icon
-        card.icon.contents = icon?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        // Request a large representation so enlarged icons stay sharp on Retina screens.
+        var iconRect = CGRect(x: 0, y: 0, width: 256, height: 256)
+        card.icon.contents = icon?.cgImage(forProposedRect: &iconRect, context: nil, hints: nil)
       }
       let label = NSAttributedString(string: placeholder.errorMessage.map { "\(title): \($0)" } ?? title,
-        attributes: [.font: NSFont.systemFont(ofSize: 13, weight: .medium),
-          .foregroundColor: placeholder.errorMessage == nil ? NSColor.white : NSColor.systemRed])
+        attributes: [.font: NSFont.systemFont(ofSize: 12, weight: .medium),
+          .foregroundColor: placeholder.errorMessage == nil
+            ? NSColor.white.withAlphaComponent(0.92) : NSColor.systemRed])
       card.status.isHidden = false
-      card.status.fontSize = 13
+      card.status.fontSize = 12
       card.status.isWrapped = false
       card.status.truncationMode = .end
       card.status.opacity = Float(metrics.caption)
       if card.statusValue != label { card.status.string = label; card.statusValue = label; sceneContentUpdates += 1 }
       card.status.contentsScale = scale
-      card.status.frame = CGRect(x: 8, y: 8, width: rect.width - 16, height: 18)
+      card.status.frame = CGRect(x: 4, y: 4, width: rect.width - 8, height: 16)
       card.header.isHidden = true
       card.activeHeader.isHidden = true
       updateSelectionAppearance(card, target: target, selectedPID: selectedPID)

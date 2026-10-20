@@ -904,20 +904,23 @@ enum CanvasMath {
   static let applicationMinimumZoom: CGFloat = 0.5
   static let itemGap: CGFloat = 240
   static func applicationTileMetrics(zoom: CGFloat) -> (icon: CGFloat, caption: CGFloat, size: CGSize) {
-    let icon = max(40, 56 * zoom)
+    // Launchpad-style tile: a large bare icon with a compact one-line name below it.
+    let icon = max(48, 96 * zoom)
     let caption = min(1, max(0, (zoom - 0.55) / 0.3))
-    return (icon, caption, CGSize(width: max(icon + 24, 128 * zoom),
-      height: icon + 24 + 26 * caption))
+    return (icon, caption, CGSize(width: max(icon + 12, 116 * zoom),
+      height: icon + 12 + 18 * caption))
   }
+  static let applicationGridGap: CGFloat = 8
 
   static func applicationGridFrames(count: Int, viewport: CGSize, zoom: CGFloat = 1, topInset: CGFloat = 88) -> [CGRect] {
     let zoom = max(0.001, zoom)
     let size = applicationTileMetrics(zoom: zoom).size
-    let gap: CGFloat = 16
+    let gap = applicationGridGap
     let columns = max(1, Int((viewport.width - 48 + gap) / (size.width + gap)))
     let columnWidth = max(size.width + gap, (viewport.width - 48 + gap) / CGFloat(columns))
+    let columnInset = (columnWidth - gap - size.width) / 2
     return (0..<count).map { index in
-      CGRect(x: (-viewport.width / 2 + 24 + CGFloat(index % columns) * columnWidth) / zoom,
+      CGRect(x: (-viewport.width / 2 + 24 + CGFloat(index % columns) * columnWidth + columnInset) / zoom,
         y: (viewport.height / 2 - topInset - size.height - CGFloat(index / columns) * (size.height + gap)) / zoom,
         width: size.width / zoom, height: size.height / zoom)
     }

@@ -1278,3 +1278,17 @@ Measure input delivery to the visible selection change; record idle, action and
 additional CPU separately plus latency against eac5cd7 with the same catalog
 and window fixture, warm catalog. Full matched pairs/core smoke:
 NOT RUN: scheduled overnight.
+
+### P16 – Large frameless All apps icons (2026-10-20)
+
+Supersedes the tile sizes in "P16 catalog zoom": at zoom 1 icons are 96pt
+without a frame or box border, the one-line name (12pt, end-truncated) sits
+directly below, tiles are 116pt wide with an 8pt gap and centered in their
+column. Hover shows a faint backdrop, selection a stronger backdrop plus the
+selection border. Icons stay sharp (256px representation) and stop at 48pt when
+zoomed out; captions still fade from zoom .85 to .55. Re-run the arrow
+navigation case above (one tile per press, selection visible) with the denser
+grid, plus narrow/wide viewports, search/clear, long names, launch errors and
+Escape. Measure open→grid ready, input→selection visible and zoom→final grid;
+idle/action/additional CPU and latency separately against f9a3bde with the same
+warm catalog. Full matched pairs/core smoke: NOT RUN: scheduled overnight.
