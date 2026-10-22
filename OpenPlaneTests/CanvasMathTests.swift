@@ -2239,3 +2239,23 @@ final class DisplayGeometryTests: XCTestCase {
       activeWindowFrame: CGRect(x: 2000, y: 0, width: 500, height: 500), mouseLocation: mouse), 0)
   }
 }
+
+final class MultiDisplayDiscoveryTests: XCTestCase {
+  private let laptop = CGRect(x: 0, y: 0, width: 1512, height: 982)
+  private let external = CGRect(x: 1512, y: -200, width: 2560, height: 1440)
+
+  func testWindowsOnEitherDisplayAreVisible() {
+    let displays = [laptop, external]
+    XCTAssertTrue(DisplayGeometry.intersectsAnyDisplay(CGRect(x: 100, y: 100, width: 800, height: 600),
+      displayFrames: displays))
+    XCTAssertTrue(DisplayGeometry.intersectsAnyDisplay(CGRect(x: 3000, y: 900, width: 800, height: 300),
+      displayFrames: displays))
+  }
+
+  func testWindowOutsideAllDisplaysIsHidden() {
+    XCTAssertFalse(DisplayGeometry.intersectsAnyDisplay(CGRect(x: 100, y: 1300, width: 800, height: 600),
+      displayFrames: [laptop, external]))
+    XCTAssertFalse(DisplayGeometry.intersectsAnyDisplay(CGRect(x: 0, y: 0, width: 10, height: 10),
+      displayFrames: []))
+  }
+}

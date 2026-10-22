@@ -587,6 +587,14 @@ enum DisplayGeometry {
     )
   }
 
+  /// Whether a Quartz window frame overlaps any display (Cocoa frames, main display first).
+  static func intersectsAnyDisplay(_ window: CGRect, displayFrames: [CGRect]) -> Bool {
+    guard let mainDisplayHeight = displayFrames.first?.height else { return false }
+    return displayFrames.contains {
+      quartzRect(fromCocoa: $0, mainDisplayHeight: mainDisplayHeight).intersects(window)
+    }
+  }
+
   /// The index into `displayFrames` (Cocoa frames, main display first) that the overview should use.
   static func displayIndex(
     rule: OverviewDisplayRule,

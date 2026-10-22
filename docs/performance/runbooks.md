@@ -1336,3 +1336,17 @@ windowed app on each display, open with right ⌘, select another window, return
 with right ⌘, and each of the three rules. Measure open→overview ready and
 focus→handoff; idle/action/additional CPU and latency against 4234faa with the
 same warm fixture. Full matched pairs/core smoke: NOT RUN: scheduled overnight.
+
+### P04/P17 – Windows from all displays (2026-10-22)
+
+The overview lists windows visible on every connected display, not just the one
+it opens on. Selecting a window on another display flies its preview across the
+display edge to the real window position, then hands focus over; the next right
+⌘ opens on that display (rule "active window"). Connecting, disconnecting or
+rearranging displays while the overview is open moves it to a remaining display
+and refreshes the inventory. Verify with apps on both displays: open on either,
+focus a window on the other display and return, unplug/replug the external
+display with the overview open, different scale factors. Measure open→overview
+ready (inventory now spans both displays) and focus→handoff; idle/action/
+additional CPU and latency against ec85265 with the same warm fixture. Full
+matched pairs/core smoke: NOT RUN: scheduled overnight.

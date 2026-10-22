@@ -297,18 +297,18 @@ final class WindowService {
   private let accessibilityInventory = AccessibilityInventory()
   private var applicationIcons: [pid_t: NSImage] = [:]
 
-  func discover(on screen: NSScreen) async throws -> [DiscoveredWindow] {
+  /// Windows visible on any connected display.
+  func discover() async throws -> [DiscoveredWindow] {
     let content = try await SCShareableContent.excludingDesktopWindows(
       false, onScreenWindowsOnly: true)
-    let displayFrame = DisplayGeometry.quartzRect(fromCocoa: screen.frame,
-      mainDisplayHeight: Self.mainDisplayHeight(fallback: screen))
+    let displayFrames = NSScreen.screens.map(\.frame)
     let windows = content.windows.compactMap { window -> SCWindow? in
       guard
         window.isOnScreen,
         window.windowLayer == 0,
         window.frame.width >= 180,
         window.frame.height >= 100,
-        window.frame.intersects(displayFrame),
+        DisplayGeometry.intersectsAnyDisplay(window.frame, displayFrames: displayFrames),
         let application = window.owningApplication,
         application.processID != ownProcessID,
         !application.bundleIdentifier.isEmpty
