@@ -1321,3 +1321,43 @@ apps with 0/1/many matches, a selection outside the matches, key repeat and
 empty query. Measure input→selection visible; idle/action/additional CPU and
 latency against 50baddd with the same warm fixture. Full matched pairs/core
 smoke: NOT RUN: scheduled overnight.
+
+### P04/P17 – Overview on external displays (2026-10-22)
+
+The overview now converts window frames between Quartz (top-left of the main
+display) and Cocoa (bottom-left) coordinates for every display, so the entry
+shrink animation, focus zoom and return animation line up on an external display
+whose frame is offset from the main display. The overview display is chosen once
+per opening via Settings → "Show on display": display with the active window
+(default; falls back to the mouse pointer when no window is frontmost), display
+with the mouse pointer, or the main display (menu bar). Verify on laptop + one
+external display, external left/right and vertically offset: full-screen and
+windowed app on each display, open with right ⌘, select another window, return
+with right ⌘, and each of the three rules. Measure open→overview ready and
+focus→handoff; idle/action/additional CPU and latency against 4234faa with the
+same warm fixture. Full matched pairs/core smoke: NOT RUN: scheduled overnight.
+
+### P04/P17 – Windows from all displays (2026-10-22)
+
+The overview lists windows visible on every connected display, not just the one
+it opens on. Selecting a window on another display flies its preview across the
+display edge to the real window position, then hands focus over; the next right
+⌘ opens on that display (rule "active window"). Connecting, disconnecting or
+rearranging displays while the overview is open moves it to a remaining display
+and refreshes the inventory. Verify with apps on both displays: open on either,
+focus a window on the other display and return, unplug/replug the external
+display with the overview open, different scale factors. Measure open→overview
+ready (inventory now spans both displays) and focus→handoff; idle/action/
+additional CPU and latency against ec85265 with the same warm fixture. Full
+matched pairs/core smoke: NOT RUN: scheduled overnight.
+
+### P07/P16 – macOS wallpaper as overview background, per display (2026-10-22)
+
+Ports the optional "Use macOS wallpaper" setting (previously only an uncommitted
+local change, see results/2026-09-24-wallpaper) and loads the wallpaper of the
+display the overview opens on, refreshed on every opening and on display changes.
+Verify with different wallpapers on laptop and external display, opening on
+each, toggling the setting, fill/fit/center/stretch wallpaper options and the
+header bar contrast. Measure open→overview ready with the setting on and off;
+idle/action/additional CPU and latency against 36a6d75 with the same warm
+fixture. Full matched pairs/core smoke: NOT RUN: scheduled overnight.

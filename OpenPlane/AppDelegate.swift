@@ -91,6 +91,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       self?.overviewGeneration += 1
     }
     observeWorkspace()
+    NotificationCenter.default.addObserver(
+      self, selector: #selector(screenParametersDidChange(_:)),
+      name: NSApplication.didChangeScreenParametersNotification, object: nil)
     windowFocusObserver.observeFrontmost()
     installShortcut()
 
@@ -336,7 +339,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     showCanvas()
   }
 
-  private var mainScreen: NSScreen { NSScreen.main ?? NSScreen.screens[0] }
+  /// The display the overview covers. Chosen once per opening so the animation and window
+  /// inventory use the same display even after the overlay becomes key.
+  private var overlayScreen: NSScreen?
+  private var mainScreen: NSScreen {
+    if let overlayScreen, NSScreen.screens.contains(overlayScreen) { return overlayScreen }
+    return NSScreen.main ?? NSScreen.screens[0]
+  }
+
+  /// A display was connected, disconnected or rearranged while the overview may be open.
+  @objc private func screenParametersDidChange(_ notification: Notification) {
+    if let overlayScreen, !NSScreen.screens.contains(overlayScreen) { chooseOverlayScreen() }
+    guard overlayWindow.isVisible, overlayWindow.contentView === workspaceView else { return }
+    overlayWindow.setFrame(mainScreen.frame, display: true)
+    canvasView.refreshDesktopWallpaper(for: mainScreen)
+    Task { [weak self] in await self?.reconcileWindows() }
+  }
+
+  private func chooseOverlayScreen() {
+    let screens = NSScreen.screens
+    guard !screens.isEmpty else { return }
+    let index = DisplayGeometry.displayIndex(
+      rule: OpenPlanePreferences.overviewDisplay,
+      displayFrames: screens.map(\.frame),
+      activeWindowFrame: windowService.frontmostWindowFrame(),
+      mouseLocation: NSEvent.mouseLocation
+    )
+    overlayScreen = screens[index]
+  }
 
   private var permissionState: PermissionState {
     let loginStatus = SMAppService.mainApp.status
@@ -441,6 +471,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
 
   private func showPermissions() {
     stopCanvasLoops()
+    chooseOverlayScreen()
     configureWindowForOnboarding()
     overlayWindow.contentView = permissionView
     refreshPermissionView()
@@ -508,6 +539,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       .moveToActiveSpace, .fullScreenAuxiliary, .stationary, .ignoresCycle,
     ]
     overlayWindow.setFrame(mainScreen.frame, display: true)
+    canvasView.refreshDesktopWallpaper(for: mainScreen)
   }
 
   private func rememberOverviewOrigin() {
@@ -546,7 +578,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       return
     }
     permissionTimer?.invalidate()
-    if !isShowingCanvas { rememberOverviewOrigin() }
+    if !isShowingCanvas {
+      rememberOverviewOrigin()
+      chooseOverlayScreen()
+    }
     if canvasView.usesAutomaticLayout {
       if isShowingCanvas {
         overlayWindow.makeKeyAndOrderFront(nil)
@@ -567,11 +602,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
         await reconcileWindows(allowHidden: true)
         guard overviewGeneration == generation, isOpeningCanvas else { return }
         canvasView.prepareChronologicalOverview()
-        let desktopTop = NSScreen.screens.first?.frame.maxY ?? mainScreen.frame.maxY
+        let mainDisplayHeight = WindowService.mainDisplayHeight(fallback: mainScreen)
         let starts = Dictionary(uniqueKeysWithValues: nodesByID.values.map { node in
-          (node.id, CGRect(x: node.sourceFrame.minX - mainScreen.frame.minX,
-            y: desktopTop - node.sourceFrame.maxY - mainScreen.frame.minY,
-            width: node.sourceFrame.width, height: node.sourceFrame.height))
+          (node.id, DisplayGeometry.localRect(fromQuartz: node.sourceFrame,
+            displayFrame: mainScreen.frame, mainDisplayHeight: mainDisplayHeight))
         })
         canvasView.layoutSubtreeIfNeeded()
         let frontToBack = (CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements],
@@ -816,7 +850,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     isReconcilingWindows = true
     defer { isReconcilingWindows = false }
     do {
-      let allDiscovered = try await windowService.discover(on: mainScreen)
+      let allDiscovered = try await windowService.discover()
       guard !Task.isCancelled, !canvasView.defersBackgroundWork || !requestedCloseIDs.isEmpty else { return }
       let now = Date()
       for (processID, var suppression) in pendingQuitSuppressions {

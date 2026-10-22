@@ -297,17 +297,18 @@ final class WindowService {
   private let accessibilityInventory = AccessibilityInventory()
   private var applicationIcons: [pid_t: NSImage] = [:]
 
-  func discover(on screen: NSScreen) async throws -> [DiscoveredWindow] {
+  /// Windows visible on any connected display.
+  func discover() async throws -> [DiscoveredWindow] {
     let content = try await SCShareableContent.excludingDesktopWindows(
       false, onScreenWindowsOnly: true)
-    let mainDisplayFrame = CGRect(origin: .zero, size: screen.frame.size)
+    let displayFrames = NSScreen.screens.map(\.frame)
     let windows = content.windows.compactMap { window -> SCWindow? in
       guard
         window.isOnScreen,
         window.windowLayer == 0,
         window.frame.width >= 180,
         window.frame.height >= 100,
-        window.frame.intersects(mainDisplayFrame),
+        DisplayGeometry.intersectsAnyDisplay(window.frame, displayFrames: displayFrames),
         let application = window.owningApplication,
         application.processID != ownProcessID,
         !application.bundleIdentifier.isEmpty
@@ -441,12 +442,34 @@ final class WindowService {
     else {
       return nil
     }
-    let localX = topLeft.x - screen.frame.minX
-    let localBottomY = screen.frame.height - (topLeft.y + size.height)
     return WindowGeometry(
-      screenFrame: CGRect(x: localX, y: localBottomY, width: size.width, height: size.height),
+      screenFrame: DisplayGeometry.localRect(fromQuartz: CGRect(origin: topLeft, size: size),
+        displayFrame: screen.frame, mainDisplayHeight: Self.mainDisplayHeight(fallback: screen)),
       size: size
     )
+  }
+
+  static func mainDisplayHeight(fallback screen: NSScreen) -> CGFloat {
+    (NSScreen.screens.first ?? screen).frame.height
+  }
+
+  /// The Quartz frame of the frontmost app's frontmost normal window.
+  func frontmostWindowFrame() -> CGRect? {
+    guard let application = NSWorkspace.shared.frontmostApplication,
+      application.processIdentifier != ownProcessID
+    else { return nil }
+    let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements],
+      kCGNullWindowID) as? [[String: Any]] ?? []
+    for window in windows {
+      guard (window[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == application.processIdentifier,
+        (window[kCGWindowLayer as String] as? NSNumber)?.intValue == 0,
+        let bounds = window[kCGWindowBounds as String] as? NSDictionary,
+        let frame = CGRect(dictionaryRepresentation: bounds),
+        frame.width >= 100, frame.height >= 100
+      else { continue }
+      return frame
+    }
+    return nil
   }
 
   static func backspaceAction(for node: WindowNode) -> WindowBackspaceAction {
