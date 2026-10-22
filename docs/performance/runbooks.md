@@ -1350,3 +1350,14 @@ display with the overview open, different scale factors. Measure open→overview
 ready (inventory now spans both displays) and focus→handoff; idle/action/
 additional CPU and latency against ec85265 with the same warm fixture. Full
 matched pairs/core smoke: NOT RUN: scheduled overnight.
+
+### P07/P16 – macOS wallpaper as overview background, per display (2026-10-22)
+
+Ports the optional "Use macOS wallpaper" setting (previously only an uncommitted
+local change, see results/2026-09-24-wallpaper) and loads the wallpaper of the
+display the overview opens on, refreshed on every opening and on display changes.
+Verify with different wallpapers on laptop and external display, opening on
+each, toggling the setting, fill/fit/center/stretch wallpaper options and the
+header bar contrast. Measure open→overview ready with the setting on and off;
+idle/action/additional CPU and latency against 36a6d75 with the same warm
+fixture. Full matched pairs/core smoke: NOT RUN: scheduled overnight.

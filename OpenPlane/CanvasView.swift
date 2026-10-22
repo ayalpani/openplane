@@ -307,6 +307,35 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
   private var overviewHeaderCards: [String: CanvasCardLayer] = [:]
   private let sceneView = CanvasDrawingView()
   private let hudView = CanvasDrawingView()
+  private let wallpaperLayer = CALayer()
+  private var wallpaperURL: URL?
+  private var wallpaperModified: Date?
+  private var usesWallpaper: Bool { UserDefaults.standard.bool(forKey: "useDesktopWallpaper") }
+
+  /// Loads the macOS wallpaper of the display the overview covers; each display can have its own.
+  func refreshDesktopWallpaper(for targetScreen: NSScreen? = nil) {
+    guard usesWallpaper, let screen = targetScreen ?? window?.screen ?? NSScreen.main,
+      let url = NSWorkspace.shared.desktopImageURL(for: screen) else {
+      wallpaperLayer.isHidden = true
+      return
+    }
+    let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+    if url != wallpaperURL || modified != wallpaperModified || wallpaperLayer.contents == nil {
+      wallpaperLayer.contents = NSImage(contentsOf: url)?.cgImage(forProposedRect: nil, context: nil, hints: nil)
+      wallpaperURL = url
+      wallpaperModified = modified
+    }
+    let options = NSWorkspace.shared.desktopImageOptions(for: screen) ?? [:]
+    let scaling = (options[.imageScaling] as? NSNumber)?.uintValue
+    let clipping = options[.allowClipping] as? Bool ?? true
+    wallpaperLayer.contentsGravity = scaling == NSImageScaling.scaleAxesIndependently.rawValue
+      ? .resize : (scaling == NSImageScaling.scaleNone.rawValue ? .center : (clipping ? .resizeAspectFill : .resizeAspect))
+    wallpaperLayer.backgroundColor = (options[.fillColor] as? NSColor ?? .black).cgColor
+    wallpaperLayer.isHidden = wallpaperLayer.contents == nil
+    if wallpaperLayer.isHidden { statusMessage = "Wallpaper unavailable. Using your chosen color." }
+    needsDisplay = true
+  }
+
   let cameraLayer = CALayer()
   private let gridLayer = CAReplicatorLayer()
   private let gridRows = CAReplicatorLayer()
@@ -865,6 +894,9 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       addSubview(view)
     }
     sceneView.layer?.masksToBounds = true
+    wallpaperLayer.contentsGravity = .resizeAspectFill
+    wallpaperLayer.isHidden = true
+    sceneView.layer?.addSublayer(wallpaperLayer)
     cameraLayer.anchorPoint = .zero
     gridLayer.anchorPoint = .zero
     gridRows.anchorPoint = .zero
@@ -1014,6 +1046,10 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
     CATransaction.setDisableActions(true)
     defer { CATransaction.commit() }
     let backdrop = CanvasMath.focusBackdropOpacity(progress: focusTransitionProgress)
+    if let window, let screen = window.screen {
+      wallpaperLayer.frame = convert(window.convertFromScreen(screen.frame), from: nil)
+    } else { wallpaperLayer.frame = bounds }
+    wallpaperLayer.isHidden = !usesWallpaper || wallpaperLayer.contents == nil
     sceneView.layer?.backgroundColor = background.color.withAlphaComponent(
       CanvasMath.focusCanvasBackgroundOpacity(progress: focusTransitionProgress)).cgColor
     gridLayer.opacity = Float(backdrop)
@@ -3158,14 +3194,15 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
       x: presentationOverlayFrame.midX - width / 2,
       y: bounds.maxY - layout.depth,
       width: width,
-      height: layout.depth + cornerRadius
+      height: usesWallpaper ? layout.titleBoxHeight + 16 : layout.depth + cornerRadius
     )
     let path = NSBezierPath(
       roundedRect: frame,
       xRadius: cornerRadius,
       yRadius: cornerRadius
     )
-    background.color.withAlphaComponent(0.75).setFill()
+    (usesWallpaper ? NSColor.black.withAlphaComponent(0.45)
+      : background.color.withAlphaComponent(0.75)).setFill()
     path.fill()
   }
 
@@ -4934,6 +4971,10 @@ final class CanvasView: NSView, NSTextFieldDelegate, NSViewToolTipOwner {
         ("Debug information", "waveform.path", debugInformationMenuItem),
       ]),
     ])
+    panel.onWallpaperChange = { [weak self] in
+      self?.refreshDesktopWallpaper()
+      self?.needsDisplay = true
+    }
     currentSettingsPanel = panel
     panel.onClose = { [weak self] in self?.dismissSettings() }
     host.showSettings(panel)
@@ -5505,6 +5546,7 @@ private final class CanvasSettingsPanel: NSView {
     }
   }
   var onClose: (() -> Void)?
+  var onWallpaperChange: (() -> Void)?
   private let scroll = NSScrollView()
   private let closeButton = NSButton()
   private let backButton = NSButton(title: "← Settings", target: nil, action: nil)
@@ -5648,6 +5690,14 @@ private final class CanvasSettingsPanel: NSView {
     changeTransitionSpeed(speed)
     y += 48
     section("Background")
+    let wallpaper = NSButton(checkboxWithTitle: "Use macOS wallpaper", target: self,
+      action: #selector(changeWallpaper(_:)))
+    wallpaper.state = UserDefaults.standard.bool(forKey: "useDesktopWallpaper") ? .on : .off
+    wallpaper.font = .systemFont(ofSize: 16)
+    wallpaper.frame = CGRect(x: 24, y: y, width: 350, height: 30)
+    wallpaper.toolTip = "Uses the desktop image without desktop icons or other windows."
+    document.addSubview(wallpaper)
+    y += 40
     palette.frame.origin = CGPoint(x: 4, y: y)
     document.addSubview(palette)
     y += palette.frame.height + 12
@@ -5710,6 +5760,11 @@ private final class CanvasSettingsPanel: NSView {
     OpenPlanePreferences.transitionSpeed = (sender.doubleValue * 4).rounded() / 4
     sender.doubleValue = OpenPlanePreferences.transitionSpeed
     transitionSpeedLabel.stringValue = String(format: "%.2f×", sender.doubleValue)
+  }
+
+  @objc private func changeWallpaper(_ sender: NSButton) {
+    UserDefaults.standard.set(sender.state == .on, forKey: "useDesktopWallpaper")
+    onWallpaperChange?()
   }
 
   @objc private func changeOverviewDisplay(_ sender: NSPopUpButton) {

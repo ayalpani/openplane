@@ -352,6 +352,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     if let overlayScreen, !NSScreen.screens.contains(overlayScreen) { chooseOverlayScreen() }
     guard overlayWindow.isVisible, overlayWindow.contentView === workspaceView else { return }
     overlayWindow.setFrame(mainScreen.frame, display: true)
+    canvasView.refreshDesktopWallpaper(for: mainScreen)
     Task { [weak self] in await self?.reconcileWindows() }
   }
 
@@ -538,6 +539,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       .moveToActiveSpace, .fullScreenAuxiliary, .stationary, .ignoresCycle,
     ]
     overlayWindow.setFrame(mainScreen.frame, display: true)
+    canvasView.refreshDesktopWallpaper(for: mainScreen)
   }
 
   private func rememberOverviewOrigin() {
