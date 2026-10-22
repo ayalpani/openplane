@@ -539,6 +539,84 @@ enum OpenPlanePreferences {
   }
 
   static let showPrivateBrowserPreviews = "showPrivateBrowserPreviews"
+
+  static let overviewDisplayKey = "overviewDisplay"
+  static var overviewDisplay: OverviewDisplayRule {
+    get {
+      UserDefaults.standard.string(forKey: overviewDisplayKey).flatMap(OverviewDisplayRule.init(rawValue:))
+        ?? .activeWindow
+    }
+    set { UserDefaults.standard.set(newValue.rawValue, forKey: overviewDisplayKey) }
+  }
+}
+
+/// Which display the overview covers when several are connected.
+enum OverviewDisplayRule: String, CaseIterable {
+  /// The display that holds the frontmost app's window, so the open animation starts where you work.
+  case activeWindow
+  /// The display under the mouse pointer.
+  case mousePointer
+  /// The display with the menu bar, as set in System Settings → Displays.
+  case mainDisplay
+
+  var title: String {
+    switch self {
+    case .activeWindow: "Display with the active window"
+    case .mousePointer: "Display with the mouse pointer"
+    case .mainDisplay: "Main display (menu bar)"
+    }
+  }
+}
+
+/// Converts between the two global coordinate spaces macOS uses with several displays.
+/// Cocoa (NSScreen, NSEvent) has its origin at the bottom left of the main display and y grows up.
+/// Quartz (CGWindowList, ScreenCaptureKit, Accessibility) has its origin at the top left of the
+/// main display and y grows down. `mainDisplayHeight` is the height of `NSScreen.screens[0]`.
+enum DisplayGeometry {
+  static func quartzRect(fromCocoa rect: CGRect, mainDisplayHeight: CGFloat) -> CGRect {
+    CGRect(x: rect.minX, y: mainDisplayHeight - rect.maxY, width: rect.width, height: rect.height)
+  }
+
+  /// A Quartz global rectangle expressed in the bottom-left local coordinates of one display.
+  static func localRect(fromQuartz rect: CGRect, displayFrame: CGRect, mainDisplayHeight: CGFloat) -> CGRect {
+    CGRect(
+      x: rect.minX - displayFrame.minX,
+      y: mainDisplayHeight - rect.maxY - displayFrame.minY,
+      width: rect.width,
+      height: rect.height
+    )
+  }
+
+  /// The index into `displayFrames` (Cocoa frames, main display first) that the overview should use.
+  static func displayIndex(
+    rule: OverviewDisplayRule,
+    displayFrames: [CGRect],
+    activeWindowFrame: CGRect?,
+    mouseLocation: CGPoint
+  ) -> Int {
+    guard displayFrames.count > 1 else { return 0 }
+    let mainDisplayHeight = displayFrames[0].height
+    func underMouse() -> Int? {
+      displayFrames.firstIndex { mouseLocation.x >= $0.minX && mouseLocation.x < $0.maxX
+        && mouseLocation.y >= $0.minY && mouseLocation.y < $0.maxY }
+    }
+    switch rule {
+    case .mainDisplay:
+      return 0
+    case .mousePointer:
+      return underMouse() ?? 0
+    case .activeWindow:
+      guard let window = activeWindowFrame else { return underMouse() ?? 0 }
+      let areas = displayFrames.map { frame -> CGFloat in
+        let overlap = quartzRect(fromCocoa: frame, mainDisplayHeight: mainDisplayHeight).intersection(window)
+        return overlap.isNull ? 0 : overlap.width * overlap.height
+      }
+      guard let best = areas.indices.max(by: { areas[$0] < areas[$1] }), areas[best] > 0 else {
+        return underMouse() ?? 0
+      }
+      return best
+    }
+  }
 }
 
 enum ShortcutMatcher {

@@ -1321,3 +1321,18 @@ apps with 0/1/many matches, a selection outside the matches, key repeat and
 empty query. Measure input→selection visible; idle/action/additional CPU and
 latency against 50baddd with the same warm fixture. Full matched pairs/core
 smoke: NOT RUN: scheduled overnight.
+
+### P04/P17 – Overview on external displays (2026-10-22)
+
+The overview now converts window frames between Quartz (top-left of the main
+display) and Cocoa (bottom-left) coordinates for every display, so the entry
+shrink animation, focus zoom and return animation line up on an external display
+whose frame is offset from the main display. The overview display is chosen once
+per opening via Settings → "Show on display": display with the active window
+(default; falls back to the mouse pointer when no window is frontmost), display
+with the mouse pointer, or the main display (menu bar). Verify on laptop + one
+external display, external left/right and vertically offset: full-screen and
+windowed app on each display, open with right ⌘, select another window, return
+with right ⌘, and each of the three rules. Measure open→overview ready and
+focus→handoff; idle/action/additional CPU and latency against 4234faa with the
+same warm fixture. Full matched pairs/core smoke: NOT RUN: scheduled overnight.

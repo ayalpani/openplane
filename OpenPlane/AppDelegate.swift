@@ -336,7 +336,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
     showCanvas()
   }
 
-  private var mainScreen: NSScreen { NSScreen.main ?? NSScreen.screens[0] }
+  /// The display the overview covers. Chosen once per opening so the animation and window
+  /// inventory use the same display even after the overlay becomes key.
+  private var overlayScreen: NSScreen?
+  private var mainScreen: NSScreen {
+    if let overlayScreen, NSScreen.screens.contains(overlayScreen) { return overlayScreen }
+    return NSScreen.main ?? NSScreen.screens[0]
+  }
+
+  private func chooseOverlayScreen() {
+    let screens = NSScreen.screens
+    guard !screens.isEmpty else { return }
+    let index = DisplayGeometry.displayIndex(
+      rule: OpenPlanePreferences.overviewDisplay,
+      displayFrames: screens.map(\.frame),
+      activeWindowFrame: windowService.frontmostWindowFrame(),
+      mouseLocation: NSEvent.mouseLocation
+    )
+    overlayScreen = screens[index]
+  }
 
   private var permissionState: PermissionState {
     let loginStatus = SMAppService.mainApp.status
@@ -441,6 +459,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
 
   private func showPermissions() {
     stopCanvasLoops()
+    chooseOverlayScreen()
     configureWindowForOnboarding()
     overlayWindow.contentView = permissionView
     refreshPermissionView()
@@ -546,7 +565,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
       return
     }
     permissionTimer?.invalidate()
-    if !isShowingCanvas { rememberOverviewOrigin() }
+    if !isShowingCanvas {
+      rememberOverviewOrigin()
+      chooseOverlayScreen()
+    }
     if canvasView.usesAutomaticLayout {
       if isShowingCanvas {
         overlayWindow.makeKeyAndOrderFront(nil)
@@ -567,11 +589,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CanvasViewDelegate {
         await reconcileWindows(allowHidden: true)
         guard overviewGeneration == generation, isOpeningCanvas else { return }
         canvasView.prepareChronologicalOverview()
-        let desktopTop = NSScreen.screens.first?.frame.maxY ?? mainScreen.frame.maxY
+        let mainDisplayHeight = WindowService.mainDisplayHeight(fallback: mainScreen)
         let starts = Dictionary(uniqueKeysWithValues: nodesByID.values.map { node in
-          (node.id, CGRect(x: node.sourceFrame.minX - mainScreen.frame.minX,
-            y: desktopTop - node.sourceFrame.maxY - mainScreen.frame.minY,
-            width: node.sourceFrame.width, height: node.sourceFrame.height))
+          (node.id, DisplayGeometry.localRect(fromQuartz: node.sourceFrame,
+            displayFrame: mainScreen.frame, mainDisplayHeight: mainDisplayHeight))
         })
         canvasView.layoutSubtreeIfNeeded()
         let frontToBack = (CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements],

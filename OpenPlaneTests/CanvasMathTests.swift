@@ -2191,3 +2191,51 @@ private final class WindowFocusProbe: CanvasViewDelegate {
   func canvasView(_ canvasView: CanvasView, didRequestLaunch bundleIdentifier: String, applicationName: String, at anchor: CGPoint) { XCTFail("Unexpected launch") }
   func canvasView(_ canvasView: CanvasView, setPrivateBrowserPreviews enabled: Bool) {}
 }
+
+final class DisplayGeometryTests: XCTestCase {
+  // Laptop is the main display; an external display sits to its right, its bottom 200 pt lower.
+  private let laptop = CGRect(x: 0, y: 0, width: 1512, height: 982)
+  private let external = CGRect(x: 1512, y: -200, width: 2560, height: 1440)
+
+  func testQuartzRectOfExternalDisplay() {
+    XCTAssertEqual(
+      DisplayGeometry.quartzRect(fromCocoa: external, mainDisplayHeight: laptop.height),
+      CGRect(x: 1512, y: -258, width: 2560, height: 1440)
+    )
+  }
+
+  func testFullScreenWindowOnExternalDisplayMapsToWholeDisplay() {
+    let window = CGRect(x: 1512, y: -258, width: 2560, height: 1440)
+    XCTAssertEqual(
+      DisplayGeometry.localRect(fromQuartz: window, displayFrame: external, mainDisplayHeight: laptop.height),
+      CGRect(x: 0, y: 0, width: 2560, height: 1440)
+    )
+  }
+
+  func testWindowOnMainDisplayKeepsLocalCoordinates() {
+    let window = CGRect(x: 100, y: 50, width: 800, height: 600)
+    XCTAssertEqual(
+      DisplayGeometry.localRect(fromQuartz: window, displayFrame: laptop, mainDisplayHeight: laptop.height),
+      CGRect(x: 100, y: 332, width: 800, height: 600)
+    )
+  }
+
+  func testActiveWindowRulePicksDisplayWithMostOfTheWindow() {
+    let window = CGRect(x: 1400, y: 0, width: 1000, height: 700)
+    XCTAssertEqual(DisplayGeometry.displayIndex(rule: .activeWindow, displayFrames: [laptop, external],
+      activeWindowFrame: window, mouseLocation: CGPoint(x: 10, y: 10)), 1)
+  }
+
+  func testActiveWindowRuleFallsBackToMouseWithoutWindow() {
+    XCTAssertEqual(DisplayGeometry.displayIndex(rule: .activeWindow, displayFrames: [laptop, external],
+      activeWindowFrame: nil, mouseLocation: CGPoint(x: 2000, y: 500)), 1)
+  }
+
+  func testMouseAndMainDisplayRules() {
+    let mouse = CGPoint(x: 2000, y: -100)
+    XCTAssertEqual(DisplayGeometry.displayIndex(rule: .mousePointer, displayFrames: [laptop, external],
+      activeWindowFrame: nil, mouseLocation: mouse), 1)
+    XCTAssertEqual(DisplayGeometry.displayIndex(rule: .mainDisplay, displayFrames: [laptop, external],
+      activeWindowFrame: CGRect(x: 2000, y: 0, width: 500, height: 500), mouseLocation: mouse), 0)
+  }
+}

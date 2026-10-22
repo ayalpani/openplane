@@ -5616,6 +5616,24 @@ private final class CanvasSettingsPanel: NSView {
     document.addSubview(shortcutHelp)
     shortcut.onMessage = { [weak shortcutHelp] in shortcutHelp?.stringValue = $0 }
     y += 58
+    section("Show on display")
+    let display = NSPopUpButton(frame: CGRect(x: 24, y: y, width: 300, height: 30), pullsDown: false)
+    for rule in OverviewDisplayRule.allCases {
+      display.addItem(withTitle: rule.title)
+      display.lastItem?.representedObject = rule.rawValue
+    }
+    display.selectItem(at: OverviewDisplayRule.allCases.firstIndex(of: OpenPlanePreferences.overviewDisplay) ?? 0)
+    display.target = self
+    display.action = #selector(changeOverviewDisplay(_:))
+    display.setAccessibilityLabel("Show on display")
+    document.addSubview(display)
+    y += 36
+    let displayHelp = NSTextField(wrappingLabelWithString: "With several displays, OpenPlane opens on this one.")
+    displayHelp.font = .systemFont(ofSize: 12)
+    displayHelp.textColor = .secondaryLabelColor
+    displayHelp.frame = CGRect(x: 24, y: y, width: 368, height: 34)
+    document.addSubview(displayHelp)
+    y += 48
     section("Open / return animation")
     let speed = NSSlider(value: OpenPlanePreferences.transitionSpeed, minValue: 0.5, maxValue: 4,
       target: self, action: #selector(changeTransitionSpeed(_:)))
@@ -5692,6 +5710,13 @@ private final class CanvasSettingsPanel: NSView {
     OpenPlanePreferences.transitionSpeed = (sender.doubleValue * 4).rounded() / 4
     sender.doubleValue = OpenPlanePreferences.transitionSpeed
     transitionSpeedLabel.stringValue = String(format: "%.2f×", sender.doubleValue)
+  }
+
+  @objc private func changeOverviewDisplay(_ sender: NSPopUpButton) {
+    guard let raw = sender.selectedItem?.representedObject as? String,
+      let rule = OverviewDisplayRule(rawValue: raw)
+    else { return }
+    OpenPlanePreferences.overviewDisplay = rule
   }
 
   @objc private func openViews(_ sender: NSButton) {
